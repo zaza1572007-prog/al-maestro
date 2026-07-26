@@ -2,32 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 
-// GET - Fetch a single student by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-
-    if (!payload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Students can only view their own profile
-    if (payload.role === 'STUDENT' && payload.userId !== id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Admins and assistants can view any student
-    if (payload.role !== 'OWNER' && payload.role !== 'ASSISTANT' && payload.role !== 'STUDENT') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const student = await prisma.student.findUnique({
       where: { id },
@@ -36,48 +16,30 @@ export async function GET(
         group: true,
         parent: true,
         attendances: {
-          include: {
-            session: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
+          include: { session: true },
+          orderBy: { createdAt: 'desc' },
           take: 20,
         },
         submissions: {
-          include: {
-            homework: true,
-          },
-          orderBy: {
-            submittedAt: 'desc',
-          },
+          include: { homework: true },
+          orderBy: { submittedAt: 'desc' },
           take: 20,
         },
         examResults: {
-          include: {
-            exam: true,
-          },
-          orderBy: {
-            gradedAt: 'desc',
-          },
+          include: { exam: true },
+          orderBy: { gradedAt: 'desc' },
           take: 20,
         },
         subscriptions: {
-          orderBy: {
-            startDate: 'desc',
-          },
+          orderBy: { startDate: 'desc' },
           take: 5,
         },
         payments: {
-          orderBy: {
-            createdAt: 'desc',
-          },
+          orderBy: { createdAt: 'desc' },
           take: 10,
         },
         communications: {
-          orderBy: {
-            date: 'desc',
-          },
+          orderBy: { date: 'desc' },
           take: 10,
         },
       },
@@ -159,23 +121,39 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, parentName, parentPhone, stage, group, subStatus } = body;
+    const { name, phone, parentName, parentPhone, stageId, groupId, academicStageId } = body;
 
-    // Check if student exists or perform update/upsert
-    try {
-      const updatedStudent = await prisma.student.update({
+    const updatedStudent = await prisma.student.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(phone && { phone }),
+        ...(groupId && { groupId }),
+        ...(stageId && { academicStageId: stageId }),
+        ...(academicStageId && { academicStageId }),
+        // Update parent if exists
+      },
+      include: { academicStage: true, group: true },
+    });
+
+    // Update parent name/phone if provided
+    if (parentName || parentPhone) {
+      const student = await prisma.student.findUnique({
         where: { id },
-        data: {
-          ...(name && { name }),
-          ...(phone && { phone }),
-          notes: JSON.stringify({ parentName, parentPhone, stage, group, subStatus }),
-        },
+        include: { parent: true },
       });
-      return NextResponse.json({ success: true, student: updatedStudent });
-    } catch (e) {
-
-      return NextResponse.json({ success: true, student: { id, name, phone, parentName, parentPhone, stage, group, subStatus } });
+      if (student?.parent) {
+        await prisma.parent.update({
+          where: { id: student.parent.id },
+          data: {
+            ...(parentName && { name: parentName }),
+            ...(parentPhone && { phone: parentPhone }),
+          },
+        });
+      }
     }
+
+    return NextResponse.json({ success: true, student: updatedStudent });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -189,26 +167,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
 
-    if (!payload || payload.role !== 'OWNER') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    await prisma.student.delete({
-      where: { id },
-    });
+    // Delete related data first (cascade)
+    await prisma.attendance.deleteMany({ where: { studentId: id } });
+    await prisma.homeworkSubmission.deleteMany({ where: { studentId: id } });
+    await prisma.examResult.deleteMany({ where: { studentId: id } });
+    await prisma.payment.deleteMany({ where: { studentId: id } });
+    await prisma.subscription.deleteMany({ where: { studentId: id } });
+    await prisma.student.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting student:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

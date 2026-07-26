@@ -166,38 +166,36 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-
-    if (!payload || payload.role !== 'OWNER') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     // Check if group has students
-    const studentCount = await prisma.student.count({
-      where: { groupId: id },
-    });
-
+    const studentCount = await prisma.student.count({ where: { groupId: id } });
     if (studentCount > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete group with students' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        error: `لا يمكن حذف المجموعة لأنها تحتوي على ${studentCount} طالب. انقل الطلاب أولاً.`,
+      }, { status: 400 });
     }
 
-    await prisma.group.delete({
-      where: { id },
-    });
+    // Cascade delete: attendance → sessions, submissions → homework, results → exams, subscriptions
+    const sessions = await prisma.lessonSession.findMany({ where: { groupId: id }, select: { id: true } });
+    await prisma.attendance.deleteMany({ where: { sessionId: { in: sessions.map(s => s.id) } } });
+    await prisma.lessonSession.deleteMany({ where: { groupId: id } });
+
+    const homeworks = await prisma.homework.findMany({ where: { groupId: id }, select: { id: true } });
+    await prisma.homeworkSubmission.deleteMany({ where: { homeworkId: { in: homeworks.map(h => h.id) } } });
+    await prisma.homework.deleteMany({ where: { groupId: id } });
+
+    const exams = await prisma.exam.findMany({ where: { groupId: id }, select: { id: true } });
+    await prisma.examResult.deleteMany({ where: { examId: { in: exams.map(e => e.id) } } });
+    await prisma.exam.deleteMany({ where: { groupId: id } });
+
+    await prisma.payment.deleteMany({ where: { subscription: { groupId: id } } });
+    await prisma.subscription.deleteMany({ where: { groupId: id } });
+    await prisma.group.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting group:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

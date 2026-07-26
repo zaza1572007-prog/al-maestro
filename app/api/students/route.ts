@@ -5,7 +5,7 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const groupId = searchParams.get('groupId');
-    const academicStageId = searchParams.get('academicStageId');
+    const academicStageId = searchParams.get('academicStageId') || searchParams.get('stageId');
 
     const where: any = {};
     if (groupId) where.groupId = groupId;

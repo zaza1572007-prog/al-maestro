@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -8,52 +8,130 @@ interface Group {
   id: string;
   name: string;
   stage: string;
+  stageId: string;
   days: string;
   time: string;
   studentsCount: number;
   assistant: string;
   attendanceAvg: string;
-  room?: string;
-  price?: number;
-  maxStudents?: number;
+  maxStudents: number;
+}
+
+// تحويل التوقيت من 24 ساعة إلى 12 ساعة (عربي)
+function to12h(time24: string): string {
+  if (!time24) return time24;
+  const [hStr, mStr] = time24.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const period = h >= 12 ? 'م' : 'ص';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m} ${period}`;
 }
 
 function GroupsContent() {
   const searchParams = useSearchParams();
   const gradeFilter = searchParams.get('grade');
+  const stageIdFilter = searchParams.get('stageId');
   const [activeTab, setActiveTab] = useState('overview');
   
-  const [groupsList, setGroupsList] = useState<Group[]>([
-    {
-      id: 'g1',
-      name: 'مجموعة السبت والإثنين - 4:00 مساءً',
-      stage: 'الصف الثالث الإعدادي',
-      days: 'السبت والإثنين',
-      time: '04:00 م - 06:00 م',
-      studentsCount: 32,
-      assistant: 'أحمد الإداري',
-      attendanceAvg: '95%',
-      room: 'القاعة الكبرى (1)',
-      price: 250,
-      maxStudents: 40,
-    },
-    {
-      id: 'g2',
-      name: 'مجموعة الأحد والأربعاء - 6:00 مساءً',
-      stage: 'الصف الثالث الثانوي',
-      days: 'الأحد والأربعاء',
-      time: '06:00 م - 08:00 م',
-      studentsCount: 28,
-      assistant: 'محمد المساعد',
-      attendanceAvg: '91%',
-      room: 'قاعة الأستاذ أحمد',
-      price: 350,
-      maxStudents: 35,
-    },
-  ]);
+  const [groupsList, setGroupsList] = useState<Group[]>([]);
+  const [stagesList, setStagesList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [newGroup, setNewGroup] = useState({
+    name: '',
+    stageId: '',
+    days: 'السبت والثلاثاء',
+    startTime: '16:00',
+    endTime: '18:00',
+    maxCapacity: 30,
+  });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch Real Groups & Stages from PostgreSQL API
+  const fetchRealGroupsAndStages = async () => {
+    setLoading(true);
+    try {
+      const [grpRes, stgRes] = await Promise.all([
+        fetch('/api/groups'),
+        fetch('/api/stages'),
+      ]);
+      const grpData = await grpRes.json();
+      const stgData = await stgRes.json();
+      if (stgData.success) setStagesList(stgData.stages || []);
+      if (grpData.success) {
+        const formatted: Group[] = (grpData.groups || []).map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          stage: g.academicStage?.name || 'مرحلة دراسية',
+          stageId: g.academicStageId,
+          days: g.scheduleDays?.join(' و ') || 'السبت والثلاثاء',
+          time: `${to12h(g.startTime)} - ${to12h(g.endTime)}`,
+          studentsCount: g._count?.students || 0,
+          assistant: g.assistant?.name || '—',
+          attendanceAvg: '—',
+          maxStudents: g.maxCapacity || 30,
+        }));
+        setGroupsList(formatted);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealGroupsAndStages();
+  }, []);
+
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newGroup.name,
+          academicStageId: newGroup.stageId || stagesList[0]?.id,
+          scheduleDays: newGroup.days.split(' و '),
+          startTime: newGroup.startTime,
+          endTime: newGroup.endTime,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchRealGroupsAndStages();
+        setIsAddingGroup(false);
+        setNewGroup({ name: '', stageId: '', days: 'السبت والثلاثاء', startTime: '16:00', endTime: '18:00', maxCapacity: 30 });
+      } else {
+        alert(data.error || 'حدث خطأ أثناء إنشاء المجموعة');
+      }
+    } catch (err) {
+      alert('حدث خطأ بالاتصال بالخادم');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteGroup = async (id: string, name: string) => {
+    if (!confirm(`هل أنت متأكد من حذف مجموعة "${name}" نهائياً؟`)) return;
+    try {
+      const res = await fetch(`/api/groups/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchRealGroupsAndStages();
+      } else {
+        alert(data.error || 'لا يمكن حذف المجموعة');
+      }
+    } catch (err) {
+      alert('خطأ في الاتصال بالخادم');
+    }
+  };
 
   const handleEditClick = (grp: Group) => {
     setEditingGroup({ ...grp });
@@ -80,10 +158,12 @@ function GroupsContent() {
     }
   };
 
-  // Filter groups if a grade query param is present
-  const groups = gradeFilter
-    ? groupsList.filter(g => g.stage.includes(gradeFilter) || gradeFilter.includes(g.stage))
-    : groupsList;
+  // Filter groups by grade name OR stageId
+  const groups = groupsList.filter((g) => {
+    if (stageIdFilter) return g.stageId === stageIdFilter;
+    if (gradeFilter) return g.stage.includes(gradeFilter) || gradeFilter.includes(g.stage);
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -94,7 +174,10 @@ function GroupsContent() {
             {gradeFilter ? `عرض مجموعات الصف الدراسي: ${gradeFilter}` : 'عرض وإدارة مجموعات الدروس والتبويبات الـ 8 للتحكم الشامل'}
           </p>
         </div>
-        <button className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2">
+        <button
+          onClick={() => setIsAddingGroup(true)}
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-600/20"
+        >
           <span>➕</span> إضافة مجموعة جديدة
         </button>
       </div>
@@ -126,56 +209,147 @@ function GroupsContent() {
       </div>
 
       {/* Groups List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {groups.map((grp) => (
-          <div key={grp.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+      {loading ? (
+        <div className="text-center py-12 text-slate-400">جارٍ تحميل المجموعات الحقيقية من قاعدة البيانات...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {groups.map((grp) => (
+            <div key={grp.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-white">{grp.name}</h3>
+                  <p className="text-xs text-blue-400 font-medium mt-0.5">{grp.stage}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEditClick(grp)}
+                    className="px-2.5 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    ✏️ تعديل
+                  </button>
+                  <button
+                    onClick={() => handleDeleteGroup(grp.id, grp.name)}
+                    className="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                  >
+                    🗑️ حذف
+                  </button>
+                  <span className="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full border border-slate-700">
+                    {grp.time}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <p className="text-slate-400">عدد الطلاب</p>
+                  <p className="text-sm font-bold text-white mt-1">{grp.studentsCount}</p>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <p className="text-slate-400">متوسط الحضور</p>
+                  <p className="text-sm font-bold text-emerald-400 mt-1">{grp.attendanceAvg}</p>
+                </div>
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                  <p className="text-slate-400">المساعد</p>
+                  <p className="text-sm font-bold text-slate-300 mt-1">{grp.assistant}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-2">
+                <span className="text-slate-400">أيام الدراسة: <strong className="text-slate-200">{grp.days}</strong></span>
+                <Link href={`/students?groupId=${grp.id}`} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded-lg transition text-xs">
+                  إدارة الطلاب والمجموعة ←
+                </Link>
+              </div>
+            </div>
+          ))}
+          {groups.length === 0 && (
+            <div className="col-span-2 text-center py-12 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
+              لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Group Modal */}
+      {isAddingGroup && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-lg font-bold text-white">➕ إضافة مجموعة تعليمية جديدة</h3>
+              <button onClick={() => setIsAddingGroup(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <form onSubmit={handleCreateGroup} className="space-y-3 text-xs">
               <div>
-                <h3 className="text-lg font-bold text-white">{grp.name}</h3>
-                <p className="text-xs text-blue-400 font-medium mt-0.5">{grp.stage}</p>
+                <label className="block text-slate-300 mb-1">اسم المجموعة *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="مثال: مجموعة التفوق (السبت والثلاثاء)"
+                  value={newGroup.name}
+                  onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleEditClick(grp)}
-                  className="px-2.5 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition"
+              <div>
+                <label className="block text-slate-300 mb-1">المرحلة الدراسية *</label>
+                <select
+                  value={newGroup.stageId}
+                  onChange={(e) => setNewGroup({ ...newGroup, stageId: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
                 >
-                  ✏️ تعديل
+                  {stagesList.map((stg) => (
+                    <option key={stg.id} value={stg.id}>{stg.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1">أيام الحضور</label>
+                  <input
+                    type="text"
+                    value={newGroup.days}
+                    onChange={(e) => setNewGroup({ ...newGroup, days: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1">وقت البداية والانتهاء</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="time"
+                      value={newGroup.startTime}
+                      onChange={(e) => setNewGroup({ ...newGroup, startTime: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                    />
+                    <input
+                      type="time"
+                      value={newGroup.endTime}
+                      onChange={(e) => setNewGroup({ ...newGroup, endTime: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingGroup(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
+                >
+                  إلغاء
                 </button>
-                <span className="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full border border-slate-700">
-                  {grp.time}
-                </span>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg cursor-pointer"
+                >
+                  {isSaving ? 'جاري الحفظ...' : 'إضافة المجموعة ➕'}
+                </button>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-center text-xs">
-              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                <p className="text-slate-400">عدد الطلاب</p>
-                <p className="text-sm font-bold text-white mt-1">{grp.studentsCount}</p>
-              </div>
-              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                <p className="text-slate-400">متوسط الحضور</p>
-                <p className="text-sm font-bold text-emerald-400 mt-1">{grp.attendanceAvg}</p>
-              </div>
-              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                <p className="text-slate-400">المساعد</p>
-                <p className="text-sm font-bold text-slate-300 mt-1">{grp.assistant}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-2">
-              <span className="text-slate-400">أيام الدراسة: <strong className="text-slate-200">{grp.days}</strong></span>
-              <Link href={`/students?groupId=${grp.id}`} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded-lg transition text-xs">
-                إدارة المجموعة ←
-              </Link>
-            </div>
+            </form>
           </div>
-        ))}
-        {groups.length === 0 && (
-          <div className="col-span-2 text-center py-12 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
-            لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Edit Group Modal */}
       {editingGroup && (
@@ -216,35 +390,6 @@ function GroupsContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-slate-300 mb-1">القاعة/المكان</label>
-                  <input
-                    type="text"
-                    value={editingGroup.room || ''}
-                    onChange={(e) => setEditingGroup({ ...editingGroup, room: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1">الاشتراك (ج.م)</label>
-                  <input
-                    type="number"
-                    value={editingGroup.price || 0}
-                    onChange={(e) => setEditingGroup({ ...editingGroup, price: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 mb-1">الحد الأقصى للطلاب</label>
-                  <input
-                    type="number"
-                    value={editingGroup.maxStudents || 0}
-                    onChange={(e) => setEditingGroup({ ...editingGroup, maxStudents: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -276,6 +421,3 @@ export default function GroupsPage() {
     </Suspense>
   );
 }
-
-
-

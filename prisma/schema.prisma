@@ -112,6 +112,12 @@ enum PaymentMethod {
   OTHER
 }
 
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // Models
 model User {
   id            String        @id @default(uuid())
@@ -135,7 +141,7 @@ model Student {
   id              String               @id @default(uuid())
   code            String               @unique
   name            String
-  phone           String
+  phone           String               @unique
   profileImage    String?
   academicStageId String
   academicStage   AcademicStage        @relation(fields: [academicStageId], references: [id])
@@ -164,8 +170,10 @@ model Student {
 model Parent {
   id          String    @id @default(uuid())
   name        String
-  phone       String
+  phone       String    @unique
   relation    String    @default("Father")
+  whatsapp    String?
+  extraPhone  String?
   students    Student[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -173,43 +181,73 @@ model Parent {
   @@index([phone])
 }
 
+model RegistrationRequest {
+  id               String             @id @default(uuid())
+  studentName      String
+  studentPhone     String
+  studentGender    String?
+  birthDate        String?
+  school           String?
+  academicStageId  String
+  academicStage    AcademicStage      @relation(fields: [academicStageId], references: [id])
+  groupId          String
+  group            Group              @relation(fields: [groupId], references: [id])
+  parentName       String
+  parentRelation   String             @default("Father")
+  parentPhone      String
+  parentWhatsapp   String?
+  parentExtraPhone String?
+  isParentExisting Boolean            @default(false)
+  status           RegistrationStatus @default(PENDING)
+  notes            String?            @db.Text
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([studentPhone])
+  @@index([parentPhone])
+  @@index([status])
+}
+
 model AcademicStage {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  level       String    // Primary, Middle, High
-  grade       String    // 4th, 5th, 6th, etc.
-  description String?
-  groups      Group[]
-  students    Student[]
-  files       File[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                   String                @id @default(uuid())
+  name                 String                @unique
+  level                String                // Primary, Middle, High
+  grade                String                // 4th, 5th, 6th, etc.
+  description          String?
+  groups               Group[]
+  students             Student[]
+  files                File[]
+  registrationRequests RegistrationRequest[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@index([level])
   @@index([grade])
 }
 
 model Group {
-  id              String         @id @default(uuid())
-  name            String
-  academicStageId String
-  academicStage   AcademicStage  @relation(fields: [academicStageId], references: [id])
-  year            String
-  scheduleDays    String[]       // ["Saturday", "Monday"]
-  startTime       String
-  endTime         String
-  assistantId     String?
-  assistant       User?          @relation(fields: [assistantId], references: [id])
-  location        String?
-  description     String?        @db.Text
-  students        Student[]
-  lessonSessions  LessonSession[]
-  subscriptions   Subscription[]
-  homeworks       Homework[]
-  exams           Exam[]
-  files           File[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                   String                @id @default(uuid())
+  name                 String
+  academicStageId      String
+  academicStage        AcademicStage         @relation(fields: [academicStageId], references: [id])
+  year                 String
+  scheduleDays         String[]              // ["Saturday", "Monday"]
+  startTime            String
+  endTime              String
+  maxCapacity          Int                   @default(30)
+  assistantId          String?
+  assistant            User?                 @relation(fields: [assistantId], references: [id])
+  location             String?
+  description          String?               @db.Text
+  students             Student[]
+  lessonSessions       LessonSession[]
+  subscriptions        Subscription[]
+  homeworks            Homework[]
+  exams                Exam[]
+  files                File[]
+  registrationRequests RegistrationRequest[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@index([academicStageId])
 }
@@ -488,18 +526,19 @@ model Notification {
 }
 
 model SystemSettings {
-  id                String   @id @default(uuid())
-  platformName      String   @default("Al Maestro")
-  logo              String?
-  favicon           String?
-  primaryColor      String   @default("#3B82F6")
-  secondaryColor    String   @default("#10B981")
-  backgroundImage   String?
-  welcomeMessage    String?  @db.Text
-  loginBackground   String?
-  enableWhatsApp    Boolean  @default(true)
-  lateThreshold     Int      @default(15) // minutes
-  enableDarkMode    Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  platformName        String   @default("Al Maestro")
+  isRegistrationOpen  Boolean  @default(true)
+  logo                String?
+  favicon             String?
+  primaryColor        String   @default("#3B82F6")
+  secondaryColor      String   @default("#10B981")
+  backgroundImage     String?
+  welcomeMessage      String?  @db.Text
+  loginBackground     String?
+  enableWhatsApp      Boolean  @default(true)
+  lateThreshold       Int      @default(15) // minutes
+  enableDarkMode      Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
