@@ -1,69 +1,54 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { SignJWT } from 'jose';
+import bcrypt from 'bcrypt';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'almaestro-secret-key-2026');
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is required');
+  return new TextEncoder().encode(secret);
+}
 
 export async function POST(req: Request) {
   try {
-    const { phone, studentName, password, role } = await req.json();
+    const { phone, password } = await req.json();
+    if (!phone || !password) {
+      return NextResponse.json({ success: false, error: 'رقم الهاتف وكلمة المرور مطلوبان' }, { status: 400 });
+    }
 
-    let userRole = role || 'TEACHER';
-    let targetUser: any = null;
-
-    if (userRole === 'STUDENT') {
-      // Find student by Name or Phone or Code
-      if (studentName || phone) {
-        targetUser = await prisma.student.findFirst({
-          where: {
-            OR: [
-              { name: { contains: studentName || phone } },
-              { phone: phone || studentName },
-              { code: phone || studentName },
-            ],
-          },
-          include: { academicStage: true, group: true },
-        });
-      }
-
-      if (!targetUser) {
-        // Fallback or create student session
-        targetUser = {
-          id: 'stu-default',
-          name: studentName || phone || 'طالب المايسترو',
-          role: 'STUDENT',
-        };
-      }
-    } else {
-      targetUser = {
-        id: 'master-owner',
-        name: 'الأستاذ أحمد راضي كحلة',
-        role: 'OWNER',
-        phone: '0100000000',
-      };
+    const targetUser = await prisma.user.findUnique({ where: { phone } });
+    if (!targetUser || !(await bcrypt.compare(password, targetUser.password))) {
+      return NextResponse.json({ success: false, error: 'بيانات الدخول غير صحيحة' }, { status: 401 });
     }
 
     const token = await new SignJWT({
       userId: targetUser.id,
       name: targetUser.name,
-      role: userRole,
+      role: targetUser.role,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('7d')
-      .sign(JWT_SECRET);
+      .sign(getJwtSecret());
 
     const res = NextResponse.json({
       success: true,
       user: {
         id: targetUser.id,
         name: targetUser.name,
-        role: userRole,
+        role: targetUser.role,
       },
     });
 
-    res.cookies.set('auth-token', token, { httpOnly: true, path: '/' });
+    res.cookies.set('auth-token', token, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 7,
+    });
     return res;
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'حدث خطأ غير متوقع';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
