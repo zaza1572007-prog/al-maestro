@@ -1,13 +1,505 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// Enums
+enum Role {
+  OWNER
+  ASSISTANT
+  STUDENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEFT_EARLY
+  EXCUSED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum SessionType {
+  LECTURE
+  REVIEW
+  EXAM
+  HOMEWORK
+  MAKEUP
+}
+
+enum HomeworkStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  LATE
+  NOT_SUBMITTED
+}
+
+enum ExamType {
+  QUIZ
+  WEEKLY
+  MONTHLY
+  MIDTERM
+  FINAL
+  PLACEMENT
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  NEW
+  IN_PROGRESS
+  COMPLETED
+  POSTPONED
+}
+
+enum CommunicationMethod {
+  PHONE
+  WHATSAPP
+  IN_PERSON
+  EMAIL
+}
+
+enum FileType {
+  PDF
+  WORD
+  EXCEL
+  POWERPOINT
+  IMAGE
+  VIDEO
+  ZIP
+  OTHER
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ALERT
+  CRITICAL
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  OTHER
+}
+
+// Models
+model User {
+  id            String        @id @default(uuid())
+  name          String
+  phone         String        @unique
+  password      String
+  role          Role          @default(ASSISTANT)
+  profileImage  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  activityLogs  ActivityLog[]
+  payments      Payment[]
+  groups        Group[]
+  lessonSessions LessonSession[]
+  attendances   Attendance[]
+  tasks         Task[]
+  staffAttendance StaffAttendance[]
+}
+
+model Student {
+  id              String               @id @default(uuid())
+  code            String               @unique
+  name            String
+  phone           String
+  profileImage    String?
+  academicStageId String
+  academicStage   AcademicStage        @relation(fields: [academicStageId], references: [id])
+  groupId         String
+  group           Group                @relation(fields: [groupId], references: [id])
+  parentId        String
+  parent          Parent               @relation(fields: [parentId], references: [id])
+  qrCode          String               @unique
+  notes           String?              @db.Text
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  attendances     Attendance[]
+  submissions     HomeworkSubmission[]
+  examResults     ExamResult[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  communications  ParentCommunication[]
+  files           File[]
+  notifications   Notification[]
+
+  @@index([code])
+  @@index([name])
+  @@index([phone])
+}
+
+model Parent {
+  id          String    @id @default(uuid())
+  name        String
+  phone       String
+  relation    String    @default("Father")
+  students    Student[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([phone])
+}
+
+model AcademicStage {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  level       String    // Primary, Middle, High
+  grade       String    // 4th, 5th, 6th, etc.
+  description String?
+  groups      Group[]
+  students    Student[]
+  files       File[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([level])
+  @@index([grade])
+}
+
+model Group {
+  id              String         @id @default(uuid())
+  name            String
+  academicStageId String
+  academicStage   AcademicStage  @relation(fields: [academicStageId], references: [id])
+  year            String
+  scheduleDays    String[]       // ["Saturday", "Monday"]
+  startTime       String
+  endTime         String
+  assistantId     String?
+  assistant       User?          @relation(fields: [assistantId], references: [id])
+  location        String?
+  description     String?        @db.Text
+  students        Student[]
+  lessonSessions  LessonSession[]
+  subscriptions   Subscription[]
+  homeworks       Homework[]
+  exams           Exam[]
+  files           File[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([academicStageId])
+}
+
+model LessonSession {
+  id          String        @id @default(uuid())
+  title       String
+  groupId     String
+  group       Group         @relation(fields: [groupId], references: [id])
+  date        DateTime
+  startTime   String
+  endTime     String
+  status      SessionStatus @default(SCHEDULED)
+  type        SessionType   @default(LECTURE)
+  location    String?
+  assistantId String?
+  assistant   User?         @relation(fields: [assistantId], references: [id])
+  notes       String?       @db.Text
+  attendances Attendance[]
+  homeworks   Homework[]
+  exams       Exam[]
+  files       File[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([groupId])
+  @@index([date])
+  @@index([status])
+}
+
+model Attendance {
+  id              String           @id @default(uuid())
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id])
+  sessionId       String
+  session         LessonSession    @relation(fields: [sessionId], references: [id])
+  status          AttendanceStatus @default(PRESENT)
+  recordedById    String?
+  recordedBy      User?            @relation(fields: [recordedById], references: [id])
+  notes           String?
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([studentId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model Homework {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?       @db.Text
+  groupId         String
+  group           Group         @relation(fields: [groupId], references: [id])
+  sessionId       String?
+  session         LessonSession? @relation(fields: [sessionId], references: [id])
+  dueDate         DateTime
+  maxScore        Float?
+  isMandatory     Boolean       @default(true)
+  attachments     String[]
+  submissions     HomeworkSubmission[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([groupId])
+  @@index([dueDate])
+}
+
+model HomeworkSubmission {
+  id          String         @id @default(uuid())
+  homeworkId  String
+  homework    Homework       @relation(fields: [homeworkId], references: [id])
+  studentId   String
+  student     Student        @relation(fields: [studentId], references: [id])
+  status      HomeworkStatus @default(NOT_STARTED)
+  score       Float?
+  feedback    String?        @db.Text
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  attachments String[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([homeworkId])
+  @@index([studentId])
+}
+
+model Exam {
+  id          String    @id @default(uuid())
+  title       String
+  description String?   @db.Text
+  groupId     String
+  group       Group     @relation(fields: [groupId], references: [id])
+  sessionId   String?
+  session     LessonSession? @relation(fields: [sessionId], references: [id])
+  examDate    DateTime
+  type        ExamType  @default(QUIZ)
+  maxScore    Float
+  duration    Int?      // in minutes
+  results     ExamResult[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([groupId])
+  @@index([examDate])
+  @@index([type])
+}
+
+model ExamResult {
+  id          String    @id @default(uuid())
+  examId      String
+  exam        Exam      @relation(fields: [examId], references: [id])
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id])
+  score       Float
+  percentage  Float
+  rank        Int?
+  notes       String?   @db.Text
+  gradedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([examId])
+  @@index([studentId])
+}
+
+model Subscription {
+  id             String             @id @default(uuid())
+  studentId      String
+  student        Student            @relation(fields: [studentId], references: [id])
+  groupId        String
+  group          Group              @relation(fields: [groupId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  totalSessions  Int
+  usedSessions   Int                @default(0)
+  price          Float
+  status         SubscriptionStatus @default(ACTIVE)
+  payments       Payment[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([studentId])
+  @@index([groupId])
+  @@index([endDate])
+  @@index([status])
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id])
+  subscriptionId  String
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
+  totalAmount     Float
+  paidAmount      Float
+  remainingAmount Float
+  paymentMethod   PaymentMethod @default(CASH)
+  recordedById    String
+  recordedBy      User          @relation(fields: [recordedById], references: [id])
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([subscriptionId])
+  @@index([createdAt])
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?      @db.Text
+  assignedToId String
+  assignedTo  User         @relation(fields: [assignedToId], references: [id])
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(NEW)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model ParentCommunication {
+  id          String              @id @default(uuid())
+  studentId   String
+  student     Student             @relation(fields: [studentId], references: [id])
+  date        DateTime
+  method      CommunicationMethod
+  reason      String              @db.Text
+  result      String?             @db.Text
+  notes       String?             @db.Text
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([studentId])
+  @@index([date])
+}
+
+model StaffAttendance {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  date        DateTime
+  checkInTime DateTime
+  checkOutTime DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entity      String   // Student, Group, etc.
+  entityId    String
+  changes     String?  @db.Text // JSON string of before/after
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model File {
+  id              String       @id @default(uuid())
+  name            String
+  url             String
+  type            FileType
+  size            Int
+  academicStageId String?
+  academicStage   AcademicStage? @relation(fields: [academicStageId], references: [id])
+  groupId         String?
+  group           Group?       @relation(fields: [groupId], references: [id])
+  sessionId       String?
+  session         LessonSession? @relation(fields: [sessionId], references: [id])
+  homeworkId      String?
+  studentId       String?
+  student         Student?     @relation(fields: [studentId], references: [id])
+  uploadedById    String?
+  accessLevel     String       @default("ALL") // ALL, GROUP, STAFF
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([type])
+  @@index([groupId])
+  @@index([sessionId])
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  title       String
+  message     String           @db.Text
+  type        NotificationType @default(INFO)
+  recipientId String?
+  recipient   Student?         @relation(fields: [recipientId], references: [id])
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model SystemSettings {
+  id                String   @id @default(uuid())
+  platformName      String   @default("Al Maestro")
+  logo              String?
+  favicon           String?
+  primaryColor      String   @default("#3B82F6")
+  secondaryColor    String   @default("#10B981")
+  backgroundImage   String?
+  welcomeMessage    String?  @db.Text
+  loginBackground   String?
+  enableWhatsApp    Boolean  @default(true)
+  lateThreshold     Int      @default(15) // minutes
+  enableDarkMode    Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
