@@ -32,7 +32,7 @@ export async function GET() {
     // Real attendance rate for today
     let todayAttendanceRate = '0%';
     if (todayAttendances.length > 0) {
-      const presentCount = todayAttendances.filter(a => a.status === 'PRESENT').length;
+      const presentCount = todayAttendances.filter((a: { status: string }) => a.status === 'PRESENT').length;
       const rate = Math.round((presentCount / todayAttendances.length) * 100);
       todayAttendanceRate = `${rate}%`;
     }
