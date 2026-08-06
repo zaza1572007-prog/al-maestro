@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest) {
       motivationQuote,
       portraitOpacity,
       portraitScale,
+      portraitPosition,
       logoScale
     } = body;
 
@@ -50,6 +51,7 @@ export async function PATCH(req: NextRequest) {
           ...(motivationQuote !== undefined && { motivationQuote }),
           ...(portraitOpacity !== undefined && { portraitOpacity: parseFloat(portraitOpacity) }),
           ...(portraitScale !== undefined && { portraitScale: parseFloat(portraitScale) }),
+          ...(portraitPosition !== undefined && { portraitPosition }),
           ...(logoScale !== undefined && { logoScale: parseFloat(logoScale) }),
         },
       });
@@ -65,6 +67,7 @@ export async function PATCH(req: NextRequest) {
           motivationQuote: motivationQuote || '',
           portraitOpacity: parseFloat(portraitOpacity || '0.18'),
           portraitScale: parseFloat(portraitScale || '1.0'),
+          portraitPosition: portraitPosition || 'side',
           logoScale: parseFloat(logoScale || '1.0'),
         },
       });

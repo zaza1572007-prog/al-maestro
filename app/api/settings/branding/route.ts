@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // b64 is stored as "data:<mime>;base64,<data>"
-    const match = b64.match(/^data:([^;]+);base64,(.+)$/s);
+    const match = b64.match(/^data:([^;]+);base64,([\s\S]+)$/);
     if (!match) {
       return new NextResponse(null, { status: 422 });
     }

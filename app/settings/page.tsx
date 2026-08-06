@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import HeroHeader from '@/components/HeroHeader';
-import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw, Layout, Maximize2 } from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
 
@@ -47,6 +47,7 @@ export default function SettingsPage() {
   // Portrait layout configuration
   const [portraitOpacity, setPortraitOpacity] = useState(0.18);
   const [portraitScale, setPortraitScale] = useState(1.0);
+  const [portraitPosition, setPortraitPosition] = useState('side');
 
   // Logo layout configuration
   const [logoScale, setLogoScale] = useState(1.0);
@@ -127,6 +128,7 @@ export default function SettingsPage() {
           setMotivationQuote(data.settings.motivationQuote || '');
           setPortraitOpacity(data.settings.portraitOpacity ?? 0.18);
           setPortraitScale(data.settings.portraitScale ?? 1.0);
+          setPortraitPosition(data.settings.portraitPosition ?? 'side');
           setLogoScale(data.settings.logoScale ?? 1.0);
         }
         // Load WhatsApp gateway settings
@@ -503,13 +505,10 @@ export default function SettingsPage() {
                     onChange={(e) => {
                       const val = parseFloat(e.target.value);
                       setPortraitOpacity(val);
-                      // Live preview before saving
-                      const root = document.documentElement;
-                      // Find overlay image elements directly and tweak opacity for instant response
-                      const overlayImgs = document.querySelectorAll('img[alt="صورة المستر"]');
-                      overlayImgs.forEach((img) => {
-                        (img as HTMLElement).style.opacity = String(val);
-                      });
+                      // Live preview before saving via custom event
+                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
+                        detail: { opacity: val }
+                      }));
                     }}
                     className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                   />
@@ -529,14 +528,56 @@ export default function SettingsPage() {
                     onChange={(e) => {
                       const val = parseFloat(e.target.value);
                       setPortraitScale(val);
-                      // Live preview scale before saving
-                      const overlays = document.querySelectorAll('div[aria-hidden="true"] > div.transition-transform');
-                      overlays.forEach((el) => {
-                        (el as HTMLElement).style.transform = `scale(${val}) translateY(${(1 - val) * 10}%)`;
-                      });
+                      // Live preview scale before saving via custom event
+                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
+                        detail: { scale: val }
+                      }));
                     }}
                     className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                   />
+                </div>
+              </div>
+
+              {/* Position Selector */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-400 block">موضع عرض الصورة على الشاشة:</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPortraitPosition('side');
+                      // Live preview position via custom event
+                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
+                        detail: { position: 'side' }
+                      }));
+                    }}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all duration-300 ${
+                      portraitPosition === 'side'
+                        ? 'border-purple-500 bg-purple-500/10 text-white shadow-lg shadow-purple-500/10'
+                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    <Layout className="w-4 h-4" />
+                    على الجانب (الافتراضي)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPortraitPosition('center');
+                      // Live preview position via custom event
+                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
+                        detail: { position: 'center' }
+                      }));
+                    }}
+                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all duration-300 ${
+                      portraitPosition === 'center'
+                        ? 'border-purple-500 bg-purple-500/10 text-white shadow-lg shadow-purple-500/10'
+                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                    في منتصف الشاشة
+                  </button>
                 </div>
               </div>
 
@@ -548,20 +589,21 @@ export default function SettingsPage() {
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
                         portraitOpacity,
-                        portraitScale
+                        portraitScale,
+                        portraitPosition
                       })
                     });
                     if (res.ok) {
-                      setPortraitMsg({ text: 'تم حفظ أبعاد وشفافية الصورة بنجاح ✅', ok: true });
+                      setPortraitMsg({ text: 'تم حفظ أبعاد ووضعية الصورة بنجاح ✅', ok: true });
                       window.dispatchEvent(new Event('maestro-portrait-config-updated'));
                     }
                   } catch {
                     setPortraitMsg({ text: 'حدث خطأ أثناء حفظ التعديلات ❌', ok: false });
                   }
                 }}
-                className="w-full sm:w-auto px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md shadow-purple-500/20"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md shadow-purple-500/20"
               >
-                💾 حفظ أبعاد الشفافية والحجم
+                💾 حفظ أبعاد الشفافية والحجم والوضعية
               </button>
             </div>
           </div>

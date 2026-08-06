@@ -560,8 +560,9 @@ model SystemSettings {
   contactWhatsapp String?
   motivationQuote String?  @db.Text
   // Portrait settings
-  portraitOpacity Float?   @default(0.18)
-  portraitScale   Float?   @default(1.0)
+  portraitOpacity  Float?   @default(0.18)
+  portraitScale    Float?   @default(1.0)
+  portraitPosition String?  @default("side")
   // Logo settings
   logoScale       Float?   @default(1.0)
   createdAt           DateTime @default(now())
