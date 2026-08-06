@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ToastProvider';
+import { useSidebar } from '@/components/SidebarContext';
+
 import {
   LayoutDashboard,
   GraduationCap,
@@ -40,6 +42,23 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const toast = useToast();
+  const { isMobileOpen, setIsMobileOpen } = useSidebar();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname, setIsMobileOpen]);
+
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(data => {
@@ -120,11 +139,23 @@ export default function Sidebar() {
   }
 
   return (
-    <motion.aside
-      animate={{ width: isCollapsed ? 88 : 280 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="glass-panel border-r border-y-0 border-l border-white/10 flex flex-col h-screen sticky top-0 no-print select-none z-30 shadow-2xl backdrop-blur-2xl bg-slate-950/80"
-    >
+    <>
+      {isMobile && isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 no-print"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+      <motion.aside
+        animate={
+          isMobile
+            ? { x: isMobileOpen ? 0 : '100%', width: 280 }
+            : { x: 0, width: isCollapsed ? 88 : 280 }
+        }
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="glass-panel border-r border-y-0 border-l border-white/10 flex flex-col h-screen fixed lg:sticky top-0 right-0 lg:right-auto no-print select-none z-50 lg:z-30 shadow-2xl backdrop-blur-2xl bg-slate-950/80"
+      >
+
       {/* Brand Header & Toggle */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">
@@ -250,5 +281,7 @@ export default function Sidebar() {
         </div>
       </div>
     </motion.aside>
+    </>
   );
 }
+

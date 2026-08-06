@@ -12,8 +12,11 @@ import {
   Settings,
   LogOut,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Menu
 } from 'lucide-react';
+import { useSidebar } from '@/components/SidebarContext';
+
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -23,6 +26,8 @@ export default function Navbar() {
   const [showCalendarQuick, setShowCalendarQuick] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const { toggleMobileOpen } = useSidebar();
+
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(data => {
@@ -114,62 +119,74 @@ export default function Navbar() {
   };
 
   return (
-    <header className="h-20 border-b border-white/10 glass-panel bg-slate-950/60 backdrop-blur-2xl px-8 flex items-center justify-between sticky top-0 z-20 no-print">
-      {/* Search Input */}
-      <div className="relative w-80 md:w-96">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="البحث الشامل... (Ctrl + K)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setIsSearchOpen(true)}
-            onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
-            className="w-full glass-input py-2.5 px-4 pr-11 pl-16 text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
-          />
-          <Search className="w-5 h-5 absolute right-3.5 top-3 text-slate-400" />
-          <span className="absolute left-3 top-2.5 text-[10px] font-mono bg-white/10 text-purple-300 px-2 py-1 rounded-lg border border-white/10">
-            Ctrl+K
-          </span>
-        </div>
+    <header className="h-20 border-b border-white/10 glass-panel bg-slate-950/60 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 no-print">
+      {/* Right side: Hamburger menu + Search */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleMobileOpen}
+          className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 lg:hidden transition-colors"
+          title="القائمة"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
 
-        {/* Quick Search Dropdown */}
-        <AnimatePresence>
-          {isSearchOpen && searchQuery.trim().length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="absolute top-14 right-0 left-0 glass-panel border border-white/15 rounded-2xl shadow-2xl p-4 z-50 text-sm bg-slate-900/90"
-            >
-              <p className="text-xs text-slate-400 mb-3">نتائج البحث عن "{searchQuery}"</p>
-              <div className="space-y-2">
-                {currentUser?.role !== 'STUDENT' && currentUser?.role !== 'PARENT' && (
-                  <>
-                    <Link
-                      href={`/students?search=${encodeURIComponent(searchQuery)}`}
-                      className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                    >
-                      <span className="font-medium">البحث في قائمة الطلاب 👨‍🎓</span>
-                      <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                    </Link>
-                    <Link
-                      href={`/groups?search=${encodeURIComponent(searchQuery)}`}
-                      className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                    >
-                      <span className="font-medium">البحث في المجموعات 👥</span>
-                      <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                    </Link>
-                  </>
-                )}
-                {(currentUser?.role === 'STUDENT' || currentUser?.role === 'PARENT') && (
-                   <div className="p-3 text-slate-400 text-center">البحث متاح لأسماء الملفات فقط حالياً.</div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Search Input */}
+        <div className="relative w-full max-w-[160px] sm:max-w-xs md:w-96 hidden sm:block">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="البحث الشامل... (Ctrl + K)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
+              className="w-full glass-input py-2.5 px-4 pr-11 pl-16 text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
+            />
+            <Search className="w-5 h-5 absolute right-3.5 top-3 text-slate-400" />
+            <span className="absolute left-3 top-2.5 text-[10px] font-mono bg-white/10 text-purple-300 px-2 py-1 rounded-lg border border-white/10">
+              Ctrl+K
+            </span>
+          </div>
+
+          {/* Quick Search Dropdown */}
+          <AnimatePresence>
+            {isSearchOpen && searchQuery.trim().length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-14 right-0 left-0 glass-panel border border-white/15 rounded-2xl shadow-2xl p-4 z-50 text-sm bg-slate-900/90"
+              >
+                <p className="text-xs text-slate-400 mb-3">نتائج البحث عن "{searchQuery}"</p>
+                <div className="space-y-2">
+                  {currentUser?.role !== 'STUDENT' && currentUser?.role !== 'PARENT' && (
+                    <>
+                      <Link
+                        href={`/students?search=${encodeURIComponent(searchQuery)}`}
+                        className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
+                      >
+                        <span className="font-medium">البحث في قائمة الطلاب 👨‍🎓</span>
+                        <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
+                      </Link>
+                      <Link
+                        href={`/groups?search=${encodeURIComponent(searchQuery)}`}
+                        className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
+                      >
+                        <span className="font-medium">البحث في المجموعات 👥</span>
+                        <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
+                      </Link>
+                    </>
+                  )}
+                  {(currentUser?.role === 'STUDENT' || currentUser?.role === 'PARENT') && (
+                     <div className="p-3 text-slate-400 text-center">البحث متاح لأسماء الملفات فقط حالياً.</div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
+
 
       {/* Action Icons & Profile */}
       <div className="flex items-center gap-4">

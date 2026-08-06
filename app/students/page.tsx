@@ -244,7 +244,7 @@ function StudentsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">👨‍🎓 إدارة قائمة الطلاب (Students List)</h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -259,14 +259,14 @@ function StudentsContent() {
             }
             setIsAddingStudent(true);
           }}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
         >
           <span>➕</span> إضافة طالب جديد
         </button>
       </div>
 
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-4">
+        <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <input
             type="text"
             placeholder="البحث بالاسم، الكود، رقم الهاتف، أو رقم ولي الأمر..."
