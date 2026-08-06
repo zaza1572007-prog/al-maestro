@@ -2,7 +2,12 @@ import { prisma } from '../lib/prisma';
 import bcrypt from 'bcrypt';
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('12312345', 10);
+  const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!initialPassword) {
+    throw new Error('ADMIN_INITIAL_PASSWORD is required to seed the initial owner account');
+  }
+
+  const hashedPassword = await bcrypt.hash(initialPassword, 10);
 
   // 1. Create Teacher
   const admin = await prisma.user.upsert({

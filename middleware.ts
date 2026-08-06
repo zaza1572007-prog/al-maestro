@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'almaestro-secret-key-2026');
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is required');
+  return new TextEncoder().encode(secret);
+}
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
@@ -29,7 +33,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
