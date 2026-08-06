@@ -41,6 +41,16 @@ export default function TasksPage() {
     setTitle('');
   };
 
+  const handleCompleteTask = (id: string) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: 'COMPLETED' } : t));
+  };
+
+  const handleDeleteTask = (id: string) => {
+    if (confirm('هل أنت متأكد من حذف المهمة؟')) {
+      setTasks(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -66,11 +76,12 @@ export default function TasksPage() {
                 <th className="p-3.5">الأولوية</th>
                 <th className="p-3.5">تاريخ الاستلام</th>
                 <th className="p-3.5">الحالة</th>
+                <th className="p-3.5 text-center">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {tasks.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-800/40 transition">
+                <tr key={t.id} className={`hover:bg-slate-800/40 transition ${t.status === 'COMPLETED' ? 'opacity-60' : ''}`}>
                   <td className="p-3.5 font-bold text-white">{t.title}</td>
                   <td className="p-3.5 text-slate-300">{t.assignedTo}</td>
                   <td className="p-3.5">
@@ -80,9 +91,31 @@ export default function TasksPage() {
                   </td>
                   <td className="p-3.5 text-xs text-slate-400 font-mono">{t.dueDate}</td>
                   <td className="p-3.5">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                      قيد التنفيذ
-                    </span>
+                    {t.status === 'COMPLETED' ? (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        تم الإنجاز ✅
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        قيد التنفيذ
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3.5 flex items-center justify-center gap-2">
+                    {t.status !== 'COMPLETED' && (
+                      <button
+                        onClick={() => handleCompleteTask(t.id)}
+                        className="px-2 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded text-xs font-bold transition"
+                      >
+                        إتمام ✔️
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteTask(t.id)}
+                      className="px-2 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded text-xs font-bold transition"
+                    >
+                      حذف 🗑️
+                    </button>
                   </td>
                 </tr>
               ))}

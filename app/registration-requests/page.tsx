@@ -23,6 +23,7 @@ export default function RegistrationRequestsPage() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [approvedCredentials, setApprovedCredentials] = useState<{studentName: string; studentCode: string; studentPassword: string; parentPassword: string} | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -41,7 +42,7 @@ export default function RegistrationRequestsPage() {
     fetchRequests();
   }, []);
 
-  const handleAction = async (requestId: string, action: 'APPROVE' | 'REJECT') => {
+  const handleAction = async (requestId: string, action: 'APPROVE' | 'REJECT', studentName?: string) => {
     setActionLoadingId(requestId);
     try {
       const res = await fetch(`/api/registration/${requestId}/action`, {
@@ -50,13 +51,20 @@ export default function RegistrationRequestsPage() {
         body: JSON.stringify({ action }),
       });
       const data = await res.json();
-      if (!data.success) {
+      if (!res.ok || data.error || data.success === false) {
         alert(data.error || 'حدث خطأ أثناء تنفيذ الإجراء');
+      } else if (action === 'APPROVE' && data.credentials) {
+        setApprovedCredentials({
+          studentName: studentName || data.student?.name || '',
+          studentCode: data.credentials.studentCode,
+          studentPassword: data.credentials.studentPassword,
+          parentPassword: data.credentials.parentPassword,
+        });
       }
       fetchRequests();
     } catch (err) {
       console.error(err);
-      setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' } : r));
+      alert('فشل الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
     } finally {
       setActionLoadingId(null);
     }
@@ -202,14 +210,14 @@ export default function RegistrationRequestsPage() {
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
                   <button
                     disabled={actionLoadingId === req.id}
-                    onClick={() => handleAction(req.id, 'REJECT')}
+                    onClick={() => handleAction(req.id, 'REJECT', req.studentName)}
                     className="px-5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold text-xs hover:bg-rose-500/20 transition-colors cursor-pointer"
                   >
                     ❌ رفض الطلب
                   </button>
                   <button
                     disabled={actionLoadingId === req.id}
-                    onClick={() => handleAction(req.id, 'APPROVE')}
+                    onClick={() => handleAction(req.id, 'APPROVE', req.studentName)}
                     className="glass-button-primary px-7 py-2.5 rounded-xl font-bold text-xs shadow-lg flex items-center gap-1.5 cursor-pointer"
                   >
                     {actionLoadingId === req.id ? 'جارٍ القبول التلقائي...' : '✅ قبول الطلب وإنشاء الحساب تلقائياً'}
@@ -220,6 +228,56 @@ export default function RegistrationRequestsPage() {
           ))
         )}
       </div>
+
+      {/* Credentials Reveal Modal */}
+      {approvedCredentials && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-7 w-full max-w-md shadow-2xl shadow-emerald-500/10 space-y-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-3xl">✅</span>
+              </div>
+              <h3 className="text-xl font-black text-white">تم إنشاء الحساب بنجاح!</h3>
+              <p className="text-slate-400 text-xs mt-1">الطالب: <strong className="text-white">{approvedCredentials.studentName}</strong></p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs">
+                <p className="text-purple-300 font-semibold mb-2">🎓 بيانات حساب الطالب</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-slate-400">كود الحساب</p>
+                    <p className="font-mono text-white font-bold text-sm">{approvedCredentials.studentCode}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">كلمة المرور</p>
+                    <p className="font-mono text-emerald-400 font-bold text-sm">{approvedCredentials.studentPassword}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
+                <p className="text-blue-300 font-semibold mb-2">👨‍👩‍👦 بيانات حساب ولي الأمر</p>
+                <div>
+                  <p className="text-slate-400">كلمة المرور</p>
+                  <p className="font-mono text-blue-400 font-bold text-sm">{approvedCredentials.parentPassword}</p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[10px] text-amber-400">
+                ⚠️ سيتم إرسال بيانات الدخول عبر الواتساب إلى الطالب وولي الأمر تلقائياً (إذا كان الواتساب مفعلاً). احتفظ بهذه البيانات في مكان آمن.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setApprovedCredentials(null)}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm transition"
+            >
+              تم الحفظ ✓
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

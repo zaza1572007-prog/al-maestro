@@ -248,6 +248,12 @@ export default function SubscriptionsPage() {
                     </button>
                   )}
                   <button
+                    onClick={() => {/* TODO: Implement edit logic */}}
+                    className="px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                  >
+                    ✏️ تعديل
+                  </button>
+                  <button
                     onClick={() => handleDeleteSub(sub.id, sub.student?.name)}
                     className="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition mr-auto"
                   >

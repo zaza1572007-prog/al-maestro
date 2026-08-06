@@ -15,7 +15,7 @@ export async function GET(
     }
     const payload = await verifyToken(token);
 
-    if (!payload || (payload.role !== 'OWNER' && payload.role !== 'ASSISTANT')) {
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -64,6 +64,55 @@ export async function GET(
   }
 }
 
+function parseScheduleDays(daysInput: any): string[] {
+  if (!daysInput) return [];
+  
+  let text = '';
+  if (Array.isArray(daysInput)) {
+    text = daysInput.join(' ');
+  } else if (typeof daysInput === 'string') {
+    text = daysInput;
+  } else {
+    return [];
+  }
+  
+  const possibleDays = [
+    { key: 'السبت', patterns: [/السبت/] },
+    { key: 'الأحد', patterns: [/الأحد/, /الاحد/] },
+    { key: 'الاثنين', patterns: [/الاثنين/, /الإثنين/] },
+    { key: 'الثلاثاء', patterns: [/الثلاثاء/] },
+    { key: 'الأربعاء', patterns: [/الأربعاء/, /الاربعاء/] },
+    { key: 'الخميس', patterns: [/الخميس/] },
+    { key: 'الجمعة', patterns: [/الجمعة/] },
+  ];
+  
+  const matchedDays: string[] = [];
+  for (const day of possibleDays) {
+    if (day.patterns.some(pattern => pattern.test(text))) {
+      matchedDays.push(day.key);
+    }
+  }
+  return matchedDays;
+}
+
+function parseArabicTime(tStr: string): string | null {
+  let clean = tStr.trim();
+  let isPM = false;
+  if (clean.includes('م') || clean.toLowerCase().includes('pm')) {
+    isPM = true;
+  }
+  clean = clean.replace(/[مصبأإآاam/pm]/gi, '').trim();
+  const parts = clean.split(':');
+  if (parts.length >= 1) {
+    let h = parseInt(parts[0], 10);
+    const m = parts[1] ? parts[1].trim() : '00';
+    if (isPM && h < 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+  return null;
+}
+
 // PUT - Update a group
 export async function PUT(
   request: NextRequest,
@@ -77,7 +126,7 @@ export async function PUT(
     }
     const payload = await verifyToken(token);
 
-    if (!payload || payload.role !== 'OWNER') {
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -100,7 +149,7 @@ export async function PUT(
         ...(name && { name }),
         ...(academicStageId && { academicStageId }),
         ...(year && { year }),
-        ...(scheduleDays && { scheduleDays }),
+        ...(scheduleDays && { scheduleDays: parseScheduleDays(scheduleDays) }),
         ...(startTime && { startTime }),
         ...(endTime && { endTime }),
         ...(assistantId !== undefined && { assistantId }),
@@ -137,26 +186,43 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, days, time, room, price, maxStudents } = body;
+    const { name, days, scheduleDays, time, startTime, endTime, room, location, price, maxStudents } = body;
 
-    try {
-      const updatedGroup = await prisma.group.update({
-        where: { id },
-        data: {
-          ...(name && { name }),
-          ...(days && { scheduleDays: days }),
-          ...(time && { startTime: time }),
-          ...(room && { location: room }),
-        },
-      });
-      return NextResponse.json({ success: true, group: updatedGroup });
-    } catch (e) {
-      return NextResponse.json({ success: true, group: { id, name, days, time, room, price, maxStudents } });
+    // Normalizing scheduleDays
+    const finalScheduleDays = parseScheduleDays(scheduleDays || days);
+
+    // Parse time string fallback
+    let finalStartTime = startTime;
+    let finalEndTime = endTime;
+    if (!finalStartTime && !finalEndTime && time && typeof time === 'string') {
+      const timeParts = time.split(/[-–—]+/);
+      if (timeParts.length === 2) {
+        const st = parseArabicTime(timeParts[0]);
+        const et = parseArabicTime(timeParts[1]);
+        if (st) finalStartTime = st;
+        if (et) finalEndTime = et;
+      }
     }
+
+    const updatedGroup = await prisma.group.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(finalScheduleDays && finalScheduleDays.length > 0 && { scheduleDays: finalScheduleDays }),
+        ...(finalStartTime && { startTime: finalStartTime }),
+        ...(finalEndTime && { endTime: finalEndTime }),
+        ...( (room || location) && { location: room || location }),
+        ...(maxStudents && { maxCapacity: parseInt(maxStudents, 10) }),
+      },
+    });
+
+    return NextResponse.json({ success: true, group: updatedGroup });
   } catch (error: any) {
+    console.error('Error in PATCH group:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
 
 
 // DELETE - Delete a group

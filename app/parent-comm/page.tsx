@@ -1,38 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ParentCommPage() {
-  const [comms, setComms] = useState([
-    {
-      id: 'c1',
-      studentName: 'سارة إبراهيم محمود',
-      channel: 'WhatsApp 💬',
-      reason: 'متابعة الغياب في حصة الأحد',
-      notes: 'تم الاتفاق على حضور حصة التعويض يوم الإثنين',
-      date: '2026-07-23',
-    },
-  ]);
-
+  const [comms, setComms] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [isAddingComm, setIsAddingComm] = useState(false);
-  const [studentName, setStudentName] = useState('سارة إبراهيم محمود');
+  const [studentId, setStudentId] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
+  const [channel, setChannel] = useState('هاتف 📞');
+  const [loading, setLoading] = useState(true);
 
-  const handleCreateComm = (e: React.FormEvent) => {
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [commsRes, studentsRes] = await Promise.all([
+        fetch('/api/parent-comm'),
+        fetch('/api/students')
+      ]);
+      const commsData = await commsRes.json();
+      const studentsData = await studentsRes.json();
+
+      if (commsData.success) setComms(commsData.comms);
+      if (studentsData.success) {
+        setStudents(studentsData.students);
+        if (studentsData.students.length > 0) {
+          setStudentId(studentsData.students[0].id);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCreateComm = async (e: React.FormEvent) => {
     e.preventDefault();
-    const created = {
-      id: `c_${Date.now()}`,
-      studentName,
-      channel: 'هاتف 📞 / WhatsApp 💬',
-      reason: reason || 'متابعة أداء الطالب',
-      notes: notes || 'تم تدوين الملاحظة بنجاح',
-      date: new Date().toISOString().split('T')[0],
-    };
-    setComms(prev => [created, ...prev]);
-    setIsAddingComm(false);
-    setReason('');
-    setNotes('');
+    try {
+      const res = await fetch('/api/parent-comm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, channel, reason, notes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setComms(prev => [data.comm, ...prev]);
+        setIsAddingComm(false);
+        setReason('');
+        setNotes('');
+      } else {
+        alert(data.error || 'حدث خطأ أثناء حفظ التدوين');
+      }
+    } catch (error) {
+      alert('تعذّر الاتصال بالخادم');
+    }
   };
 
   return (
@@ -65,13 +92,23 @@ export default function ParentCommPage() {
             <tbody className="divide-y divide-slate-800/60">
               {comms.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-800/40 transition">
-                  <td className="p-3.5 font-bold text-white">{c.studentName}</td>
-                  <td className="p-3.5 text-xs text-blue-400 font-semibold">{c.channel}</td>
+                  <td className="p-3.5 font-bold text-white">{c.student?.name || 'غير معروف'}</td>
+                  <td className="p-3.5 text-xs text-blue-400 font-semibold">{c.method === 'WHATSAPP' ? 'WhatsApp 💬' : 'هاتف 📞'}</td>
                   <td className="p-3.5 text-slate-300">{c.reason}</td>
                   <td className="p-3.5 text-slate-300">{c.notes}</td>
-                  <td className="p-3.5 text-xs text-slate-400 font-mono">{c.date}</td>
+                  <td className="p-3.5 text-xs text-slate-400 font-mono">{new Date(c.date).toLocaleDateString('ar-EG')}</td>
                 </tr>
               ))}
+              {comms.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-slate-500">لا توجد سجلات تواصل</td>
+                </tr>
+              )}
+              {loading && (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-slate-500 animate-pulse">جاري تحميل السجلات...</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -88,13 +125,28 @@ export default function ParentCommPage() {
             <form onSubmit={handleCreateComm} className="space-y-3 text-xs">
               <div>
                 <label className="block text-slate-300 mb-1">اسم الطالب</label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
-                />
+                >
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} - {s.code}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 mb-1">وسيلة التواصل</label>
+                <select
+                  required
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                >
+                  <option value="هاتف 📞">هاتف 📞</option>
+                  <option value="WhatsApp 💬">WhatsApp 💬</option>
+                </select>
               </div>
               <div>
                 <label className="block text-slate-300 mb-1">سبب التواصل</label>

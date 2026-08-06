@@ -12,9 +12,21 @@ export default function SettingsPage() {
   const [teacherName, setTeacherName] = useState('الأستاذ أحمد راضي كحلة');
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
   const [enableWhatsApp, setEnableWhatsApp] = useState(true);
-  const [waApiKey, setWaApiKey] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
   const [loadingSettings, setLoadingSettings] = useState(true);
+
+  // WhatsApp Gateway settings
+  const [waGatewayUrl, setWaGatewayUrl] = useState('');
+  const [waApiToken, setWaApiToken] = useState('');
+  const [waSenderNumber, setWaSenderNumber] = useState('');
+  const [waSaving, setWaSaving] = useState(false);
+  const [waTestStatus, setWaTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [waTestMsg, setWaTestMsg] = useState('');
+
+  // WhatsApp Templates
+  const [tplStudent, setTplStudent] = useState('🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
+  const [tplParent, setTplParent] = useState('👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل ابنك/بنتك [student_name] بمنصة المايسترو.\nبيانات دخولك كولي أمر:\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
+  const [tplAttendance, setTplAttendance] = useState('📅 تنبيه حضور\nالطالب: [student_name]\nالحالة: [status]\nالوقت: [time]\nمنصة المايسترو 🏫');
 
   // Staff form
   const [staffName, setStaffName] = useState('');
@@ -35,6 +47,19 @@ export default function SettingsPage() {
           setPlatformName(data.settings.platformName || 'منصة المايسترو');
           setIsRegistrationOpen(data.settings.isRegistrationOpen ?? true);
           setEnableWhatsApp(data.settings.enableWhatsApp ?? true);
+        }
+        // Load WhatsApp gateway settings
+        const waRes = await fetch('/api/settings/whatsapp');
+        const waData = await waRes.json();
+        if (waData.success && waData.settings) {
+          setWaGatewayUrl(waData.settings.gatewayUrl || '');
+          setWaApiToken(waData.settings.apiToken || '');
+          setWaSenderNumber(waData.settings.senderNumber || '');
+          if (waData.settings.templates) {
+            if (waData.settings.templates.student) setTplStudent(waData.settings.templates.student);
+            if (waData.settings.templates.parent) setTplParent(waData.settings.templates.parent);
+            if (waData.settings.templates.attendance) setTplAttendance(waData.settings.templates.attendance);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -267,36 +292,203 @@ export default function SettingsPage() {
 
       {/* Tab: WhatsApp */}
       {activeTab === 'whatsapp' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
-          <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-            <div>
-              <h4 className="font-bold text-white text-sm">تفعيل إشعارات WhatsApp التلقائية</h4>
-              <p className="text-xs text-slate-400 mt-0.5">إرسال رسائل الحضور والغياب والدرجات والماليات</p>
+        <div className="space-y-6 max-w-2xl">
+
+          {/* Gateway Connection */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg text-white">📞 إعداد HTTP Gateway للواتساب</h3>
+                <p className="text-xs text-slate-400 mt-1">يعمل مع أي مزود خدمة (مثل: UltraMsg, Twilio, WApi, أي Gateway HTTP)</p>
+              </div>
+              <div className={`w-3 h-3 rounded-full ${ waTestStatus === 'success' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : waTestStatus === 'error' ? 'bg-rose-400' : 'bg-slate-600'}`} />
             </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Gateway URL</label>
+                <input
+                  type="url"
+                  value={waGatewayUrl}
+                  onChange={(e) => setWaGatewayUrl(e.target.value)}
+                  placeholder="https://api.ultramsg.com/instance12345/messages/chat"
+                  className="w-full glass-input p-3 font-mono text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">API Token / Secret Key</label>
+                <input
+                  type="text"
+                  value={waApiToken}
+                  onChange={(e) => setWaApiToken(e.target.value)}
+                  placeholder="your_api_token_here"
+                  className="w-full glass-input p-3 font-mono text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم المرسل (Sender Number)</label>
+                <input
+                  type="text"
+                  value={waSenderNumber}
+                  onChange={(e) => setWaSenderNumber(e.target.value)}
+                  placeholder="201000000000"
+                  className="w-full glass-input p-3 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            {waTestMsg && (
+              <p className={`text-xs font-semibold p-3 rounded-xl ${ waTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                {waTestMsg}
+              </p>
+            )}
+
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={async () => {
+                  setWaTestStatus('testing');
+                  setWaTestMsg('جارٍ الاختبار...');
+                  try {
+                    const res = await fetch('/api/settings/whatsapp', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'test', to: waSenderNumber }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setWaTestStatus('success');
+                      setWaTestMsg('✅ تم إرسال رسالة اختبارية بنجاح!');
+                    } else {
+                      setWaTestStatus('error');
+                      setWaTestMsg('❌ ' + (data.error || 'فشل الاتصال'));
+                    }
+                  } catch {
+                    setWaTestStatus('error');
+                    setWaTestMsg('❌ خطأ في الاتصال بالخادم');
+                  }
+                }}
+                disabled={waTestStatus === 'testing' || !waGatewayUrl || !waApiToken}
+                className="px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
+              >
+                {waTestStatus === 'testing' ? 'جارٍ الاختبار...' : '📡 اختبار الاتصال'}
+              </button>
+              <button
+                onClick={async () => {
+                  setWaSaving(true);
+                  try {
+                    const res = await fetch('/api/settings/whatsapp', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        gatewayUrl: waGatewayUrl,
+                        apiToken: waApiToken,
+                        senderNumber: waSenderNumber,
+                        templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance },
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) setSaveMsg('تم حفظ إعدادات الواتساب بنجاح ✅');
+                    else setSaveMsg('فشل الحفظ ❌');
+                    setTimeout(() => setSaveMsg(''), 3000);
+                  } catch { setSaveMsg('خطأ في الاتصال'); }
+                  finally { setWaSaving(false); }
+                }}
+                disabled={waSaving}
+                className="glass-button-primary px-6 py-2.5 font-bold text-xs rounded-xl disabled:opacity-50"
+              >
+                {waSaving ? 'جارٍ الحفظ...' : '💾 حفظ إعدادات البوابة'}
+              </button>
+            </div>
+          </div>
+
+          {/* Templates Manager */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-6">
+            <div>
+              <h3 className="font-bold text-lg text-white">📝 مدير قوالب رسائل الواتساب</h3>
+              <p className="text-xs text-slate-400 mt-1">يمكن استخدام المتغيرات الديناميكية بين قوسين مربعين مثل [student_name]</p>
+            </div>
+
+            {/* Student Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-purple-300">🎓 قالب الترحيب بالطالب</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['[username]', '[password]', '[student_name]'].map(v => (
+                    <span key={v} className="text-[9px] px-1.5 py-0.5 bg-purple-500/15 text-purple-400 border border-purple-500/20 rounded font-mono cursor-pointer" onClick={() => setTplStudent(p => p + v)}>{v}</span>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={4}
+                value={tplStudent}
+                onChange={(e) => setTplStudent(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Parent Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-emerald-300">👨‍👩‍👦 قالب الترحيب بولي الأمر</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['[username]', '[password]', '[student_name]', '[parent_name]'].map(v => (
+                    <span key={v} className="text-[9px] px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 rounded font-mono cursor-pointer" onClick={() => setTplParent(p => p + v)}>{v}</span>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={4}
+                value={tplParent}
+                onChange={(e) => setTplParent(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Attendance Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-blue-300">📅 قالب تنبيه الحضور</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['[student_name]', '[status]', '[time]'].map(v => (
+                    <span key={v} className="text-[9px] px-1.5 py-0.5 bg-blue-500/15 text-blue-400 border border-blue-500/20 rounded font-mono cursor-pointer" onClick={() => setTplAttendance(p => p + v)}>{v}</span>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={3}
+                value={tplAttendance}
+                onChange={(e) => setTplAttendance(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            {saveMsg && <p className="text-xs font-bold text-emerald-400">{saveMsg}</p>}
             <button
-              onClick={handleToggleWhatsApp}
-              className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
-                enableWhatsApp
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                  : 'bg-slate-700 border-slate-600 text-slate-400'
-              }`}
+              onClick={async () => {
+                setWaSaving(true);
+                try {
+                  const res = await fetch('/api/settings/whatsapp', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      gatewayUrl: waGatewayUrl,
+                      apiToken: waApiToken,
+                      senderNumber: waSenderNumber,
+                      templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance },
+                    }),
+                  });
+                  const data = await res.json();
+                  if (data.success) setSaveMsg('تم حفظ جميع القوالب بنجاح ✅');
+                  setTimeout(() => setSaveMsg(''), 3000);
+                } catch { setSaveMsg('خطأ في الاتصال'); }
+                finally { setWaSaving(false); }
+              }}
+              disabled={waSaving}
+              className="glass-button-primary px-8 py-3 font-bold text-sm rounded-2xl disabled:opacity-50"
             >
-              {enableWhatsApp ? 'مفعّل ✓' : 'معطّل'}
+              {waSaving ? 'جارٍ الحفظ...' : '💾 حفظ جميع القوالب'}
             </button>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">مفتاح API الخاص بالخدمة</label>
-            <input
-              type="text"
-              value={waApiKey}
-              onChange={(e) => setWaApiKey(e.target.value)}
-              placeholder="wa_live_key_..."
-              className="w-full glass-input p-3 font-mono text-sm"
-            />
-          </div>
-          <button className="glass-button-primary px-8 py-3 font-bold text-sm rounded-2xl">
-            حفظ إعدادات الربط 💬
-          </button>
         </div>
       )}
 

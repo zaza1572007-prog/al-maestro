@@ -1,13 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const academicStageId = searchParams.get('academicStageId');
+    const groupId = searchParams.get('groupId');
+    const type = searchParams.get('type');
+
+    const where: any = {};
+    if (academicStageId) where.academicStageId = academicStageId;
+    if (groupId) where.groupId = groupId;
+    if (type) where.type = type;
+
     const files = await prisma.file.findMany({
-      include: {
-        group: true,
-        academicStage: true,
-      },
+      where,
+      include: { group: true, academicStage: true },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json({ success: true, files });
@@ -16,22 +26,26 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const { name, url, type, size, groupId, academicStageId } = await req.json();
+    const { id } = await req.json();
+    if (!id) return NextResponse.json({ success: false, error: 'File ID is required' }, { status: 400 });
 
-    const file = await prisma.file.create({
-      data: {
-        name,
-        url: url || '/files/sample.pdf',
-        type: type || 'PDF',
-        size: parseInt(size) || 1024,
-        groupId,
-        academicStageId,
-      },
-    });
+    const file = await prisma.file.findUnique({ where: { id } });
+    if (!file) return NextResponse.json({ success: false, error: 'الملف غير موجود' }, { status: 404 });
 
-    return NextResponse.json({ success: true, file });
+    // Delete physical file from disk if locally stored
+    if (file.url.startsWith('/uploads/')) {
+      try {
+        const filePath = join(process.cwd(), 'public', file.url);
+        await unlink(filePath);
+      } catch {
+        // File may not exist on disk — continue with DB deletion
+      }
+    }
+
+    await prisma.file.delete({ where: { id } });
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

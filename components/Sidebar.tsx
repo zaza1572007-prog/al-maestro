@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useToast } from '@/components/ToastProvider';
 import {
   LayoutDashboard,
   GraduationCap,
@@ -35,7 +36,16 @@ import {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const toast = useToast();
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(data => {
+      if (data.success) setCurrentUser(data.user);
+    }).catch(console.error);
+  }, []);
 
   // Don't render sidebar on public pages
   if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return null;
@@ -45,14 +55,15 @@ export default function Sidebar() {
   const isParentPortal = pathname.startsWith('/parent-portal');
 
   // Navigation Items for Teacher / Admin
-  const teacherNavItems = [
+  interface NavItem { label: string; path: string; icon: any; isComingSoon?: boolean; }
+
+  const teacherNavItems: NavItem[] = [
     { label: 'لوحة التحكم الرئيسي', path: '/dashboard', icon: LayoutDashboard },
     { label: 'طلبات الحجز والتسجيل', path: '/registration-requests', icon: UserPlus },
     { label: 'المراحل الدراسية', path: '/stages', icon: Layers },
     { label: 'المجموعات التعليمية', path: '/groups', icon: Users },
     { label: 'قائمة الطلاب', path: '/students', icon: GraduationCap },
     { label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode },
-    { label: 'الجلسات والدروس', path: '/sessions', icon: CalendarDays },
     { label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck },
     { label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet },
     { label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard },
@@ -61,7 +72,6 @@ export default function Sidebar() {
     { label: 'المكتبة والملفات', path: '/files', icon: FolderArchive },
     { label: 'إدارة المهام', path: '/tasks', icon: CheckSquare },
     { label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare },
-    { label: 'حضور وتوقيت الموظفين', path: '/staff', icon: Clock },
     { label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 },
     { label: 'مركز التنبيهات', path: '/notifications', icon: BellRing },
     { label: 'إعدادات المنصة', path: '/settings', icon: Settings },
@@ -97,12 +107,12 @@ export default function Sidebar() {
   let portalSubtitle = "أ. أحمد راضي كحلة";
   let roleBadge = "المعلم والإدارة";
 
-  if (isStudentPortal) {
+  if (currentUser?.role === 'STUDENT' || isStudentPortal) {
     currentNavItems = studentNavItems;
     portalTitle = "بوابة الطالب";
     portalSubtitle = "منصة التعلم الذكي";
     roleBadge = "طالب";
-  } else if (isParentPortal) {
+  } else if (currentUser?.role === 'PARENT' || isParentPortal) {
     currentNavItems = parentNavItems;
     portalTitle = "بوابة ولي الأمر";
     portalSubtitle = "منظومة متابعة الأبناء";
@@ -158,10 +168,18 @@ export default function Sidebar() {
               item.path !== '/parent-portal' &&
               pathname.startsWith(item.path));
 
+          const handleNavigation = (e: React.MouseEvent) => {
+            if (item.isComingSoon) {
+              e.preventDefault();
+              toast.info('هذه الميزة قريباً في التحديث القادم');
+            }
+          };
+
           return (
             <Link
               key={item.path}
               href={item.path}
+              onClick={handleNavigation}
               className="relative block group"
             >
               <div
@@ -181,7 +199,7 @@ export default function Sidebar() {
                 )}
 
                 <div
-                  className={`relative z-10 p-2 rounded-xl transition-colors ${
+                  className={`relative z-10 p-2 rounded-xl transition-colors flex items-center justify-center ${
                     isActive
                       ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30 shadow-inner'
                       : 'text-slate-400 group-hover:text-purple-300'
@@ -191,7 +209,14 @@ export default function Sidebar() {
                 </div>
 
                 {!isCollapsed && (
-                  <span className="relative z-10 truncate">{item.label}</span>
+                  <div className="relative z-10 flex-1 flex items-center justify-between min-w-0">
+                    <span className="truncate">{item.label}</span>
+                    {item.isComingSoon && (
+                      <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-1 shrink-0">
+                        قريباً
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </Link>
@@ -204,11 +229,11 @@ export default function Sidebar() {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0">
-              أ
+              {currentUser?.name?.charAt(0) || 'أ'}
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
-                <p className="font-semibold text-slate-200 text-xs truncate">أحمد راضي</p>
+                <p className="font-semibold text-slate-200 text-xs truncate">{currentUser?.name || 'جاري التحميل...'}</p>
                 <span className="inline-block text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
                   {roleBadge}
                 </span>

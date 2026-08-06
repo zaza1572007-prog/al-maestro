@@ -9,6 +9,7 @@ interface Stage {
   name: string;
   level: string;
   grade: string;
+  monthlyPrice: number;
   description?: string;
   _count: { students: number; groups: number };
 }
@@ -31,7 +32,7 @@ export default function StagesPage() {
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [newStage, setNewStage] = useState({ name: '', level: 'Middle', grade: '', description: '' });
+  const [newStage, setNewStage] = useState({ name: '', level: 'Middle', grade: '', description: '', monthlyPrice: 350 });
 
   const fetchStages = async () => {
     setLoading(true);
@@ -61,7 +62,7 @@ export default function StagesPage() {
       if (data.success) {
         await fetchStages();
         setIsAdding(false);
-        setNewStage({ name: '', level: 'Middle', grade: '', description: '' });
+        setNewStage({ name: '', level: 'Middle', grade: '', description: '', monthlyPrice: 350 });
       } else {
         alert(data.error || 'حدث خطأ');
       }
@@ -181,16 +182,21 @@ export default function StagesPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-center text-xs">
-                        <div className="bg-black/20 p-3 rounded-xl">
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                        <div className="bg-black/20 p-2.5 rounded-xl">
                           <Users className="w-4 h-4 mx-auto mb-1 opacity-70" />
                           <p className="text-slate-400">الطلاب</p>
-                          <p className="text-lg font-black text-white">{stage._count.students}</p>
+                          <p className="text-base font-black text-white">{stage._count.students}</p>
                         </div>
-                        <div className="bg-black/20 p-3 rounded-xl">
+                        <div className="bg-black/20 p-2.5 rounded-xl">
                           <BookOpen className="w-4 h-4 mx-auto mb-1 opacity-70" />
                           <p className="text-slate-400">المجموعات</p>
-                          <p className="text-lg font-black text-white">{stage._count.groups}</p>
+                          <p className="text-base font-black text-white">{stage._count.groups}</p>
+                        </div>
+                        <div className="bg-black/20 p-2.5 rounded-xl">
+                          <span className="text-xs block mb-1">💰</span>
+                          <p className="text-slate-400">الاشتراك</p>
+                          <p className="text-base font-black text-white">{stage.monthlyPrice} ج.م</p>
                         </div>
                       </div>
 
@@ -244,13 +250,13 @@ export default function StagesPage() {
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-slate-300 mb-1 text-xs">المرحلة</label>
                   <select
                     value={newStage.level}
                     onChange={(e) => setNewStage({ ...newStage, level: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
                   >
                     <option value="Primary">ابتدائية</option>
                     <option value="Middle">إعدادية</option>
@@ -261,10 +267,20 @@ export default function StagesPage() {
                   <label className="block text-slate-300 mb-1 text-xs">الصف</label>
                   <input
                     type="text"
-                    placeholder="مثال: Grade 9"
+                    placeholder="الصف 9"
                     value={newStage.grade}
                     onChange={(e) => setNewStage({ ...newStage, grade: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 text-xs">الاشتراك *</label>
+                  <input
+                    type="number"
+                    required
+                    value={newStage.monthlyPrice !== undefined && newStage.monthlyPrice !== null ? newStage.monthlyPrice : 350}
+                    onChange={(e) => setNewStage({ ...newStage, monthlyPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
                   />
                 </div>
               </div>
@@ -298,13 +314,13 @@ export default function StagesPage() {
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-slate-300 mb-1 text-xs">المرحلة</label>
                   <select
                     value={editingStage.level}
                     onChange={(e) => setEditingStage({ ...editingStage, level: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
                   >
                     <option value="Primary">ابتدائية</option>
                     <option value="Middle">إعدادية</option>
@@ -317,7 +333,17 @@ export default function StagesPage() {
                     type="text"
                     value={editingStage.grade || ''}
                     onChange={(e) => setEditingStage({ ...editingStage, grade: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1 text-xs">الاشتراك *</label>
+                  <input
+                    type="number"
+                    required
+                    value={editingStage.monthlyPrice !== undefined && editingStage.monthlyPrice !== null ? editingStage.monthlyPrice : 350}
+                    onChange={(e) => setEditingStage({ ...editingStage, monthlyPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs"
                   />
                 </div>
               </div>

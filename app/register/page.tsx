@@ -30,7 +30,7 @@ export default function RegisterPage() {
   const [studentGender, setStudentGender] = useState('ذكر');
 
   const [parentName, setParentName] = useState('');
-  const [parentRelation, setParentRelation] = useState('والد (أب)');
+  const [parentRelation, setParentRelation] = useState('Father');
   const [parentPhone, setParentPhone] = useState('');
   const [parentWhatsapp, setParentWhatsapp] = useState('');
   const [parentExtraPhone, setParentExtraPhone] = useState('');
@@ -525,6 +525,17 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم هاتف إضافي (اختياري)</label>
+                  <input
+                    type="text"
+                    placeholder="رقم احتياطي للتواصل"
+                    value={parentExtraPhone}
+                    onChange={(e) => setParentExtraPhone(e.target.value)}
+                    className="w-full glass-input p-3 text-sm"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم WhatsApp للتواصل</label>
                   <input
                     type="text"
@@ -574,7 +585,7 @@ export default function RegisterPage() {
                   <h4 className="font-bold text-blue-300 border-b border-white/10 pb-2">بيانات ولي الأمر</h4>
                   <p><strong>اسم ولي الأمر:</strong> {parentName}</p>
                   <p><strong>رقم الهاتف:</strong> {parentPhone}</p>
-                  <p><strong>صلة القرابة:</strong> {parentRelation}</p>
+                  <p><strong>صلة القرابة:</strong> {parentRelation === 'Father' ? 'والد (أب)' : parentRelation === 'Mother' ? 'والدة (أم)' : 'ولي أمر (قريب)'}</p>
                   <p>
                     <strong>الحساب:</strong>{' '}
                     {existingParentData ? 'ربط بحساب ولي أمر مسجل مسبقاً' : 'إنشاء حساب جديد'}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import HeroHeader from '@/components/HeroHeader';
@@ -18,26 +18,38 @@ import {
 } from 'lucide-react';
 
 export default function StudentPortalDashboard() {
-  const [studentInfo] = useState({
-    name: 'أحمد محمود الفقي',
-    code: 'STU-992',
-    stage: 'الصف الثالث الثانوي (علمي)',
-    group: 'مجموعة الأحد 6:00 مساءً',
-    attendanceRate: '96%',
-    homeworkSubmissions: '12 / 12',
-    latestExamScore: '98 / 100',
-    subscriptionStatus: 'نشط (ينتهي 30 أغسطس)',
-  });
+  const [studentInfo, setStudentInfo] = useState<any>(null);
+  const [upcomingHomework, setUpcomingHomework] = useState<any[]>([]);
+  const [recentExams, setRecentExams] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const upcomingHomework = [
-    { id: 1, title: 'واجب التفاضل والتكامل - الدرس الرابع', dueDate: 'غداً 5:00 مساءً', status: 'معلق' },
-    { id: 2, title: 'حل أسئلة بنك المعرفة على الهندسة الفراغية', dueDate: 'الخميس القادم', status: 'مكتمل' },
-  ];
+  useEffect(() => {
+    const fetchPortalData = async () => {
+      try {
+        const res = await fetch('/api/student-portal/dashboard');
+        const data = await res.json();
+        if (data.success) {
+          setStudentInfo(data.student);
+          setUpcomingHomework(data.upcomingHomework);
+          setRecentExams(data.recentExams);
+        } else {
+          // fallback if unauthorized or error
+          window.location.href = '/login?role=STUDENT';
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPortalData();
+  }, []);
 
-  const recentExams = [
-    { id: 1, title: 'امتحان الشامل لشهر يوليو - رياضيات 1', score: '98 / 100', date: '20 يوليو 2026', rank: 'المركز الأول 🥇' },
-    { id: 2, title: 'اختبار الجبر السريع الأسبوعي', score: '50 / 50', date: '12 يوليو 2026', rank: 'المركز الأول 🥇' },
-  ];
+  if (loading) {
+    return <div className="text-center py-20 text-white animate-pulse">جارٍ تحميل بيانات الطالب...</div>;
+  }
+
+  if (!studentInfo) return null;
 
   return (
     <div className="space-y-8">
@@ -51,6 +63,42 @@ export default function StudentPortalDashboard() {
           { label: "آخر النتيجة", value: "98%", color: "text-purple-300" },
         ]}
       />
+
+      {/* Student Profile Card with Barcode */}
+      <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900/40 text-right">
+        <div className="space-y-2 text-right w-full">
+          <p className="text-xs font-semibold text-purple-400">الرمز الشريطي للبطاقة التعريفية (Barcode)</p>
+          <div className="flex items-center gap-4 justify-start direction-rtl">
+            {/* Real Barcode representation using CSS flex columns */}
+            <div className="bg-white p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-inner">
+              <div className="h-10 flex items-stretch gap-[1.5px] bg-white px-2">
+                {(studentInfo.qrCode || studentInfo.code || "STU-0000").split('').map((char: string, i: number) => {
+                  const width = (char.charCodeAt(0) % 3) + 1;
+                  const isGap = (char.charCodeAt(0) % 2) === 0;
+                  return (
+                    <div 
+                      key={i} 
+                      className="bg-black" 
+                      style={{ 
+                        width: `${width}px`, 
+                        opacity: isGap ? 0.15 : 1 
+                      }} 
+                    />
+                  );
+                })}
+              </div>
+              <span className="font-mono text-[9px] text-black tracking-widest font-bold">
+                {studentInfo.qrCode || studentInfo.code}
+              </span>
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-white">{studentInfo.name}</h2>
+              <p className="text-xs text-slate-400 mt-1">كود الحساب: <strong className="text-blue-400 font-mono">{studentInfo.code}</strong></p>
+              <p className="text-xs text-slate-400">الرمز الشريطي: <strong className="text-purple-400 font-mono">{studentInfo.qrCode || studentInfo.code}</strong></p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Metric Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

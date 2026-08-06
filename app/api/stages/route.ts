@@ -17,9 +17,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, level, grade, description } = await req.json();
+    const { name, level, grade, description, monthlyPrice } = await req.json();
     const stage = await prisma.academicStage.create({
-      data: { name, level, grade, description },
+      data: { 
+        name, 
+        level, 
+        grade, 
+        description,
+        monthlyPrice: monthlyPrice !== undefined ? parseFloat(monthlyPrice) : 350,
+      },
     });
     return NextResponse.json({ success: true, stage });
   } catch (e: any) {

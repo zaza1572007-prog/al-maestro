@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import HeroHeader from '@/components/HeroHeader';
@@ -17,26 +17,52 @@ import {
 } from 'lucide-react';
 
 export default function ParentPortalDashboard() {
-  const [children] = useState([
-    {
-      id: '1',
-      name: 'أحمد محمود الفقي',
-      stage: 'الصف الثالث الثانوي (علمي)',
-      attendanceRate: '96%',
-      latestExam: '98 / 100',
-      group: 'مجموعة الأحد 6:00 مساءً',
-    },
-    {
-      id: '2',
-      name: 'مريم محمود الفقي',
-      stage: 'الصف الأول الإعدادي',
-      attendanceRate: '100%',
-      latestExam: '49 / 50',
-      group: 'مجموعة السبت 4:00 مساءً',
-    },
-  ]);
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
-  const [selectedChildId, setSelectedChildId] = useState('1');
+  useEffect(() => {
+    const fetchPortalData = async () => {
+      try {
+        const res = await fetch('/api/parent-portal');
+        const data = await res.json();
+        if (data.success && data.children && data.children.length > 0) {
+          setChildren(data.children);
+          const savedChildId = localStorage.getItem('selectedChildId');
+          if (savedChildId && data.children.find((c: any) => c.id === savedChildId)) {
+            setSelectedChildId(savedChildId);
+          } else {
+            setSelectedChildId(data.children[0].id);
+            localStorage.setItem('selectedChildId', data.children[0].id);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPortalData();
+  }, []);
+
+  const handleSelectChild = (id: string) => {
+    setSelectedChildId(id);
+    localStorage.setItem('selectedChildId', id);
+  };
+
+  if (loading) {
+    return <div className="text-center py-20 text-white animate-pulse">جارٍ تحميل بيانات الطالب...</div>;
+  }
+
+  if (children.length === 0) {
+    return (
+      <div className="text-center py-20 text-slate-400">
+        <h2 className="text-xl font-bold text-white mb-2">عفواً، لا توجد بيانات</h2>
+        <p>لم يتم العثور على أبناء مسجلين بحسابك.</p>
+        <Link href="/login" className="text-purple-400 hover:underline mt-4 inline-block">العودة لتسجيل الدخول</Link>
+      </div>
+    );
+  }
 
   const selectedChild = children.find((c) => c.id === selectedChildId) || children[0];
 
@@ -56,7 +82,7 @@ export default function ParentPortalDashboard() {
             return (
               <button
                 key={child.id}
-                onClick={() => setSelectedChildId(child.id)}
+                onClick={() => handleSelectChild(child.id)}
                 className={`px-5 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 border ${
                   isSelected
                     ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-white/20 shadow-lg shadow-purple-500/30'
@@ -84,13 +110,9 @@ export default function ParentPortalDashboard() {
 
       {/* Metric Animated Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          key={`att-${selectedChild.id}`}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden"
-        >
+        {/* Attendance */}
+        <motion.div key={`att-${selectedChild.id}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}
+          className="glass-card p-6 rounded-3xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400">سجل الانضباط والحضور</p>
@@ -100,64 +122,67 @@ export default function ParentPortalDashboard() {
               <CheckCircle2 className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-emerald-400 mt-4 font-semibold">انتظام ممتاز بدون غياب</p>
+          <p className="text-xs text-emerald-400 mt-4 font-semibold">
+            {selectedChild.attendanceRate === 'N/A' ? 'لا توجد بيانات حضور' : 'نسبة الحضور الفعلية'}
+          </p>
         </motion.div>
 
-        <motion.div
-          key={`ex-${selectedChild.id}`}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden"
-        >
+        {/* Latest Exam */}
+        <motion.div key={`ex-${selectedChild.id}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.1 }}
+          className="glass-card p-6 rounded-3xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400">آخر تقييم في الامتحانات</p>
-              <h3 className="text-3xl font-black text-purple-300 mt-1">{selectedChild.latestExam}</h3>
+              <h3 className="text-2xl font-black text-purple-300 mt-1">{selectedChild.latestExam}</h3>
             </div>
             <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
               <Award className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-purple-400 mt-4 font-semibold">درجة متميزة 🌟</p>
+          <p className="text-xs text-purple-400 mt-4 font-semibold">
+            {selectedChild.latestExam === 'لا توجد درجات' ? 'لم تُسجل درجات بعد' : 'آخر نتيجة امتحان'}
+          </p>
         </motion.div>
 
-        <motion.div
-          key={`hw-${selectedChild.id}`}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden"
-        >
+        {/* Homework Rate — REAL DATA */}
+        <motion.div key={`hw-${selectedChild.id}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.2 }}
+          className="glass-card p-6 rounded-3xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400">الواجبات المنزلية</p>
-              <h3 className="text-3xl font-black text-blue-300 mt-1">100%</h3>
+              <h3 className="text-3xl font-black text-blue-300 mt-1">{selectedChild.homeworkRate || 'N/A'}</h3>
             </div>
             <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300">
               <BookOpen className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-blue-400 mt-4 font-semibold">ملم بجميع التكليفات</p>
+          <p className="text-xs text-blue-400 mt-4 font-semibold">
+            {selectedChild.homeworkRate === 'N/A' ? 'لا توجد واجبات بعد' : 'نسبة تسليم الواجبات'}
+          </p>
         </motion.div>
 
-        <motion.div
-          key={`msg-${selectedChild.id}`}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden"
-        >
+        {/* Subscription Status — REAL DATA */}
+        <motion.div key={`sub-${selectedChild.id}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, delay: 0.3 }}
+          className="glass-card p-6 rounded-3xl relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400">ملاحظات الأستاذ</p>
-              <h3 className="text-lg font-bold text-slate-200 mt-2">طالب مجتهد جداً</h3>
+              <p className="text-xs font-semibold text-slate-400">حالة الاشتراك</p>
+              <h3 className={`text-xl font-bold mt-2 ${
+                selectedChild.subscriptionStatus === 'ساري' ? 'text-emerald-300' :
+                selectedChild.subscriptionStatus === 'ينتهي قريباً' ? 'text-amber-300' : 'text-rose-300'
+              }`}>{selectedChild.subscriptionStatus || 'لا يوجد'}</h3>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+            <div className={`p-4 rounded-2xl border ${
+              selectedChild.subscriptionStatus === 'ساري' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' :
+              selectedChild.subscriptionStatus === 'ينتهي قريباً' ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' :
+              'bg-rose-500/10 border-rose-500/20 text-rose-300'
+            }`}>
               <MessageSquare className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">تفاعل إيجابي داخل الحصة</p>
+          <p className="text-xs text-slate-400 mt-3">
+            {selectedChild.subscriptionEndDate ? `ينتهي: ${selectedChild.subscriptionEndDate}` : 'لم يُسجل اشتراك'}
+          </p>
         </motion.div>
       </div>
 

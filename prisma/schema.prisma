@@ -142,6 +142,8 @@ model Student {
   code            String               @unique
   name            String
   phone           String               @unique
+  password        String?
+  passwordPlain   String?
   profileImage    String?
   academicStageId String
   academicStage   AcademicStage        @relation(fields: [academicStageId], references: [id])
@@ -168,15 +170,17 @@ model Student {
 }
 
 model Parent {
-  id          String    @id @default(uuid())
-  name        String
-  phone       String    @unique
-  relation    String    @default("Father")
-  whatsapp    String?
-  extraPhone  String?
-  students    Student[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  name          String
+  phone         String    @unique
+  password      String?
+  passwordPlain String?
+  relation      String    @default("Father")
+  whatsapp      String?
+  extraPhone    String?
+  students      Student[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([phone])
 }
@@ -214,6 +218,7 @@ model AcademicStage {
   level                String                // Primary, Middle, High
   grade                String                // 4th, 5th, 6th, etc.
   description          String?
+  monthlyPrice         Float                 @default(350)
   groups               Group[]
   students             Student[]
   files                File[]
@@ -281,7 +286,7 @@ model LessonSession {
 model Attendance {
   id              String           @id @default(uuid())
   studentId       String
-  student         Student          @relation(fields: [studentId], references: [id])
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   sessionId       String
   session         LessonSession    @relation(fields: [sessionId], references: [id])
   status          AttendanceStatus @default(PRESENT)
@@ -323,7 +328,7 @@ model HomeworkSubmission {
   homeworkId  String
   homework    Homework       @relation(fields: [homeworkId], references: [id])
   studentId   String
-  student     Student        @relation(fields: [studentId], references: [id])
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   status      HomeworkStatus @default(NOT_STARTED)
   score       Float?
   feedback    String?        @db.Text
@@ -363,7 +368,7 @@ model ExamResult {
   examId      String
   exam        Exam      @relation(fields: [examId], references: [id])
   studentId   String
-  student     Student   @relation(fields: [studentId], references: [id])
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
   score       Float
   percentage  Float
   rank        Int?
@@ -379,7 +384,7 @@ model ExamResult {
 model Subscription {
   id             String             @id @default(uuid())
   studentId      String
-  student        Student            @relation(fields: [studentId], references: [id])
+  student        Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   groupId        String
   group          Group              @relation(fields: [groupId], references: [id])
   startDate      DateTime
@@ -401,9 +406,9 @@ model Subscription {
 model Payment {
   id              String        @id @default(uuid())
   studentId       String
-  student         Student       @relation(fields: [studentId], references: [id])
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   subscriptionId  String
-  subscription    Subscription  @relation(fields: [subscriptionId], references: [id])
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   totalAmount     Float
   paidAmount      Float
   remainingAmount Float
@@ -440,7 +445,7 @@ model Task {
 model ParentCommunication {
   id          String              @id @default(uuid())
   studentId   String
-  student     Student             @relation(fields: [studentId], references: [id])
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   date        DateTime
   method      CommunicationMethod
   reason      String              @db.Text
@@ -498,7 +503,7 @@ model File {
   session         LessonSession? @relation(fields: [sessionId], references: [id])
   homeworkId      String?
   studentId       String?
-  student         Student?     @relation(fields: [studentId], references: [id])
+  student         Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   uploadedById    String?
   accessLevel     String       @default("ALL") // ALL, GROUP, STAFF
   createdAt       DateTime     @default(now())
@@ -515,7 +520,7 @@ model Notification {
   message     String           @db.Text
   type        NotificationType @default(INFO)
   recipientId String?
-  recipient   Student?         @relation(fields: [recipientId], references: [id])
+  recipient   Student?         @relation(fields: [recipientId], references: [id], onDelete: Cascade)
   isRead      Boolean          @default(false)
   readAt      DateTime?
   createdAt   DateTime         @default(now())
@@ -539,6 +544,14 @@ model SystemSettings {
   enableWhatsApp      Boolean  @default(true)
   lateThreshold       Int      @default(15) // minutes
   enableDarkMode      Boolean  @default(true)
+  // WhatsApp HTTP Gateway
+  waGatewayUrl        String?
+  waApiToken          String?
+  waSenderNumber      String?
+  // WhatsApp Message Templates
+  waTplStudent        String?  @db.Text
+  waTplParent         String?  @db.Text
+  waTplAttendance     String?  @db.Text
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

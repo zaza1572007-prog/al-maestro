@@ -72,7 +72,7 @@ export async function PUT(
     }
     const payload = await verifyToken(token);
 
-    if (!payload || (payload.role !== 'OWNER' && payload.role !== 'ASSISTANT')) {
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -120,6 +120,15 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+
+    // Auth guard
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, phone, parentName, parentPhone, stageId, groupId, academicStageId } = body;
 
@@ -167,6 +176,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Auth guard
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) return NextResponse.json({ success: false, error: 'يرجى تسجيل الدخول أولاً' }, { status: 401 });
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ success: false, error: 'جلسة غير صالحة. يرجى إعادة تسجيل الدخول.' }, { status: 401 });
+    }
 
     // Delete related data first (cascade)
     await prisma.attendance.deleteMany({ where: { studentId: id } });

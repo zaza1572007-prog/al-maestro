@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { SignJWT } from 'jose';
+import bcrypt from 'bcrypt';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'almaestro-secret-key-2026');
 
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
     let targetUser: any = null;
 
     if (userRole === 'STUDENT') {
-      // Find student by Name or Phone or Code
+      // Find student by Name, Phone, or Code
       if (studentName || phone) {
         targetUser = await prisma.student.findFirst({
           where: {
@@ -24,23 +25,62 @@ export async function POST(req: Request) {
           },
           include: { academicStage: true, group: true },
         });
+
+        const isPasswordCorrect = targetUser && targetUser.password
+          ? await bcrypt.compare(password, targetUser.password)
+          : false;
+
+        if (targetUser && targetUser.password && !isPasswordCorrect) {
+          return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة' }, { status: 401 });
+        }
       }
 
       if (!targetUser) {
-        // Fallback or create student session
-        targetUser = {
-          id: 'stu-default',
-          name: studentName || phone || 'طالب المايسترو',
-          role: 'STUDENT',
-        };
+        return NextResponse.json({ success: false, error: 'لم يتم العثور على الطالب' }, { status: 404 });
+      }
+    } else if (userRole === 'PARENT') {
+      targetUser = await prisma.parent.findFirst({
+        where: { phone },
+      });
+
+      if (!targetUser) {
+        return NextResponse.json({ success: false, error: 'لم يتم العثور على ولي الأمر' }, { status: 404 });
+      }
+
+      const isPasswordCorrect = targetUser.password
+        ? await bcrypt.compare(password, targetUser.password)
+        : false;
+
+      if (targetUser.password && !isPasswordCorrect) {
+        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة' }, { status: 401 });
       }
     } else {
-      targetUser = {
-        id: 'master-owner',
-        name: 'الأستاذ أحمد راضي كحلة',
-        role: 'OWNER',
-        phone: '0100000000',
+      const normalizeArabic = (text: string) => {
+        return text
+          .replace(/[أإآ]/g, 'ا')
+          .replace(/ة/g, 'ه')
+          .replace(/ى/g, 'ي')
+          .trim();
       };
+
+      const allUsers = await prisma.user.findMany();
+      const normalizedQuery = normalizeArabic(phone);
+
+      targetUser = allUsers.find(user => 
+        user.phone === phone || 
+        normalizeArabic(user.name).includes(normalizedQuery)
+      ) || null;
+
+      if (!targetUser) {
+        return NextResponse.json({ success: false, error: 'لم يتم العثور على المعلم/المساعد' }, { status: 404 });
+      }
+
+      const isPasswordCorrect = await bcrypt.compare(password, targetUser.password);
+      if (!isPasswordCorrect) {
+        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة' }, { status: 401 });
+      }
+
+      userRole = targetUser.role;
     }
 
     const token = await new SignJWT({

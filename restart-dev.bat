@@ -1,0 +1,6 @@
+@echo off
+echo Kill Next.js server on port 3000...
+taskkill /PID 7892 /F
+echo.
+echo Starting dev server...
+npm run dev

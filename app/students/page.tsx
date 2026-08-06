@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/components/ToastProvider';
 
 interface Student {
   id: string;
@@ -17,6 +18,11 @@ interface Student {
   groupId: string;
   attendanceRate: string;
   subStatus: string;
+  password?: string;
+  parentPassword?: string;
+  passwordPlain?: string;
+  parentPasswordPlain?: string;
+  qrCode?: string;
 }
 
 function StudentsContent() {
@@ -37,10 +43,20 @@ function StudentsContent() {
     phone: '',
     parentName: '',
     parentPhone: '',
+    parentRelation: 'Father',
+    parentWhatsapp: '',
+    parentExtraPhone: '',
     stageId: '',
     groupId: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<{id: string, name: string} | null>(null);
+  const [credentialsStudent, setCredentialsStudent] = useState<Student | null>(null);
+  const [credentialsForm, setCredentialsForm] = useState({ studentPassword: '', parentPassword: '' });
+  const [isSavingCreds, setIsSavingCreds] = useState(false);
+  const [newStudentCredentials, setNewStudentCredentials] = useState<{studentName: string; studentCode: string; studentPhone: string; studentPassword: string; parentName: string; parentPhone: string; parentPassword: string} | null>(null);
+  
+  const toast = useToast();
 
   // Fetch real students and options from PostgreSQL API
   const fetchStudentsAndOptions = async () => {
@@ -72,6 +88,11 @@ function StudentsContent() {
           groupId: s.groupId || '',
           attendanceRate: '—',
           subStatus: s.subscriptions?.[0]?.status || 'NO_SUB',
+          password: s.password || '—',
+          parentPassword: s.parent?.password || '—',
+          passwordPlain: s.passwordPlain || '—',
+          parentPasswordPlain: s.parent?.passwordPlain || '—',
+          qrCode: s.qrCode || '—',
         }));
         setStudents(formatted);
       }
@@ -88,47 +109,92 @@ function StudentsContent() {
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Determine the actual IDs to use
+    const actualStageId = newStudent.stageId || stagesOptions[0]?.id;
+    const actualGroupId = newStudent.groupId || groupsOptions[0]?.id;
+
+    if (!actualStageId) {
+      toast.error('يرجى اختيار المرحلة الدراسية أو إضافة مرحلة أولاً.');
+      return;
+    }
+    if (!actualGroupId) {
+      toast.error('يرجى اختيار المجموعة أو إضافة مجموعة أولاً.');
+      return;
+    }
+    if (!newStudent.name.trim()) {
+      toast.error('يرجى إدخال اسم الطالب.');
+      return;
+    }
+    if (!newStudent.phone.trim()) {
+      toast.error('يرجى إدخال رقم هاتف الطالب.');
+      return;
+    }
+    if (!newStudent.parentPhone.trim()) {
+      toast.error('يرجى إدخال رقم هاتف ولي الأمر.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newStudent.name,
-          phone: newStudent.phone,
-          parentName: newStudent.parentName,
-          parentPhone: newStudent.parentPhone,
-          academicStageId: newStudent.stageId || stagesOptions[0]?.id,
-          groupId: newStudent.groupId || groupsOptions[0]?.id,
+          name: newStudent.name.trim(),
+          phone: newStudent.phone.trim(),
+          parentName: newStudent.parentName.trim(),
+          parentPhone: newStudent.parentPhone.trim(),
+          parentRelation: newStudent.parentRelation,
+          parentWhatsapp: newStudent.parentWhatsapp.trim() || undefined,
+          parentExtraPhone: newStudent.parentExtraPhone.trim() || undefined,
+          academicStageId: actualStageId,
+          groupId: actualGroupId,
         }),
       });
       const data = await res.json();
       if (data.success) {
+        toast.success('تمت إضافة الطالب بنجاح');
         fetchStudentsAndOptions();
         setIsAddingStudent(false);
-        setNewStudent({ name: '', phone: '', parentName: '', parentPhone: '', stageId: '', groupId: '' });
+        // Show credentials modal with plain text passwords
+        if (data.credentials) {
+          setNewStudentCredentials({
+            studentName: newStudent.name.trim(),
+            studentCode: data.credentials.studentCode,
+            studentPhone: newStudent.phone.trim(),
+            studentPassword: data.credentials.studentPassword,
+            parentName: newStudent.parentName.trim() || `ولي أمر ${newStudent.name.trim()}`,
+            parentPhone: newStudent.parentPhone.trim(),
+            parentPassword: data.credentials.parentPassword,
+          });
+        }
+        setNewStudent({ name: '', phone: '', parentName: '', parentPhone: '', parentRelation: 'Father', parentWhatsapp: '', parentExtraPhone: '', stageId: '', groupId: '' });
       } else {
-        alert(data.error || 'حدث خطأ أثناء إضافة الطالب');
+        toast.error(data.error || 'حدث خطأ أثناء إضافة الطالب');
       }
     } catch (err) {
-      alert('حدث خطأ بالاتصال');
+      toast.error('حدث خطأ بالاتصال');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteStudent = async (id: string, name: string) => {
-    if (!confirm(`هل أنت متأكد من حذف الطالب "${name}" نهائياً؟`)) return;
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
     try {
-      const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/students/${studentToDelete.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
+        toast.success('تم حذف الطالب بنجاح');
         fetchStudentsAndOptions();
       } else {
-        alert(data.error || 'تعذّر حذف الطالب');
+        toast.error(data.error || 'تعذّر حذف الطالب');
       }
     } catch (err) {
-      alert('خطأ في الاتصال بالخادم');
+      toast.error('خطأ في الاتصال بالخادم');
+    } finally {
+      setStudentToDelete(null);
     }
   };
 
@@ -149,12 +215,14 @@ function StudentsContent() {
       });
       const data = await res.json();
       if (data.success) {
+        toast.success('تم تحديث البيانات بنجاح');
         fetchStudentsAndOptions();
+      } else {
+        toast.error(data.error || 'حدث خطأ أثناء التحديث');
       }
       setEditingStudent(null);
     } catch (err) {
-      alert('تم تحديث البيانات');
-      fetchStudentsAndOptions();
+      toast.error('حدث خطأ في الاتصال بالخادم');
     } finally {
       setIsSaving(false);
     }
@@ -184,7 +252,13 @@ function StudentsContent() {
           </p>
         </div>
         <button
-          onClick={() => setIsAddingStudent(true)}
+          onClick={() => {
+            if (groupsOptions.length === 0) {
+              toast.error('يجب إضافة مجموعة ومرحلة دراسية أولاً من شاشة المجموعات.');
+              return;
+            }
+            setIsAddingStudent(true);
+          }}
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
         >
           <span>➕</span> إضافة طالب جديد
@@ -208,6 +282,7 @@ function StudentsContent() {
             <thead className="bg-slate-950/80 text-slate-400 text-xs font-semibold border-b border-slate-800">
               <tr>
                 <th className="p-3.5">الكود</th>
+                <th className="p-3.5">الباركود (Barcode)</th>
                 <th className="p-3.5">اسم الطالب</th>
                 <th className="p-3.5">المرحلة والمجموعة</th>
                 <th className="p-3.5">ولي الأمر ورقم التواصل</th>
@@ -218,12 +293,13 @@ function StudentsContent() {
             <tbody className="divide-y divide-slate-800/60">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">جارٍ تحميل قائمة الطلاب من قاعدة البيانات الحقيقية...</td>
+                  <td colSpan={7} className="text-center py-12 text-slate-400">جارٍ تحميل قائمة الطلاب من قاعدة البيانات الحقيقية...</td>
                 </tr>
               ) : (
                 filteredStudents.map((stu) => (
                   <tr key={stu.id} className="hover:bg-slate-800/40 transition">
                     <td className="p-3.5 font-mono text-blue-400 font-bold">{stu.code}</td>
+                    <td className="p-3.5 font-mono text-purple-400 font-semibold">{stu.qrCode}</td>
                     <td className="p-3.5 font-bold text-white">{stu.name}</td>
                     <td className="p-3.5">
                       <p className="text-slate-200">{stu.stage}</p>
@@ -245,7 +321,7 @@ function StudentsContent() {
                       </span>
                     </td>
                     <td className="p-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
                         <button
                           onClick={() => handleEditClick(stu)}
                           className="px-2.5 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
@@ -253,7 +329,13 @@ function StudentsContent() {
                           ✏️ تعديل
                         </button>
                         <button
-                          onClick={() => handleDeleteStudent(stu.id, stu.name)}
+                          onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
+                          className="px-2.5 py-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                        >
+                          🔑 الاعتماديات
+                        </button>
+                        <button
+                          onClick={() => setStudentToDelete({id: stu.id, name: stu.name})}
                           className="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
                         >
                           🗑️ حذف
@@ -348,6 +430,10 @@ function StudentsContent() {
                   </select>
                 </div>
               </div>
+              <div className="p-4 rounded-2xl bg-slate-950 border border-purple-500/20">
+                <p className="text-xs text-purple-400 font-semibold mb-2">🔐 لإدارة كلمات المرور، استخدم زر "الاعتماديات" في جدول الطلاب</p>
+                <p className="text-[10px] text-slate-500">كلمات المرور مشفرة بـ bcrypt ولا يمكن عرضها كنص. يمكنك إعادة تعيينها عبر موديل الاعتماديات.</p>
+              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -426,17 +512,69 @@ function StudentsContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">المرحلة والمجموعة *</label>
+                  <label className="block text-slate-300 mb-1">صلة القرابة</label>
+                  <select
+                    value={newStudent.parentRelation}
+                    onChange={(e) => setNewStudent({ ...newStudent, parentRelation: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="Father">والد (أب)</option>
+                    <option value="Mother">والدة (أم)</option>
+                    <option value="Guardian">ولي أمر (قريب)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1">واتساب ولي الأمر</label>
+                  <input
+                    type="text"
+                    placeholder="01xxxxxxxxx (اختياري)"
+                    value={newStudent.parentWhatsapp}
+                    onChange={(e) => setNewStudent({ ...newStudent, parentWhatsapp: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1">رقم هاتف إضافي</label>
+                  <input
+                    type="text"
+                    placeholder="رقم احتياطي (اختياري)"
+                    value={newStudent.parentExtraPhone}
+                    onChange={(e) => setNewStudent({ ...newStudent, parentExtraPhone: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-300 mb-1">المرحلة الدراسية *</label>
+                  <select
+                    value={newStudent.stageId}
+                    onChange={(e) => setNewStudent({ ...newStudent, stageId: e.target.value, groupId: '' })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  >
+                    <option value="">-- اختر المرحلة --</option>
+                    {stagesOptions.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 mb-1">المجموعة *</label>
                   <select
                     value={newStudent.groupId}
                     onChange={(e) => setNewStudent({ ...newStudent, groupId: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
                   >
-                    {groupsOptions.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.academicStage?.name} - {g.name}
-                      </option>
-                    ))}
+                    <option value="">-- اختر المجموعة --</option>
+                    {groupsOptions
+                      .filter((g: any) => !newStudent.stageId || g.academicStageId === newStudent.stageId)
+                      .map((g: any) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} {g.academicStage?.name ? `(${g.academicStage.name})` : ''}
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -457,6 +595,234 @@ function StudentsContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials Manager Modal */}
+      {credentialsStudent && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-purple-500/10 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">🔑</span>
+                إدارة اعتماديات: {credentialsStudent.name}
+              </h3>
+              <button onClick={() => setCredentialsStudent(null)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+
+            {/* Student Info */}
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-2 text-xs">
+              <p className="font-semibold text-purple-400 mb-2">👨‍🎓 معلومات حساب الطالب</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-slate-500">كود الحساب</p>
+                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.code}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">رقم الهاتف</p>
+                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">الباركود</p>
+                  <p className="font-mono text-purple-400 font-bold">{credentialsStudent.qrCode}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">كلمة المرور</p>
+                  <p className="font-mono text-emerald-400 font-bold text-sm">
+                    {credentialsStudent.passwordPlain && credentialsStudent.passwordPlain !== '—'
+                      ? credentialsStudent.passwordPlain
+                      : 'غير متوفرة (يرجى إعادة تعيينها)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Parent Info */}
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-2 text-xs">
+              <p className="font-semibold text-emerald-400 mb-2">👨‍👩‍👦 معلومات حساب ولي الأمر</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-slate-500">اسم ولي الأمر</p>
+                  <p className="font-bold text-white">{credentialsStudent.parentName}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">رقم الهاتف</p>
+                  <p className="font-mono text-emerald-400 font-bold">{credentialsStudent.parentPhone}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-slate-500">كلمة المرور</p>
+                  <p className="font-mono text-emerald-400 font-bold text-sm">
+                    {credentialsStudent.parentPasswordPlain && credentialsStudent.parentPasswordPlain !== '—'
+                      ? credentialsStudent.parentPasswordPlain
+                      : 'غير متوفرة (يرجى إعادة تعيينها)'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Password Reset Section */}
+            <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-3">
+              <p className="text-xs font-semibold text-rose-400">🔁 إعادة تعيين كلمة المرور (يتطلب إدخال كلمة المرور الجديدة يدوياً)</p>
+              <div>
+                <label className="block text-[10px] text-slate-400 mb-1">كلمة مرور جديدة للطالب</label>
+                <input
+                  type="text"
+                  placeholder="اترك فارغاً إن لم ترد التغيير..."
+                  value={credentialsForm.studentPassword}
+                  onChange={(e) => setCredentialsForm(prev => ({ ...prev, studentPassword: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-400 mb-1">كلمة مرور جديدة لولي الأمر</label>
+                <input
+                  type="text"
+                  placeholder="اترك فارغاً إن لم ترد التغيير..."
+                  value={credentialsForm.parentPassword}
+                  onChange={(e) => setCredentialsForm(prev => ({ ...prev, parentPassword: e.target.value }))}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setCredentialsStudent(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition"
+              >
+                إغلاق
+              </button>
+              <button
+                type="button"
+                disabled={isSavingCreds || (!credentialsForm.studentPassword && !credentialsForm.parentPassword)}
+                onClick={async () => {
+                  if (!credentialsForm.studentPassword && !credentialsForm.parentPassword) return;
+                  setIsSavingCreds(true);
+                  try {
+                    const res = await fetch(`/api/students/${credentialsStudent.id}/credentials`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        studentPassword: credentialsForm.studentPassword || undefined,
+                        parentPassword: credentialsForm.parentPassword || undefined,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      toast.success('تم تحديث بيانات الدخول بنجاح!');
+                      fetchStudentsAndOptions();
+                      setCredentialsStudent(null);
+                    } else {
+                      toast.error(data.error || 'حدث خطأ أثناء الحفظ');
+                    }
+                  } catch {
+                    toast.error('خطأ في الاتصال');
+                  } finally {
+                    setIsSavingCreds(false);
+                  }
+                }}
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-lg transition cursor-pointer"
+              >
+                {isSavingCreds ? 'جارٍ الحفظ...' : '💾 حفظ وتحديث كلمات المرور'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Student Credentials Reveal Modal */}
+      {newStudentCredentials && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-7 w-full max-w-md shadow-2xl shadow-emerald-500/10 space-y-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span className="text-3xl">✅</span>
+              </div>
+              <h3 className="text-xl font-black text-white">تم إنشاء حساب الطالب بنجاح!</h3>
+              <p className="text-slate-400 text-xs mt-1">الطالب: <strong className="text-white">{newStudentCredentials.studentName}</strong></p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs">
+                <p className="text-purple-300 font-semibold mb-2">🎓 بيانات حساب الطالب</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-slate-400">كود الحساب</p>
+                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.studentCode}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">رقم الهاتف (اسم المستخدم)</p>
+                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.studentPhone}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400">كلمة المرور</p>
+                    <p className="font-mono text-emerald-400 font-bold text-lg">{newStudentCredentials.studentPassword}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
+                <p className="text-blue-300 font-semibold mb-2">👨‍👩‍👦 بيانات حساب ولي الأمر</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-slate-400">اسم ولي الأمر</p>
+                    <p className="font-bold text-white">{newStudentCredentials.parentName}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">رقم الهاتف (اسم المستخدم)</p>
+                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.parentPhone}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-400">كلمة المرور</p>
+                    <p className="font-mono text-blue-400 font-bold text-lg">{newStudentCredentials.parentPassword}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[10px] text-amber-400">
+                ⚠️ سيتم إرسال بيانات الدخول عبر الواتساب تلقائياً (إذا كان الواتساب مفعلاً). احتفظ بهذه البيانات في مكان آمن.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setNewStudentCredentials(null)}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm transition cursor-pointer"
+            >
+              تم الحفظ ✓
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {studentToDelete && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
+            <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-lg font-bold text-white">تأكيد الحذف</h3>
+            <p className="text-slate-400 text-sm">
+              هل أنت متأكد من حذف الطالب <strong className="text-rose-400">{studentToDelete.name}</strong> نهائياً؟ لا يمكن التراجع عن هذا الإجراء.
+            </p>
+            <div className="flex justify-center gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteStudent}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 transition"
+              >
+                نعم، احذف الطالب
+              </button>
+            </div>
           </div>
         </div>
       )}

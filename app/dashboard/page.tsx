@@ -197,26 +197,28 @@ export default function DashboardPage() {
           <p className="text-xs text-emerald-400 mt-4 font-semibold">معدل الحضور التراكمي</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden text-right"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</p>
-              <h3 className="text-3xl font-black text-amber-400 mt-1">{loading ? '...' : stats.pendingRegistrations}</h3>
+        <Link href="/registration-requests" className="block">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="glass-card p-6 rounded-3xl relative overflow-hidden text-right hover:border-amber-500/30 transition-all duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</p>
+                <h3 className="text-3xl font-black text-amber-400 mt-1">{loading ? '...' : stats.pendingRegistrations}</h3>
+              </div>
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 shadow-inner group-hover:bg-amber-500/20 transition-colors">
+                <AlertTriangle className="w-7 h-7" />
+              </div>
             </div>
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 shadow-inner">
-              <AlertTriangle className="w-7 h-7" />
+            <div className="text-xs text-amber-400 mt-4 font-semibold flex items-center gap-1 group-hover:underline">
+              <span>اضغط لمراجعة الطلبات</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </div>
-          </div>
-          <Link href="/registration-requests" className="text-xs text-amber-400 mt-4 font-semibold flex items-center gap-1 hover:underline">
-            <span>اضغط لمراجعة الطلبات</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
-        </motion.div>
+          </motion.div>
+        </Link>
       </div>
 
       {/* Main Interactive Charts & Activity Section */}

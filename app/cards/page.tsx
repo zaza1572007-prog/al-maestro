@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { RefreshCw, Printer, Users } from 'lucide-react';
+import Barcode from '@/components/Barcode';
 
 interface Student {
   id: string;
@@ -46,7 +47,68 @@ export default function CardsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Hide non-printable elements */
+          .no-print, header, aside, .no-print *, button, .flex-wrap {
+            display: none !important;
+          }
+          
+          /* Force page size and layout reset */
+          body, html, main, #__next, div.flex-1, main.flex-1 {
+            background: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: auto !important;
+            height: auto !important;
+            width: auto !important;
+            overflow: visible !important;
+          }
+
+          @page {
+            size: 50mm 25mm;
+            margin: 0;
+          }
+
+          .sticker-card {
+            width: 50mm !important;
+            height: 25mm !important;
+            max-width: 50mm !important;
+            max-height: 25mm !important;
+            min-width: 50mm !important;
+            min-height: 25mm !important;
+            padding: 1.5mm 2mm !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            background: white !important;
+            color: black !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            overflow: hidden !important;
+          }
+          .sticker-card h4 {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+          }
+          .sticker-card p {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+          }
+        }
+      `}} />
+
+      <div className="flex items-center justify-between no-print">
         <div>
           <h1 className="text-2xl font-bold text-white">🎴 طباعة بطاقات الطلاب</h1>
           <p className="text-slate-400 text-sm mt-1">توليد بطاقات تعريف QR Code للطلاب الحقيقيين من قاعدة البيانات</p>
@@ -65,7 +127,7 @@ export default function CardsPage() {
       </div>
 
       {/* Group Filter */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap no-print">
         <span className="text-xs text-slate-400">تصفية بالمجموعة:</span>
         <button
           onClick={() => setSelectedGroupId('ALL')}
@@ -90,33 +152,32 @@ export default function CardsPage() {
           جارٍ تحميل بيانات الطلاب...
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 print:grid-cols-3 print:gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 print:block print:w-full print:p-0">
           {filtered.map((stu) => (
             <div
               key={stu.id}
-              className="w-full bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 border-2 border-blue-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between print:break-inside-avoid print:border print:rounded-lg"
+              className="sticker-card w-full bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 border-2 border-blue-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between print:border print:border-black/10 print:bg-white print:text-black print:shadow-none"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between print:mb-0.5">
                 <div>
-                  <h3 className="font-extrabold text-sm text-white">منصة المايسترو</h3>
-                  <p className="text-[10px] text-amber-400 font-bold">أ. أحمد راضي كحلة</p>
+                  <h3 className="font-extrabold text-sm text-white print:text-black print:text-[8px] print:leading-tight">منصة المايسترو</h3>
+                  <p className="text-[10px] text-amber-400 print:text-amber-600 font-bold print:text-[7px] print:leading-tight">أ. أحمد راضي كحلة</p>
                 </div>
-                <span className="text-[10px] bg-blue-600 text-white font-mono px-2 py-0.5 rounded">{stu.code}</span>
+                <span className="text-[10px] bg-blue-600 text-white font-mono px-2 py-0.5 rounded print:text-[7px] print:px-1 print:py-0 print:border print:border-blue-600/20 print:text-blue-700 print:bg-blue-50 print:leading-tight">{stu.code}</span>
               </div>
 
-              <div className="flex items-center gap-4 my-3">
-                <div className="w-16 h-16 bg-white p-1 rounded-lg flex items-center justify-center font-mono text-[8px] text-black font-bold text-center leading-tight">
-                  {stu.qrCode || stu.code}
+              <div className="flex items-center gap-3 my-3 print:my-0.5 print:gap-1.5">
+                <div className="w-28 h-12 bg-white p-1 rounded-lg flex items-center justify-center overflow-hidden print:border print:border-slate-200 print:w-[100px] print:h-[30px] print:p-0.5 flex-shrink-0">
+                  <Barcode value={stu.qrCode || stu.code} width={0.8} height={18} />
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-100 text-sm">{stu.name}</h4>
-                  <p className="text-[11px] text-slate-400">{stu.academicStage?.name || '—'}</p>
-                  <p className="text-[10px] text-slate-400">{stu.group?.name || '—'}</p>
+                <div className="flex-1 min-w-0 print:text-right">
+                  <h4 className="font-bold text-slate-100 print:text-black print:text-[8px] print:leading-tight truncate">{stu.name}</h4>
+                  <p className="text-[10px] text-slate-400 print:text-slate-600 print:text-[6.5px] print:leading-tight truncate">{stu.academicStage?.name || '—'}</p>
                 </div>
               </div>
 
-              <p className="text-[9px] text-slate-600 text-center border-t border-slate-800 pt-1">
-                كود التعريف: {stu.qrCode || stu.code} — منصة المايسترو التعليمية
+              <p className="text-[9px] text-slate-600 print:text-slate-400 text-center border-t border-slate-800 print:border-slate-200 pt-1 print:pt-0.5 print:text-[6px] print:leading-none">
+                كود التعريف: {stu.qrCode || stu.code}
               </p>
             </div>
           ))}

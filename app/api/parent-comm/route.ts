@@ -1,37 +1,45 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const parentComms = await prisma.parentCommunication.findMany({
+    const comms = await prisma.parentCommunication.findMany({
       include: {
         student: true,
       },
-      orderBy: { date: 'desc' },
+      orderBy: {
+        date: 'desc'
+      }
     });
-    return NextResponse.json({ success: true, parentComms });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+
+    return NextResponse.json({ success: true, comms });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { studentId, method, reason, result, notes } = await req.json();
+    const { studentId, channel, reason, notes } = await req.json();
+
+    if (!studentId || !reason || !notes) {
+      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    }
 
     const comm = await prisma.parentCommunication.create({
       data: {
         studentId,
-        date: new Date(),
-        method: method || 'WHATSAPP',
+        method: channel.includes('WhatsApp') || channel.includes('WHATSAPP') ? 'WHATSAPP' : 'PHONE',
         reason,
-        result,
         notes,
+        date: new Date()
       },
+      include: { student: true }
     });
 
     return NextResponse.json({ success: true, comm });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

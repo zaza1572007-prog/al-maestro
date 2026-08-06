@@ -90,14 +90,26 @@ function GroupsContent() {
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Determine the actual stageId to use
+    const actualStageId = newGroup.stageId || stagesList[0]?.id;
+    if (!actualStageId) {
+      alert('يرجى إضافة مرحلة دراسية أولاً من شاشة المراحل قبل إنشاء مجموعة.');
+      return;
+    }
+    if (!newGroup.name.trim()) {
+      alert('يرجى إدخال اسم المجموعة.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newGroup.name,
-          academicStageId: newGroup.stageId || stagesList[0]?.id,
+          name: newGroup.name.trim(),
+          academicStageId: actualStageId,
           scheduleDays: newGroup.days.split(' و '),
           startTime: newGroup.startTime,
           endTime: newGroup.endTime,
@@ -143,20 +155,30 @@ function GroupsContent() {
     setIsSaving(true);
 
     try {
-      await fetch(`/api/groups/${editingGroup.id}`, {
+      const res = await fetch(`/api/groups/${editingGroup.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingGroup),
+        body: JSON.stringify({
+          name: editingGroup.name,
+          days: editingGroup.days,
+          time: editingGroup.time,
+        }),
       });
 
-      setGroupsList(prev => prev.map(g => g.id === editingGroup.id ? editingGroup : g));
-      setEditingGroup(null);
+      const data = await res.json();
+      if (data.success) {
+        fetchRealGroupsAndStages();
+        setEditingGroup(null);
+      } else {
+        alert(data.error || 'حدث خطأ أثناء تحديث بيانات المجموعة');
+      }
     } catch (err) {
-      alert('تم تحديث المجموعة');
+      alert('خطأ في الاتصال بالخادم');
     } finally {
       setIsSaving(false);
     }
   };
+
 
   // Filter groups by grade name OR stageId
   const groups = groupsList.filter((g) => {
@@ -175,7 +197,13 @@ function GroupsContent() {
           </p>
         </div>
         <button
-          onClick={() => setIsAddingGroup(true)}
+          onClick={() => {
+            if (stagesList.length === 0) {
+              alert('يرجى إضافة مرحلة دراسية أولاً من شاشة المراحل قبل إنشاء مجموعة.');
+              return;
+            }
+            setIsAddingGroup(true);
+          }}
           className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-600/20"
         >
           <span>➕</span> إضافة مجموعة جديدة

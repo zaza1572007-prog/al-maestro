@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { useToast } from '@/components/ToastProvider';
 import {
   Phone,
   Lock,
@@ -20,6 +21,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role') || 'TEACHER';
+  const { info } = useToast();
 
   const [studentName, setStudentName] = useState('');
   const [phone, setPhone] = useState('');
@@ -58,10 +60,10 @@ function LoginForm() {
       if (res.ok && data.success) {
         window.location.href = redirectTarget;
       } else {
-        window.location.href = redirectTarget;
+        setError(data.error || 'فشل تسجيل الدخول. يرجى التحقق من البيانات.');
       }
     } catch (err: any) {
-      window.location.href = redirectTarget;
+      setError('حدث خطأ أثناء الاتصال بالخادم. يرجى المحاولة لاحقاً.');
     } finally {
       setLoading(false);
     }
@@ -164,7 +166,12 @@ function LoginForm() {
             />
             <span>تذكرني على هذا الجهاز</span>
           </label>
-          <a href="#" className="text-purple-400 hover:underline">نسيت كلمة المرور؟</a>
+          <Link 
+            href="/forgot-password"
+            className="text-purple-400 hover:underline"
+          >
+            نسيت كلمة المرور؟
+          </Link>
         </div>
 
         <motion.button

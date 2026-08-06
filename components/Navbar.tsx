@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,17 +22,95 @@ export default function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCalendarQuick, setShowCalendarQuick] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const [notificationsList, setNotificationsList] = useState([
-    { id: 1, title: 'اشتراك ينتهي قريباً 💳', desc: 'الطالبة سارة إبراهيم - ينتهي الاشتراك خلال يومين', time: 'منذ 10 دقائق', unread: true },
-    { id: 2, title: 'تسجيل حضور جديد 📱', desc: 'تم تسجيل حضور 28 طالب في مجموعة الثالث الثانوي', time: 'منذ ساعة', unread: true },
-  ]);
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.json()).then(data => {
+      if (data.success) setCurrentUser(data.user);
+    }).catch(console.error);
+  }, []);
+
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const [todaySessions, setTodaySessions] = useState<any[]>([]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      const data = await res.json();
+      if (data.success && data.notifications) {
+        const formatted = data.notifications.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          desc: n.message,
+          time: new Date(n.createdAt).toLocaleDateString('ar-EG', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          unread: !n.isRead,
+        }));
+        setNotificationsList(formatted);
+      }
+    } catch (err) {
+      console.error('Failed to load notifications:', err);
+    }
+  };
+
+  const fetchTodaySessions = async () => {
+    try {
+      const res = await fetch('/api/attendance/today-groups');
+      const data = await res.json();
+      if (data.success && data.groups) {
+        setTodaySessions(data.groups);
+      }
+    } catch (err) {
+      console.error('Failed to load today groups:', err);
+    }
+  };
+
+  useEffect(() => {
+    // Hide navbar on public pages
+    if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000);
+    return () => clearInterval(interval);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (showCalendarQuick) {
+      fetchTodaySessions();
+    }
+  }, [showCalendarQuick]);
+
+  const to12h = (time24: string): string => {
+    if (!time24) return '';
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr || '00';
+    const period = h >= 12 ? 'م' : 'ص';
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    return `${h}:${m} ${period}`;
+  };
 
   // Hide Navbar completely on public pages: Login, Role Selection, and Student Registration
   if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return null;
 
-  const markAllRead = () => {
-    setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));
+  const markAllRead = async () => {
+    try {
+      const unread = notificationsList.filter(n => n.unread);
+      await Promise.all(
+        unread.map(n =>
+          fetch(`/api/notifications/${n.id}`, {
+            method: 'PATCH',
+          })
+        )
+      );
+      setNotificationsList(prev => prev.map(n => ({ ...n, unread: false })));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -66,20 +144,27 @@ export default function Navbar() {
             >
               <p className="text-xs text-slate-400 mb-3">نتائج البحث عن "{searchQuery}"</p>
               <div className="space-y-2">
-                <Link
-                  href={`/students?search=${encodeURIComponent(searchQuery)}`}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                >
-                  <span className="font-medium">البحث في قائمة الطلاب 👨‍🎓</span>
-                  <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                </Link>
-                <Link
-                  href={`/groups?search=${encodeURIComponent(searchQuery)}`}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                >
-                  <span className="font-medium">البحث في المجموعات 👥</span>
-                  <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                </Link>
+                {currentUser?.role !== 'STUDENT' && currentUser?.role !== 'PARENT' && (
+                  <>
+                    <Link
+                      href={`/students?search=${encodeURIComponent(searchQuery)}`}
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
+                    >
+                      <span className="font-medium">البحث في قائمة الطلاب 👨‍🎓</span>
+                      <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
+                    </Link>
+                    <Link
+                      href={`/groups?search=${encodeURIComponent(searchQuery)}`}
+                      className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
+                    >
+                      <span className="font-medium">البحث في المجموعات 👥</span>
+                      <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
+                    </Link>
+                  </>
+                )}
+                {(currentUser?.role === 'STUDENT' || currentUser?.role === 'PARENT') && (
+                   <div className="p-3 text-slate-400 text-center">البحث متاح لأسماء الملفات فقط حالياً.</div>
+                )}
               </div>
             </motion.div>
           )}
@@ -126,17 +211,35 @@ export default function Navbar() {
                   {notificationsList.map((n) => (
                     <div
                       key={n.id}
-                      className={`p-3 rounded-2xl border text-xs transition-all ${
+                      onClick={async () => {
+                        if (n.unread) {
+                          try {
+                            await fetch(`/api/notifications/${n.id}`, { method: 'PATCH' });
+                            setNotificationsList(prev =>
+                              prev.map(item => (item.id === n.id ? { ...item, unread: false } : item))
+                            );
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }}
+                      className={`p-3 rounded-2xl border text-xs transition-all cursor-pointer hover:border-purple-500/20 ${
                         n.unread
                           ? 'bg-purple-950/30 border-purple-500/30 text-slate-200'
                           : 'bg-white/5 border-white/5 text-slate-400'
                       }`}
                     >
-                      <p className="font-bold text-white mb-1">{n.title}</p>
+                      <p className="font-bold text-white mb-1 flex items-center gap-1.5 justify-between">
+                        <span>{n.title}</span>
+                        {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />}
+                      </p>
                       <p className="leading-relaxed">{n.desc}</p>
                       <span className="text-[10px] text-slate-500 block mt-2">{n.time}</span>
                     </div>
                   ))}
+                  {notificationsList.length === 0 && (
+                    <p className="text-slate-500 text-center py-4 text-xs">لا توجد تنبيهات حالياً</p>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -174,15 +277,28 @@ export default function Navbar() {
                     التقويم الكامل ←
                   </Link>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                    <p className="font-bold text-purple-300">مجموعة السبت - 4:00 مساءً</p>
-                    <p className="text-slate-400 mt-1">الصف الثالث الإعدادي (القاعة 1)</p>
-                  </div>
-                  <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                    <p className="font-bold text-blue-300">مجموعة الأحد - 6:00 مساءً</p>
-                    <p className="text-slate-400 mt-1">الصف الثالث الثانوي (القاعة الرئيسية)</p>
-                  </div>
+                <div className="space-y-2 text-xs max-h-60 overflow-y-auto">
+                  {todaySessions.map((session) => (
+                    <div key={session.id} className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1.5">
+                      <p className="font-bold text-purple-300">
+                        {session.name} — {to12h(session.startTime)}
+                      </p>
+                      <p className="text-slate-400">
+                        {session.academicStage?.name || 'مرحلة دراسية'} {session.room ? `(${session.room})` : ''}
+                      </p>
+                      <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          session.isOpen ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                        }`}>
+                          {session.isOpen ? 'مفتوحة الحضور 🟢' : 'مغلقة الحضور 🔴'}
+                        </span>
+                        <span className="text-[10px] text-slate-500">الحضور: {session.presentCount || 0} طالب</span>
+                      </div>
+                    </div>
+                  ))}
+                  {todaySessions.length === 0 && (
+                    <p className="text-slate-500 text-center py-4">لا توجد مجموعات اليوم</p>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -202,11 +318,11 @@ export default function Navbar() {
             className="flex items-center gap-3 p-1.5 pl-3 rounded-2xl glass-panel border border-white/10 hover:border-purple-500/30 cursor-pointer transition-all select-none"
           >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-purple-500/20 border border-white/20">
-              أك
+              {currentUser?.name?.charAt(0) || 'أ'}
             </div>
             <div className="hidden md:block text-right">
-              <p className="text-sm font-bold text-white leading-tight">أحمد راضي كحلة</p>
-              <p className="text-[11px] text-purple-400 font-medium">مدرس الرياضيات</p>
+              <p className="text-sm font-bold text-white leading-tight">{currentUser?.name || 'جاري التحميل...'}</p>
+              <p className="text-[11px] text-purple-400 font-medium">{currentUser?.role === 'STUDENT' ? 'طالب' : currentUser?.role === 'PARENT' ? 'ولي أمر' : 'مدرس رياضيات'}</p>
             </div>
             <ChevronDown className="w-4 h-4 text-slate-400" />
           </div>
@@ -220,19 +336,21 @@ export default function Navbar() {
                 className="absolute left-0 mt-3 w-60 glass-panel border border-white/15 rounded-3xl shadow-2xl p-2 z-50 space-y-1 text-xs bg-slate-950/90"
               >
                 <Link
-                  href="/profile"
+                  href={currentUser?.role === 'STUDENT' ? '/student-portal/profile' : currentUser?.role === 'PARENT' ? '/parent-portal/profile' : '/profile'}
                   className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-2xl text-slate-200 font-medium transition-colors"
                 >
                   <User className="w-4 h-4 text-purple-400" />
                   <span>البروفايل الشخصي</span>
                 </Link>
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-2xl text-slate-200 font-medium transition-colors"
-                >
-                  <Settings className="w-4 h-4 text-blue-400" />
-                  <span>إعدادات المنصة والهوية</span>
-                </Link>
+                {currentUser?.role !== 'STUDENT' && currentUser?.role !== 'PARENT' && (
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-2xl text-slate-200 font-medium transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-blue-400" />
+                    <span>إعدادات المنصة والهوية</span>
+                  </Link>
+                )}
                 <div className="border-t border-white/10 my-1"></div>
                 <Link
                   href="/select-role"

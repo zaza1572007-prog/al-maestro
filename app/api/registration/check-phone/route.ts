@@ -9,9 +9,8 @@ export async function POST(request: Request) {
     // Check if student phone already exists in registered active students
     if (studentPhone) {
       const existingStudent = await prisma.student.findFirst({
-        ariaLabel: 'check-student-phone',
         where: { phone: studentPhone },
-      } as any);
+      });
 
       if (existingStudent) {
         return NextResponse.json({
