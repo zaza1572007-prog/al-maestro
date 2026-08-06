@@ -1,0 +1,113 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
+/**
+ * TeacherOverlay
+ * ─ Shows the teacher portrait as a semi-transparent watermark.
+ * ─ Loads from /api/settings/branding?type=portrait (DB-backed, Vercel-safe).
+ * ─ Fetches opacity and scale from global settings.
+ * ─ Responsive: hidden on mobile (md breakpoint).
+ */
+export default function TeacherOverlay() {
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [opacity, setOpacity] = useState<number>(0.18);
+  const [scale, setScale] = useState<number>(1.0);
+
+  const fetchConfigAndImage = async () => {
+    try {
+      // 1. Fetch opacity and scale from settings
+      const settingsRes = await fetch('/api/settings');
+      const settingsData = await settingsRes.json();
+      if (settingsData.success && settingsData.settings) {
+        if (settingsData.settings.portraitOpacity !== undefined) {
+          setOpacity(settingsData.settings.portraitOpacity);
+        }
+        if (settingsData.settings.portraitScale !== undefined) {
+          setScale(settingsData.settings.portraitScale);
+        }
+      }
+
+      // 2. Check if portrait exists
+      const imgRes = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
+      if (imgRes.ok) {
+        setImgSrc('/api/settings/branding?type=portrait&t=' + Date.now());
+      }
+    } catch {
+      // hide silently on error
+    }
+  };
+
+  useEffect(() => {
+    fetchConfigAndImage();
+
+    // Listen for updates after upload or config changed
+    const refresh = () => {
+      fetchConfigAndImage();
+    };
+    window.addEventListener('maestro-portrait-updated', refresh);
+    window.addEventListener('maestro-portrait-config-updated', refresh);
+    return () => {
+      window.removeEventListener('maestro-portrait-updated', refresh);
+      window.removeEventListener('maestro-portrait-config-updated', refresh);
+    };
+  }, []);
+
+  if (!imgSrc) return null;
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none select-none fixed bottom-0 left-0 z-0 hidden md:flex items-end justify-center overflow-hidden"
+      style={{ 
+        width: 'clamp(280px, 30vw, 550px)', // Made wider so image can scale up beautifully
+        height: '100vh'                     // Full screen height
+      }}
+    >
+      {/* Right fade */}
+      <div
+        className="absolute inset-0 z-[2]"
+        style={{
+          background:
+            'linear-gradient(to right, transparent 0%, rgba(6,9,19,.15) 50%, rgba(6,9,19,.95) 100%)',
+        }}
+      />
+      {/* Top fade */}
+      <div
+        className="absolute top-0 left-0 w-full z-[3]"
+        style={{
+          height: '25%',
+          background: 'linear-gradient(to bottom, rgba(6,9,19,.95), transparent)',
+        }}
+      />
+      {/* Bottom fade */}
+      <div
+        className="absolute bottom-0 left-0 w-full z-[3]"
+        style={{
+          height: '28%',
+          background: 'linear-gradient(to top, rgba(6,9,19,1), transparent)',
+        }}
+      />
+
+      {/* Dynamic scaled and opacity image container */}
+      <div 
+        className="absolute inset-0 z-[1] transition-transform duration-300 ease-out"
+        style={{
+          transform: `scale(${scale}) translateY(${(1 - scale) * 10}%)`, // dynamically center base on scale
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imgSrc}
+          alt="صورة المستر"
+          className="w-full h-full object-contain object-bottom"
+          style={{ 
+            opacity: opacity,
+            transition: 'opacity 0.3s ease'
+          }}
+          onError={() => setImgSrc(null)}
+        />
+      </div>
+    </div>
+  );
+}

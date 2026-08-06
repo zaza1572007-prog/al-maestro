@@ -44,6 +44,36 @@ export default function Sidebar() {
   const toast = useToast();
   const { isMobileOpen, setIsMobileOpen } = useSidebar();
   const [isMobile, setIsMobile] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  const [logoScale, setLogoScale] = useState<number>(1.0);
+
+  // Load logo from DB
+  useEffect(() => {
+    const fetchLogo = async () => {
+      try {
+        // Fetch configs to get scale
+        const settingsRes = await fetch('/api/settings');
+        const settingsData = await settingsRes.json();
+        if (settingsData.success && settingsData.settings && settingsData.settings.logoScale !== undefined) {
+          setLogoScale(settingsData.settings.logoScale);
+        }
+
+        const res = await fetch('/api/settings/branding?type=logo', { method: 'HEAD' });
+        if (res.ok) {
+          setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
+        }
+      } catch {}
+    };
+    fetchLogo();
+
+    // Listen to logo update event
+    const handleUpdate = () => {
+      fetchLogo();
+    };
+    window.addEventListener('maestro-logo-updated', handleUpdate);
+    return () => window.removeEventListener('maestro-logo-updated', handleUpdate);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -159,8 +189,24 @@ export default function Sidebar() {
       {/* Brand Header & Toggle */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="relative flex-shrink-0 w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center font-black text-white text-xl shadow-lg shadow-purple-500/30 border border-white/20">
-            <Sparkles className="w-6 h-6 animate-pulse" />
+          <div 
+            className="relative flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center font-black text-white text-xl shadow-lg border border-white/20 overflow-hidden bg-slate-900"
+            style={{
+              borderColor: 'rgb(var(--p) / 0.3)',
+              boxShadow: '0 4px 15px rgb(var(--p) / 0.25)'
+            }}
+          >
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img 
+                src={logoUrl} 
+                alt="اللوجو" 
+                className="w-full h-full object-contain p-1 transition-transform duration-300" 
+                style={{ transform: `scale(${logoScale})` }}
+              />
+            ) : (
+              <Sparkles className="w-6 h-6 animate-pulse" style={{ color: 'rgb(var(--p))' }} />
+            )}
           </div>
           {!isCollapsed && (
             <motion.div
@@ -172,7 +218,7 @@ export default function Sidebar() {
               <h1 className="font-bold text-base text-white tracking-tight leading-tight truncate">
                 {portalTitle}
               </h1>
-              <p className="text-xs text-purple-400 font-medium truncate">
+              <p className="text-xs font-medium truncate" style={{ color: 'rgb(var(--p))' }}>
                 {portalSubtitle}
               </p>
             </motion.div>
@@ -224,7 +270,12 @@ export default function Sidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active-indicator"
-                    className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent border border-purple-500/40 rounded-2xl shadow-lg shadow-purple-500/10"
+                    className="absolute inset-0 border rounded-2xl shadow-lg"
+                    style={{
+                      background: 'linear-gradient(to left, rgb(var(--p) / 0.25) 0%, rgb(var(--s) / 0.1) 100%)',
+                      borderColor: 'rgb(var(--p) / 0.35)',
+                      boxShadow: '0 4px 15px rgb(var(--p) / 0.08)'
+                    }}
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                   />
                 )}
@@ -232,9 +283,18 @@ export default function Sidebar() {
                 <div
                   className={`relative z-10 p-2 rounded-xl transition-colors flex items-center justify-center ${
                     isActive
-                      ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30 shadow-inner'
-                      : 'text-slate-400 group-hover:text-purple-300'
+                      ? 'border shadow-inner'
+                      : 'text-slate-400 group-hover:text-slate-200'
                   }`}
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: 'rgb(var(--p) / 0.15)',
+                          color: 'rgb(var(--p))',
+                          borderColor: 'rgb(var(--p) / 0.3)'
+                        }
+                      : undefined
+                  }
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                 </div>
@@ -259,13 +319,25 @@ export default function Sidebar() {
       <div className="p-3 border-t border-white/10 bg-slate-900/40 backdrop-blur-md">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0">
+            <div 
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)'
+              }}
+            >
               {currentUser?.name?.charAt(0) || 'أ'}
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
                 <p className="font-semibold text-slate-200 text-xs truncate">{currentUser?.name || 'جاري التحميل...'}</p>
-                <span className="inline-block text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                <span 
+                  className="inline-block text-[10px] px-2 py-0.5 rounded-full border"
+                  style={{
+                    backgroundColor: 'rgb(var(--p) / 0.1)',
+                    borderColor: 'rgb(var(--p) / 0.2)',
+                    color: 'rgb(var(--p))'
+                  }}
+                >
                   {roleBadge}
                 </span>
               </div>

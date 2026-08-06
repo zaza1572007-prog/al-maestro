@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "npm run prisma:migrate && npm run dev",
-    "build": "prisma generate && next build",
+    "build": "node prisma/ensure-branding-columns.mjs && prisma generate && next build",
+
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",

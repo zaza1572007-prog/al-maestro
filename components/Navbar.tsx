@@ -143,7 +143,14 @@ export default function Navbar() {
               className="w-full glass-input py-2.5 px-4 pr-11 pl-16 text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
             />
             <Search className="w-5 h-5 absolute right-3.5 top-3 text-slate-400" />
-            <span className="absolute left-3 top-2.5 text-[10px] font-mono bg-white/10 text-purple-300 px-2 py-1 rounded-lg border border-white/10">
+            <span 
+              className="absolute left-3 top-2.5 text-[10px] font-mono px-2 py-1 rounded-lg border"
+              style={{
+                backgroundColor: 'rgb(var(--p) / 0.1)',
+                borderColor: 'rgb(var(--p) / 0.2)',
+                color: 'rgb(var(--p))'
+              }}
+            >
               Ctrl+K
             </span>
           </div>
@@ -198,7 +205,10 @@ export default function Navbar() {
               setShowCalendarQuick(false);
               setShowProfileMenu(false);
             }}
-            className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 hover:border-purple-500/40 transition-all relative group"
+            className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 transition-all relative group"
+            style={{
+              borderColor: showNotifications ? 'rgb(var(--p) / 0.4)' : undefined
+            }}
             title="التنبيهات"
           >
             <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -332,14 +342,25 @@ export default function Navbar() {
               setShowNotifications(false);
               setShowCalendarQuick(false);
             }}
-            className="flex items-center gap-3 p-1.5 pl-3 rounded-2xl glass-panel border border-white/10 hover:border-purple-500/30 cursor-pointer transition-all select-none"
+            className="flex items-center gap-3 p-1.5 pl-3 rounded-2xl glass-panel border border-white/10 cursor-pointer transition-all select-none"
+            style={{
+              borderColor: showProfileMenu ? 'rgb(var(--p) / 0.4)' : undefined
+            }}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-purple-500/20 border border-white/20">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/20"
+              style={{
+                background: 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)',
+                boxShadow: '0 4px 15px rgb(var(--p) / 0.2)'
+              }}
+            >
               {currentUser?.name?.charAt(0) || 'أ'}
             </div>
             <div className="hidden md:block text-right">
               <p className="text-sm font-bold text-white leading-tight">{currentUser?.name || 'جاري التحميل...'}</p>
-              <p className="text-[11px] text-purple-400 font-medium">{currentUser?.role === 'STUDENT' ? 'طالب' : currentUser?.role === 'PARENT' ? 'ولي أمر' : 'مدرس رياضيات'}</p>
+              <p className="text-[11px] font-medium" style={{ color: 'rgb(var(--p))' }}>
+                {currentUser?.role === 'STUDENT' ? 'طالب' : currentUser?.role === 'PARENT' ? 'ولي أمر' : 'مدرس رياضيات'}
+              </p>
             </div>
             <ChevronDown className="w-4 h-4 text-slate-400" />
           </div>

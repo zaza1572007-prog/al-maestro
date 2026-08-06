@@ -60,7 +60,7 @@ export default function StudentPortalDashboard() {
         subtitle={`${studentInfo.stage} | ${studentInfo.group} | الرمز: ${studentInfo.code}`}
         stats={[
           { label: "نسبة حضورك", value: studentInfo.attendanceRate, color: "text-emerald-400" },
-          { label: "آخر النتيجة", value: "98%", color: "text-purple-300" },
+          { label: "أحدث نتيجة", value: studentInfo.latestExamScore, color: "text-purple-300" },
         ]}
       />
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GraduationCap, Users, ShieldCheck, Sparkles, ArrowLeft, UserPlus } from "lucide-react";
+import TeacherOverlay from "@/components/TeacherOverlay";
 
 export default function SelectRolePage() {
   const router = useRouter();
@@ -49,7 +50,10 @@ export default function SelectRolePage() {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col justify-center items-center p-6 bg-[#060913]">
+    <div className="min-h-screen relative overflow-hidden flex flex-col justify-center items-center p-6 bg-transparent">
+      {/* Teacher Overlay in background */}
+      <TeacherOverlay />
+
       {/* Background Ambient Glows */}
       <div className="ambient-glow-1"></div>
       <div className="ambient-glow-2"></div>

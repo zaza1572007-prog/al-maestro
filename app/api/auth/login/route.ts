@@ -12,12 +12,21 @@ function getJwtSecret() {
 export async function POST(req: Request) {
   try {
     const { phone, studentName, password, role } = await req.json();
-    if (!phone || !password) {
-      return NextResponse.json({ success: false, error: 'رقم الهاتف وكلمة المرور مطلوبان' }, { status: 400 });
+    let userRole = role || 'TEACHER';
+
+    if (userRole === 'STUDENT') {
+      if ((!phone && !studentName) || !password) {
+        return NextResponse.json({ success: false, error: 'الاسم/الكود وكلمة المرور مطلوبان' }, { status: 400 });
+      }
+    } else {
+      if (!phone || !password) {
+        return NextResponse.json({ success: false, error: 'رقم الهاتف وكلمة المرور مطلوبان' }, { status: 400 });
+      }
     }
 
-    let userRole = role || 'TEACHER';
+
     let targetUser: any = null;
+
 
     if (userRole === 'STUDENT') {
       // Find student by Name, Phone, or Code

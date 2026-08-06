@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import HeroHeader from '@/components/HeroHeader';
-import { ToggleLeft, ToggleRight } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw } from 'lucide-react';
+import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
+import ColorPaletteSelector from '@/components/ColorPaletteSelector';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('registration');
@@ -37,6 +39,79 @@ export default function SettingsPage() {
   // Backup
   const [restoreMsg, setRestoreMsg] = useState('');
 
+  // Custom Identity & Contact settings
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactWhatsapp, setContactWhatsapp] = useState('');
+  const [motivationQuote, setMotivationQuote] = useState('');
+
+  // Portrait layout configuration
+  const [portraitOpacity, setPortraitOpacity] = useState(0.18);
+  const [portraitScale, setPortraitScale] = useState(1.0);
+
+  // Logo layout configuration
+  const [logoScale, setLogoScale] = useState(1.0);
+
+  // Branding uploads
+  const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [portraitUploading, setPortraitUploading] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [portraitMsg, setPortraitMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [logoMsg, setLogoMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const portraitInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Smart colour system
+  const [palettes, setPalettes] = useState<ThemePalette[]>(() => getDefaultPalettes());
+  const [extractingColors, setExtractingColors] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null); // object URL for instant preview
+
+  /** Extract colours from a local File object (before uploading) */
+  const extractFromFile = useCallback(async (file: File) => {
+    setExtractingColors(true);
+    try {
+      const objUrl = URL.createObjectURL(file);
+      setLocalPreviewUrl(objUrl);
+      const colors = await extractDominantColors(objUrl);
+      setPalettes(generatePalettes(colors));
+    } finally {
+      setExtractingColors(false);
+    }
+  }, []);
+
+  const handleBrandingUpload = async (
+    file: File,
+    type: 'portrait' | 'logo'
+  ) => {
+    const setUploading = type === 'portrait' ? setPortraitUploading : setLogoUploading;
+    const setMsg = type === 'portrait' ? setPortraitMsg : setLogoMsg;
+    const setUrl = type === 'portrait' ? setPortraitUrl : setLogoUrl;
+    setUploading(true);
+    setMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('type', type);
+      const res = await fetch('/api/settings/branding', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setUrl(data.url + '?t=' + Date.now());
+        setMsg({ text: data.message, ok: true });
+        if (type === 'portrait') {
+          window.dispatchEvent(new Event('maestro-portrait-updated'));
+        } else if (type === 'logo') {
+          window.dispatchEvent(new Event('maestro-logo-updated'));
+        }
+      } else {
+        setMsg({ text: data.error || 'فشل الرفع', ok: false });
+      }
+    } catch {
+      setMsg({ text: 'خطأ في الاتصال بالخادم', ok: false });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Load settings from DB on mount
   useEffect(() => {
     async function load() {
@@ -47,6 +122,12 @@ export default function SettingsPage() {
           setPlatformName(data.settings.platformName || 'منصة المايسترو');
           setIsRegistrationOpen(data.settings.isRegistrationOpen ?? true);
           setEnableWhatsApp(data.settings.enableWhatsApp ?? true);
+          setContactPhone(data.settings.contactPhone || '');
+          setContactWhatsapp(data.settings.contactWhatsapp || '');
+          setMotivationQuote(data.settings.motivationQuote || '');
+          setPortraitOpacity(data.settings.portraitOpacity ?? 0.18);
+          setPortraitScale(data.settings.portraitScale ?? 1.0);
+          setLogoScale(data.settings.logoScale ?? 1.0);
         }
         // Load WhatsApp gateway settings
         const waRes = await fetch('/api/settings/whatsapp');
@@ -60,6 +141,18 @@ export default function SettingsPage() {
             if (waData.settings.templates.parent) setTplParent(waData.settings.templates.parent);
             if (waData.settings.templates.attendance) setTplAttendance(waData.settings.templates.attendance);
           }
+        }
+
+        // Fetch custom portrait presence
+        const portRes = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
+        if (portRes.ok) {
+          setPortraitUrl('/api/settings/branding?type=portrait&t=' + Date.now());
+        }
+
+        // Fetch custom logo presence
+        const logoCheck = await fetch('/api/settings/branding?type=logo', { method: 'HEAD' });
+        if (logoCheck.ok) {
+          setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
         }
       } catch (err) {
         console.error(err);
@@ -98,14 +191,20 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platformName }),
+        body: JSON.stringify({ 
+          platformName,
+          contactPhone,
+          contactWhatsapp,
+          motivationQuote
+        }),
       });
       const data = await res.json();
-      setSaveMsg(data.success ? 'تم حفظ الإعدادات بنجاح ✅' : 'فشل الحفظ ❌');
+      setSaveMsg(data.success ? 'تم حفظ إعدادات الهوية بنجاح ✅' : 'فشل الحفظ ❌');
     } catch {
       setSaveMsg('خطأ في الاتصال');
     }
   };
+
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +251,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'registration', label: '⚙️ تحكم الحجز والتسجيل' },
     { id: 'identity', label: '🎨 هوية المنصة' },
+    { id: 'branding', label: '🖼️ الصور والشعار' },
     { id: 'staff', label: '👥 إدارة المساعدين' },
     { id: 'whatsapp', label: '💬 إعدادات الواتساب' },
     { id: 'backup', label: '📦 النسخ الاحتياطي' },
@@ -237,6 +337,40 @@ export default function SettingsPage() {
               className="w-full glass-input p-3 text-sm"
             />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم هاتف التواصل والاتصال</label>
+              <input
+                type="text"
+                placeholder="مثال: 01012345678"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                className="w-full glass-input p-3 text-sm text-left"
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم الواتساب للتواصل مباشر</label>
+              <input
+                type="text"
+                placeholder="مثال: 201012345678"
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(e.target.value)}
+                className="w-full glass-input p-3 text-sm text-left"
+                dir="ltr"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">العبارة التحفيزية (تظهر في صفحة تسجيل الدخول)</label>
+            <textarea
+              rows={3}
+              placeholder="اكتب هنا عبارة مميزة لتحفيز الطلاب مثل: سر النجاح هو الثبات على السعي 🌟"
+              value={motivationQuote}
+              onChange={(e) => setMotivationQuote(e.target.value)}
+              className="w-full glass-input p-3 text-sm resize-none"
+            />
+          </div>
           {saveMsg && <p className="text-xs text-emerald-400 font-bold">{saveMsg}</p>}
           <button onClick={handleSaveIdentity} className="glass-button-primary px-8 py-3 font-bold text-sm rounded-2xl">
             حفظ إعدادات الهوية 💾
@@ -244,7 +378,365 @@ export default function SettingsPage() {
         </div>
       )}
 
+
+      {/* Tab: Branding – Smart Colour System */}
+      {activeTab === 'branding' && (
+        <div className="space-y-8 max-w-2xl">
+
+          {/* ── Portrait Upload ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-5">
+            <div>
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-purple-400" />
+                صورة خلفية المستر (الـ Overlay)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                ارفع صورتك — المنصة ستستخرج الألوان تلقائياً وتعرض عليك 5 ثيمات مقترحة بألوان الصورة ✨
+              </p>
+            </div>
+
+            <div className="flex items-start gap-5">
+              {/* Preview thumbnail */}
+              <div className="relative w-24 h-32 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-slate-900/80 flex-shrink-0">
+                {(localPreviewUrl || portraitUrl) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={localPreviewUrl ?? portraitUrl!}
+                    alt="صورة المستر"
+                    className="w-full h-full object-cover object-top"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                    {/* fallback to dynamic API image if static fails */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src="/api/settings/branding?type=portrait" 
+                      alt="" 
+                      className="w-full h-full object-cover object-top"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                    />
+                    <ImageIcon className="w-8 h-8 text-slate-600" />
+                    <p className="text-[10px] text-slate-600">لا توجد صورة</p>
+                  </div>
+                )}
+                {extractingColors && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload controls */}
+              <div className="flex-1 space-y-3">
+                {portraitMsg && (
+                  <div className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    portraitMsg.ok
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}>
+                    {portraitMsg.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                    {portraitMsg.text}
+                  </div>
+                )}
+
+                {/* Step 1 – pick file */}
+                <button
+                  onClick={() => portraitInputRef.current?.click()}
+                  disabled={portraitUploading}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-500/5 hover:bg-purple-500/10 text-purple-300 text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {portraitUploading
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع...</>
+                    : <><Upload className="w-4 h-4" /> اختر صورة المستر</>}
+                </button>
+                <input
+                  ref={portraitInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    // 1. instant local preview + extract colours
+                    await extractFromFile(f);
+                    // 2. upload to server
+                    await handleBrandingUpload(f, 'portrait');
+                    e.target.value = '';
+                  }}
+                />
+
+                {/* Re-extract button (if portrait already set) */}
+                {(portraitUrl || localPreviewUrl) && !extractingColors && (
+                  <button
+                    onClick={async () => {
+                      const src = localPreviewUrl ?? portraitUrl!;
+                      setExtractingColors(true);
+                      const colors = await extractDominantColors(src);
+                      setPalettes(generatePalettes(colors));
+                      setExtractingColors(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> إعادة استخراج الألوان من الصورة الحالية
+                  </button>
+                )}
+
+                <p className="text-[11px] text-slate-500">PNG · JPG · WEBP — الحد الأقصى: 5 ميجابايت</p>
+              </div>
+            </div>
+
+            {/* Live Opacity and Scale Sliders */}
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">📐 تعديل وضعية وحجم وشفافية الصورة على المنصة:</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">درجة الشفافية:</span>
+                    <span className="text-purple-400 font-mono">{(portraitOpacity * 100).toFixed(0)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.05"
+                    max="0.80"
+                    step="0.01"
+                    value={portraitOpacity}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setPortraitOpacity(val);
+                      // Live preview before saving
+                      const root = document.documentElement;
+                      // Find overlay image elements directly and tweak opacity for instant response
+                      const overlayImgs = document.querySelectorAll('img[alt="صورة المستر"]');
+                      overlayImgs.forEach((img) => {
+                        (img as HTMLElement).style.opacity = String(val);
+                      });
+                    }}
+                    className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">مقياس حجم الصورة (التكبير):</span>
+                    <span className="text-purple-400 font-mono">{(portraitScale * 100).toFixed(0)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.5"
+                    step="0.05"
+                    value={portraitScale}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setPortraitScale(val);
+                      // Live preview scale before saving
+                      const overlays = document.querySelectorAll('div[aria-hidden="true"] > div.transition-transform');
+                      overlays.forEach((el) => {
+                        (el as HTMLElement).style.transform = `scale(${val}) translateY(${(1 - val) * 10}%)`;
+                      });
+                    }}
+                    className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/settings', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        portraitOpacity,
+                        portraitScale
+                      })
+                    });
+                    if (res.ok) {
+                      setPortraitMsg({ text: 'تم حفظ أبعاد وشفافية الصورة بنجاح ✅', ok: true });
+                      window.dispatchEvent(new Event('maestro-portrait-config-updated'));
+                    }
+                  } catch {
+                    setPortraitMsg({ text: 'حدث خطأ أثناء حفظ التعديلات ❌', ok: false });
+                  }
+                }}
+                className="w-full sm:w-auto px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md shadow-purple-500/20"
+              >
+                💾 حفظ أبعاد الشفافية والحجم
+              </button>
+            </div>
+          </div>
+
+
+          {/* ── Smart Colour Palettes ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-pink-400" />
+                  ثيمات الألوان الذكية
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  {extractingColors
+                    ? '🔍 جارٍ تحليل الصورة واستخراج الألوان...'
+                    : 'اختر ثيماً — التغيير مباشر للمعاينة، اضغط حفظ لتطبيقه على المنصة'}
+                </p>
+              </div>
+              {extractingColors && <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />}
+            </div>
+
+            {extractingColors ? (
+              // Loading skeleton
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1,2,3,4,5].map(i => (
+                  <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <ColorPaletteSelector
+                palettes={palettes}
+                onSaved={() => setPortraitMsg({ text: 'تم حفظ الثيم وتطبيقه ✅', ok: true })}
+              />
+            )}
+          </div>
+
+          {/* ── Logo Upload ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-yellow-500/20 space-y-5">
+            <div>
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-yellow-400" />
+                شعار المنصة (اللوجو)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">يظهر في صفحة تسجيل الدخول وصفحة اختيار الدور. أفضل: PNG مربعة شفافة.</p>
+            </div>
+
+            <div className="flex items-center gap-5">
+              <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-yellow-500/30 bg-slate-900 flex items-center justify-center flex-shrink-0">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={logoUrl} 
+                    alt="الشعار" 
+                    className="w-full h-full object-contain p-1 transition-transform duration-300"
+                    style={{ transform: `scale(${logoScale})` }} 
+                  />
+                ) : (
+                  <div className="text-center">
+                    {/* fallback to dynamic API image if static fails */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src="/api/settings/branding?type=logo" 
+                      alt="" 
+                      className="w-full h-full object-contain p-1"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                    />
+                    <ImageIcon className="w-8 h-8 text-slate-600 mx-auto" />
+                    <p className="text-[10px] text-slate-600 mt-1">لا يوجد شعار</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 space-y-3">
+                {logoMsg && (
+                  <div className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    logoMsg.ok
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}>
+                    {logoMsg.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                    {logoMsg.text}
+                  </div>
+                )}
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-yellow-500/40 hover:border-yellow-400 bg-yellow-500/5 hover:bg-yellow-500/10 text-yellow-300 text-sm font-bold transition-all disabled:opacity-50"
+                >
+                  {logoUploading
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع...</>
+                    : <><Upload className="w-4 h-4" /> اختر شعار المنصة</>}
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleBrandingUpload(f, 'logo');
+                    e.target.value = '';
+                  }}
+                />
+                <p className="text-[11px] text-slate-500">PNG · JPG · WEBP — الحد الأقصى: 5 ميجابايت</p>
+              </div>
+            </div>
+
+            {/* Live Logo Scale Slider */}
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">مقياس حجم الشعار (اللوجو):</span>
+                  <span className="text-yellow-400 font-mono">{(logoScale * 100).toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.5"
+                  step="0.05"
+                  value={logoScale}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setLogoScale(val);
+                    // Live preview logo in settings page preview wrapper
+                    const imgPreview = document.querySelector('img[alt="الشعار"]');
+                    if (imgPreview) {
+                      (imgPreview as HTMLElement).style.transform = `scale(${val})`;
+                    }
+                    // Live preview sidebar logo
+                    const sidebarLogo = document.querySelector('img[alt="اللوجو"]');
+                    if (sidebarLogo) {
+                      (sidebarLogo as HTMLElement).style.transform = `scale(${val})`;
+                    }
+                  }}
+                  className="w-full accent-yellow-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/settings', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ logoScale })
+                    });
+                    if (res.ok) {
+                      setLogoMsg({ text: 'تم حفظ حجم الشعار بنجاح ✅', ok: true });
+                      window.dispatchEvent(new Event('maestro-logo-updated'));
+                    }
+                  } catch {
+                    setLogoMsg({ text: 'حدث خطأ أثناء حفظ التعديلات ❌', ok: false });
+                  }
+                }}
+                className="w-full sm:w-auto px-5 py-2 rounded-xl text-xs font-bold bg-yellow-600 hover:bg-yellow-500 text-white transition-all shadow-md shadow-yellow-500/20"
+              >
+                💾 حفظ حجم الشعار
+              </button>
+            </div>
+          </div>
+
+
+          {/* Tips */}
+          <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1.5">
+            <p className="font-bold text-blue-200">💡 نصائح لأفضل نتيجة:</p>
+            <p>• ارفع صورة المستر أولاً — المنصة تستخرج الألوان تلقائياً وتقترح ثيمات مناسبة</p>
+            <p>• اختر الثيم المناسب وشاهد التغيير المباشر، ثم اضغط «حفظ» لتطبيقه</p>
+            <p>• صورة PNG بخلفية شفافة أو خلفية داكنة قريبة من لون المنصة تعطي أفضل نتيجة</p>
+            <p>• الثيم يُحفظ في المتصفح ويُطبَّق تلقائياً في كل مرة تفتح المنصة</p>
+          </div>
+        </div>
+      )}
+
       {/* Tab: Staff */}
+
       {activeTab === 'staff' && (
         <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
           <h3 className="font-bold text-lg text-white">إضافة مساعد / موظف جديد للنظام</h3>

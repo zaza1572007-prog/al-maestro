@@ -18,7 +18,20 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { platformName, isRegistrationOpen, enableWhatsApp, welcomeMessage } = body;
+    const { 
+      platformName, 
+      isRegistrationOpen, 
+      enableWhatsApp, 
+      welcomeMessage, 
+      primaryColor, 
+      secondaryColor,
+      contactPhone,
+      contactWhatsapp,
+      motivationQuote,
+      portraitOpacity,
+      portraitScale,
+      logoScale
+    } = body;
 
     let settings = await prisma.systemSettings.findFirst();
 
@@ -30,11 +43,30 @@ export async function PATCH(req: NextRequest) {
           ...(isRegistrationOpen !== undefined && { isRegistrationOpen }),
           ...(enableWhatsApp !== undefined && { enableWhatsApp }),
           ...(welcomeMessage !== undefined && { welcomeMessage }),
+          ...(primaryColor !== undefined && { primaryColor }),
+          ...(secondaryColor !== undefined && { secondaryColor }),
+          ...(contactPhone !== undefined && { contactPhone }),
+          ...(contactWhatsapp !== undefined && { contactWhatsapp }),
+          ...(motivationQuote !== undefined && { motivationQuote }),
+          ...(portraitOpacity !== undefined && { portraitOpacity: parseFloat(portraitOpacity) }),
+          ...(portraitScale !== undefined && { portraitScale: parseFloat(portraitScale) }),
+          ...(logoScale !== undefined && { logoScale: parseFloat(logoScale) }),
         },
       });
     } else {
       settings = await prisma.systemSettings.create({
-        data: { platformName: platformName || 'منصة المايسترو', isRegistrationOpen: isRegistrationOpen ?? true },
+        data: { 
+          platformName: platformName || 'منصة المايسترو', 
+          isRegistrationOpen: isRegistrationOpen ?? true,
+          primaryColor: primaryColor || '#8b5cf6',
+          secondaryColor: secondaryColor || '#3b82f6',
+          contactPhone: contactPhone || '',
+          contactWhatsapp: contactWhatsapp || '',
+          motivationQuote: motivationQuote || '',
+          portraitOpacity: parseFloat(portraitOpacity || '0.18'),
+          portraitScale: parseFloat(portraitScale || '1.0'),
+          logoScale: parseFloat(logoScale || '1.0'),
+        },
       });
     }
 
