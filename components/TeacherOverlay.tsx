@@ -94,6 +94,8 @@ export default function TeacherOverlay() {
         className="absolute inset-0 z-[1] transition-transform duration-300 ease-out"
         style={{
           transform: `scale(${scale}) translateY(${(1 - scale) * 10}%)`, // dynamically center base on scale
+          maskImage: 'radial-gradient(circle at 15% 85%, black 20%, transparent 75%)',
+          WebkitMaskImage: 'radial-gradient(circle at 15% 85%, black 20%, transparent 75%)',
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

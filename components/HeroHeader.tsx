@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowUpRight } from 'lucide-react';
 
@@ -19,6 +19,22 @@ export default function HeroHeader({
   stats = [],
   actionBtn,
 }: HeroHeaderProps) {
+  const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkPortrait = async () => {
+      try {
+        const res = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
+        if (res.ok) {
+          setPortraitUrl('/api/settings/branding?type=portrait');
+        }
+      } catch (e) {
+        console.error('Failed to fetch portrait watermark in HeroHeader', e);
+      }
+    };
+    checkPortrait();
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -15 }}
@@ -29,6 +45,25 @@ export default function HeroHeader({
       {/* Background Ambient Spotlights */}
       <div className="absolute -top-24 -left-24 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      {/* Teacher Portrait Watermark inside the banner */}
+      {portraitUrl && (
+        <div 
+          className="absolute left-0 bottom-0 top-0 w-72 pointer-events-none z-0 overflow-hidden hidden md:block"
+          style={{
+            opacity: 0.12,
+            maskImage: 'linear-gradient(to right, black 25%, transparent 95%)',
+            WebkitMaskImage: 'linear-gradient(to right, black 25%, transparent 95%)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src={portraitUrl} 
+            alt="" 
+            className="w-full h-full object-contain object-left-bottom translate-x-[-5%]"
+          />
+        </div>
+      )}
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
