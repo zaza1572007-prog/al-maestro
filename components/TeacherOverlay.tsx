@@ -121,6 +121,7 @@ export default function TeacherOverlay() {
         className="absolute inset-0 z-[1] transition-all duration-300 ease-out"
         style={{
           transform: `scale(${scale}) translateY(${(1 - scale) * 10}%)`, // dynamically center base on scale
+          transformOrigin: isCenter ? 'center bottom' : 'left bottom',
           maskImage: isCenter 
             ? 'radial-gradient(ellipse at 50% 50%, black 25%, transparent 75%)'
             : 'radial-gradient(circle at 15% 85%, black 20%, transparent 75%)',
