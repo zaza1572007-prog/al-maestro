@@ -136,7 +136,7 @@ export async function PATCH(
       where: { id },
       data: {
         ...(name && { name }),
-        ...(phone && { phone }),
+        ...(phone !== undefined && { phone: phone ? phone : null }),
         ...(groupId && { groupId }),
         ...(stageId && { academicStageId: stageId }),
         ...(academicStageId && { academicStageId }),

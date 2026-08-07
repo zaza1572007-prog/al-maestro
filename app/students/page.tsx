@@ -126,10 +126,6 @@ function StudentsContent() {
       toast.error('يرجى إدخال اسم الطالب.');
       return;
     }
-    if (!newStudent.phone.trim()) {
-      toast.error('يرجى إدخال رقم هاتف الطالب.');
-      return;
-    }
     if (!newStudent.parentPhone.trim()) {
       toast.error('يرجى إدخال رقم هاتف ولي الأمر.');
       return;
@@ -477,10 +473,9 @@ function StudentsContent() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم هاتف الطالب *</label>
+                  <label className="block text-slate-300 mb-1">رقم هاتف الطالب (اختياري)</label>
                   <input
                     type="text"
-                    required
                     placeholder="01000000000"
                     value={newStudent.phone}
                     onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}

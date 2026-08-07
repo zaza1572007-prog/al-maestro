@@ -72,8 +72,14 @@ export async function POST(req: Request) {
     const { name, phone, academicStageId, groupId, parentName, parentPhone, parentRelation, parentWhatsapp, parentExtraPhone } = await req.json();
 
     // Validate required fields
-    if (!name || !phone || !academicStageId || !groupId) {
-      return NextResponse.json({ success: false, error: 'جميع الحقول المطلوبة يجب ملؤها (الاسم، الهاتف، المرحلة، المجموعة)' }, { status: 400 });
+    if (!name || !academicStageId || !groupId) {
+      return NextResponse.json({ success: false, error: 'جميع الحقول المطلوبة يجب ملؤها (الاسم، المرحلة، المجموعة)' }, { status: 400 });
+    }
+
+    // We need parentPhone or studentPhone to link/create the parent record
+    const actualParentPhone = parentPhone || phone;
+    if (!actualParentPhone) {
+      return NextResponse.json({ success: false, error: 'يجب إدخال رقم هاتف الطالب أو رقم هاتف ولي الأمر لتسجيل الحساب.' }, { status: 400 });
     }
 
     // Verify the academicStageId and groupId exist
@@ -89,15 +95,16 @@ export async function POST(req: Request) {
     }
 
     // Check if student phone already exists
-    const existingStudent = await prisma.student.findFirst({
-      where: { phone },
-    });
-    if (existingStudent) {
-      return NextResponse.json({ success: false, error: 'رقم هاتف الطالب مسجل بالفعل لطالب آخر. يرجى استخدام رقم مختلف.' }, { status: 400 });
+    if (phone) {
+      const existingStudent = await prisma.student.findFirst({
+        where: { phone },
+      });
+      if (existingStudent) {
+        return NextResponse.json({ success: false, error: 'رقم هاتف الطالب مسجل بالفعل لطالب آخر. يرجى استخدام رقم مختلف.' }, { status: 400 });
+      }
     }
 
     // Create or find parent
-    const actualParentPhone = parentPhone || phone;
     let parent = await prisma.parent.findFirst({
       where: { phone: actualParentPhone },
     });
@@ -163,7 +170,7 @@ export async function POST(req: Request) {
       data: {
         code,
         name,
-        phone,
+        phone: phone || null,
         password: hashedStudentPassword,
         passwordPlain: studentPasswordPlain,
         academicStageId,
