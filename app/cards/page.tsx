@@ -80,7 +80,7 @@ export default function CardsPage() {
     setTimeout(() => {
       window.print();
       setSelectedStudentIds(prev);
-    }, 50);
+    }, 150);
   };
 
   const handlePrint = () => {
@@ -93,11 +93,6 @@ export default function CardsPage() {
         @media print {
           /* Hide non-printable elements */
           .no-print, header, aside, .no-print *, button, .flex-wrap, .absolute-print-hide {
-            display: none !important;
-          }
-          
-          /* Hide cards that are not selected when a selection exists */
-          .not-selected-print {
             display: none !important;
           }
           
@@ -151,6 +146,11 @@ export default function CardsPage() {
             word-break: break-word !important;
             overflow: visible !important;
             text-overflow: unset !important;
+          }
+
+          /* Hide cards that are not selected when a selection exists */
+          .sticker-card.not-selected-print {
+            display: none !important;
           }
         }
       `}} />
