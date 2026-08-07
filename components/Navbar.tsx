@@ -30,9 +30,17 @@ export default function Navbar() {
 
 
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(data => {
-      if (data.success) setCurrentUser(data.user);
-    }).catch(console.error);
+    const fetchUser = () => {
+      fetch('/api/auth/me')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) setCurrentUser(data.user);
+        })
+        .catch(console.error);
+    };
+    fetchUser();
+    window.addEventListener('maestro-profile-updated', fetchUser);
+    return () => window.removeEventListener('maestro-profile-updated', fetchUser);
   }, []);
 
   const [notificationsList, setNotificationsList] = useState<any[]>([]);

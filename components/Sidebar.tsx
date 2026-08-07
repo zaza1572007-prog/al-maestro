@@ -91,9 +91,17 @@ export default function Sidebar() {
 
 
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(data => {
-      if (data.success) setCurrentUser(data.user);
-    }).catch(console.error);
+    const fetchUser = () => {
+      fetch('/api/auth/me')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) setCurrentUser(data.user);
+        })
+        .catch(console.error);
+    };
+    fetchUser();
+    window.addEventListener('maestro-profile-updated', fetchUser);
+    return () => window.removeEventListener('maestro-profile-updated', fetchUser);
   }, []);
 
   // Don't render sidebar on public pages

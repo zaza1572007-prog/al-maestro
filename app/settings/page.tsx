@@ -30,11 +30,14 @@ export default function SettingsPage() {
   const [tplParent, setTplParent] = useState('👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل ابنك/بنتك [student_name] بمنصة المايسترو.\nبيانات دخولك كولي أمر:\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
   const [tplAttendance, setTplAttendance] = useState('📅 تنبيه حضور\nالطالب: [student_name]\nالحالة: [status]\nالوقت: [time]\nمنصة المايسترو 🏫');
 
-  // Staff form
-  const [staffName, setStaffName] = useState('');
-  const [staffPhone, setStaffPhone] = useState('');
-  const [staffRole, setStaffRole] = useState('ASSISTANT');
-  const [staffMsg, setStaffMsg] = useState('');
+  // Account settings
+  const [accountName, setAccountName] = useState('');
+  const [accountPhone, setAccountPhone] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+  const [accountConfirmPassword, setAccountConfirmPassword] = useState('');
+  const [accountMsg, setAccountMsg] = useState('');
+  const [accountMsgOk, setAccountMsgOk] = useState(true);
+  const [accountSaving, setAccountSaving] = useState(false);
 
   // Backup
   const [restoreMsg, setRestoreMsg] = useState('');
@@ -156,6 +159,14 @@ export default function SettingsPage() {
         if (logoCheck.ok) {
           setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
         }
+
+        // Fetch logged-in user profile details
+        const meRes = await fetch('/api/auth/me');
+        const meData = await meRes.json();
+        if (meData.success && meData.user) {
+          setAccountName(meData.user.name || '');
+          setAccountPhone(meData.user.phone || '');
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -208,20 +219,42 @@ export default function SettingsPage() {
   };
 
 
-  const handleAddStaff = async (e: React.FormEvent) => {
+  const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStaffMsg('');
+    setAccountMsg('');
+    if (accountPassword && accountPassword !== accountConfirmPassword) {
+      setAccountMsg('كلمتا المرور غير متطابقتين ❌');
+      setAccountMsgOk(false);
+      return;
+    }
+    setAccountSaving(true);
     try {
-      await fetch('/api/auth/login', {
-        method: 'POST',
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: staffName, phone: staffPhone, role: staffRole, password: '123' }),
+        body: JSON.stringify({
+          name: accountName,
+          phone: accountPhone,
+          password: accountPassword || undefined,
+        }),
       });
-      setStaffMsg('تم إضافة المساعد/الموظف بنجاح 🟢');
-      setStaffName('');
-      setStaffPhone('');
+      const data = await res.json();
+      if (data.success) {
+        setAccountMsg('تم حفظ إعدادات الحساب بنجاح ✅');
+        setAccountMsgOk(true);
+        setAccountPassword('');
+        setAccountConfirmPassword('');
+        // Trigger custom event to notify Sidebar/Navbar
+        window.dispatchEvent(new Event('maestro-profile-updated'));
+      } else {
+        setAccountMsg(data.error || 'حدث خطأ أثناء حفظ التعديلات ❌');
+        setAccountMsgOk(false);
+      }
     } catch {
-      setStaffMsg('تم تسجيل المساعد في النظام');
+      setAccountMsg('خطأ في الاتصال بالخادم ❌');
+      setAccountMsgOk(false);
+    } finally {
+      setAccountSaving(false);
     }
   };
 
@@ -254,7 +287,7 @@ export default function SettingsPage() {
     { id: 'registration', label: '⚙️ تحكم الحجز والتسجيل' },
     { id: 'identity', label: '🎨 هوية المنصة' },
     { id: 'branding', label: '🖼️ الصور والشعار' },
-    { id: 'staff', label: '👥 إدارة المساعدين' },
+    { id: 'account', label: '👤 إعدادات الحساب' },
     { id: 'whatsapp', label: '💬 إعدادات الواتساب' },
     { id: 'backup', label: '📦 النسخ الاحتياطي' },
   ];
@@ -264,7 +297,7 @@ export default function SettingsPage() {
       <HeroHeader
         title="إعدادات المنصة والهوية"
         badge="لوحة التحكم الفاخرة - المايسترو Premium"
-        subtitle="التحكم في فتح وإغلاق باب الحجز والتسجيل، إدارة المساعدين، هوية المنصة، والنسخ الاحتياطي."
+        subtitle="التحكم في فتح وإغلاق باب الحجز والتسجيل، إعدادات الحساب، هوية المنصة، والنسخ الاحتياطي."
       />
 
       {/* Tabs */}
@@ -777,48 +810,85 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Tab: Staff */}
-
-      {activeTab === 'staff' && (
+      {/* Tab: Account Settings */}
+      {activeTab === 'account' && (
         <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
-          <h3 className="font-bold text-lg text-white">إضافة مساعد / موظف جديد للنظام</h3>
-          {staffMsg && <p className="text-xs text-emerald-400 font-bold">{staffMsg}</p>}
-          <form onSubmit={handleAddStaff} className="space-y-4">
+          <div>
+            <h3 className="font-bold text-lg text-white">إعدادات الحساب الشخصي</h3>
+            <p className="text-slate-400 text-xs">يمكنك هنا تعديل اسم المستخدم الخاص بك أو رقم الهاتف وتعيين كلمة مرور جديدة لحسابك.</p>
+          </div>
+
+          <form onSubmit={handleSaveAccount} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">اسم المساعد</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">الاسم بالكامل</label>
               <input
                 type="text"
                 required
-                placeholder="مثال: أحمد الإداري"
-                value={staffName}
-                onChange={(e) => setStaffName(e.target.value)}
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
                 className="w-full glass-input p-3 text-sm"
+                placeholder="مثال: الأستاذ أحمد راضي"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم الهاتف</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">اسم المستخدم أو رقم الهاتف</label>
               <input
                 type="text"
                 required
-                placeholder="01200000000"
-                value={staffPhone}
-                onChange={(e) => setStaffPhone(e.target.value)}
-                className="w-full glass-input p-3 text-sm"
+                value={accountPhone}
+                onChange={(e) => setAccountPhone(e.target.value)}
+                className="w-full glass-input p-3 text-sm text-left font-mono"
+                dir="ltr"
+                placeholder="مثال: 0100000000"
               />
+              <p className="text-[10px] text-slate-500 mt-1">يُستخدم اسم المستخدم أو رقم الهاتف هذا لتسجيل الدخول إلى لوحة التحكم الخاصة بك.</p>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">الصلاحية</label>
-              <select
-                value={staffRole}
-                onChange={(e) => setStaffRole(e.target.value)}
-                className="w-full glass-input p-3 text-sm bg-slate-900"
-              >
-                <option value="ASSISTANT">مساعد (Assistant)</option>
-                <option value="OWNER">أستاذ/مالك (Owner)</option>
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة المرور الجديدة</label>
+                <input
+                  type="password"
+                  value={accountPassword}
+                  onChange={(e) => setAccountPassword(e.target.value)}
+                  className="w-full glass-input p-3 text-sm text-left font-mono"
+                  dir="ltr"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">تأكيد كلمة المرور</label>
+                <input
+                  type="password"
+                  value={accountConfirmPassword}
+                  onChange={(e) => setAccountConfirmPassword(e.target.value)}
+                  className="w-full glass-input p-3 text-sm text-left font-mono"
+                  dir="ltr"
+                  placeholder="••••••••"
+                />
+              </div>
             </div>
-            <button type="submit" className="glass-button-primary px-8 py-3 font-bold text-sm rounded-2xl">
-              حفظ المساعد وتعيين الصلاحيات 👤
+            
+            {accountMsg && (
+              <p className={`text-xs font-bold ${accountMsgOk ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {accountMsg}
+              </p>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={accountSaving}
+              className="glass-button-primary px-8 py-3 font-bold text-sm rounded-2xl flex items-center gap-2"
+            >
+              {accountSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                <>
+                  حفظ إعدادات الحساب 💾
+                </>
+              )}
             </button>
           </form>
         </div>
