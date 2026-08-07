@@ -28,11 +28,15 @@ async function main() {
   // 2. Create System Settings
   await prisma.systemSettings.upsert({
     where: { id: 'default-settings' },
-    update: { isRegistrationOpen: true },
+    update: { 
+      isRegistrationOpen: true,
+      waSenderNumber: '201100775230'
+    },
     create: {
       id: 'default-settings',
       platformName: 'منصة المايسترو',
       isRegistrationOpen: true,
+      waSenderNumber: '201100775230',
     },
   });
 
