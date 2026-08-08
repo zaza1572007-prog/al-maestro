@@ -20,9 +20,9 @@ export default function DeviceFramePreview({
   const isCenter = config.position === 'center';
   const isVisible = config.visible;
 
-  // Calculate transform style
-  const imageTransform = `scale(${config.scale}) translate(${config.posX || 0}%, ${
-    (config.posY || 0) + (1 - config.scale) * 8
+  const scale = config.scale ?? 1.0;
+  const imageTransform = `scale(${scale}) translate(${config.posX || 0}%, ${
+    (config.posY || 0) + (1 - scale) * 8
   }%)`;
 
   const maskGradient =

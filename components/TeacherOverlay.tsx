@@ -2,14 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
-export interface DevicePortraitConfig {
+export interface SmartPortraitConfig {
   opacity: number;
-  scale: number;
+  mode?: 'subtle' | 'balanced' | 'vivid';
   position: 'side' | 'center';
-  posX: number; // pan horizontal offset in % (-50% to +50%)
-  posY: number; // pan vertical offset in % (-50% to +50%)
   visible: boolean;
+  scale?: number;
+  posX?: number;
+  posY?: number;
 }
+
+export type DevicePortraitConfig = SmartPortraitConfig;
 
 export interface MultiDevicePortraitConfig {
   desktop: DevicePortraitConfig;
@@ -17,42 +20,29 @@ export interface MultiDevicePortraitConfig {
   mobile: DevicePortraitConfig;
 }
 
+export const DEFAULT_SMART_CONFIG: SmartPortraitConfig = {
+  opacity: 0.18,
+  mode: 'subtle',
+  position: 'side',
+  visible: true,
+  scale: 1.0,
+};
+
 export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
-  desktop: {
-    opacity: 0.22,
-    scale: 1.0,
-    position: 'side',
-    posX: 0,
-    posY: 0,
-    visible: true,
-  },
-  tablet: {
-    opacity: 0.16,
-    scale: 0.95,
-    position: 'side',
-    posX: 0,
-    posY: 0,
-    visible: true,
-  },
-  mobile: {
-    opacity: 0.12,
-    scale: 0.85,
-    position: 'center',
-    posX: 0,
-    posY: 0,
-    visible: true,
-  },
+  desktop: { ...DEFAULT_SMART_CONFIG },
+  tablet: { ...DEFAULT_SMART_CONFIG, opacity: 0.14 },
+  mobile: { ...DEFAULT_SMART_CONFIG, opacity: 0.10, position: 'center' },
 };
 
 type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
 export default function TeacherOverlay() {
   const [device, setDevice] = useState<DeviceType>('desktop');
-  const [config, setConfig] = useState<MultiDevicePortraitConfig>(DEFAULT_PORTRAIT_CONFIG);
+  const [config, setConfig] = useState<SmartPortraitConfig>(DEFAULT_SMART_CONFIG);
   const [hasCustomImage, setHasCustomImage] = useState<boolean>(false);
   const [imageTimestamp, setImageTimestamp] = useState<number>(Date.now());
 
-  // 1. Strict Responsive Breakpoints Detection (Desktop >= 1024px | Tablet 768px-1023px | Mobile < 768px)
+  // 1. Auto-detect screen size and device type intelligently
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -70,42 +60,54 @@ export default function TeacherOverlay() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. Fetch config & check image existence
+  // 2. Fetch config from server
   const fetchConfigAndImage = useCallback(async () => {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
       if (data.success && data.settings) {
         const s = data.settings;
-        let loadedConfig: MultiDevicePortraitConfig = { ...DEFAULT_PORTRAIT_CONFIG };
+        let loadedConfig: SmartPortraitConfig = { ...DEFAULT_SMART_CONFIG };
 
         if (s.portraitConfig) {
           try {
             const parsed = typeof s.portraitConfig === 'string' ? JSON.parse(s.portraitConfig) : s.portraitConfig;
-            loadedConfig = {
-              desktop: { ...DEFAULT_PORTRAIT_CONFIG.desktop, ...(parsed.desktop || {}) },
-              tablet: { ...DEFAULT_PORTRAIT_CONFIG.tablet, ...(parsed.tablet || {}) },
-              mobile: { ...DEFAULT_PORTRAIT_CONFIG.mobile, ...(parsed.mobile || {}) },
-            };
+            // Handle both new smart format and legacy device format
+            if (parsed.mode || parsed.opacity !== undefined) {
+              loadedConfig = {
+                ...DEFAULT_SMART_CONFIG,
+                opacity: parsed.opacity ?? DEFAULT_SMART_CONFIG.opacity,
+                mode: parsed.mode ?? 'subtle',
+                position: parsed.position ?? 'side',
+                visible: parsed.visible ?? true,
+                scale: parsed.scale ?? 1.0,
+              };
+            } else if (parsed.desktop) {
+              loadedConfig = {
+                ...DEFAULT_SMART_CONFIG,
+                opacity: parsed.desktop.opacity ?? 0.18,
+                position: parsed.desktop.position ?? 'side',
+                visible: parsed.desktop.visible ?? true,
+                scale: parsed.desktop.scale ?? 1.0,
+              };
+            }
           } catch {
             // fallback
           }
         } else {
-          // Map legacy fields
-          if (s.portraitOpacity !== undefined) loadedConfig.desktop.opacity = s.portraitOpacity;
-          if (s.portraitScale !== undefined) loadedConfig.desktop.scale = s.portraitScale;
-          if (s.portraitPosition !== undefined) loadedConfig.desktop.position = s.portraitPosition;
+          if (s.portraitOpacity !== undefined) loadedConfig.opacity = s.portraitOpacity;
+          if (s.portraitPosition !== undefined) loadedConfig.position = s.portraitPosition;
         }
 
         setConfig(loadedConfig);
       }
 
-      // Check if portrait image is available
+      // Check if image exists
       const imgRes = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
       setHasCustomImage(imgRes.ok);
       setImageTimestamp(Date.now());
     } catch {
-      // hide on failure
+      // ignore
     }
   }, []);
 
@@ -114,29 +116,14 @@ export default function TeacherOverlay() {
 
     const refresh = () => fetchConfigAndImage();
 
-    // Live preview event listener
+    // Live preview event listener for instant responsiveness in settings
     const handleLivePreview = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
-        const { device: targetDevice, config: newDeviceConfig, allConfig } = customEvent.detail;
-        if (allConfig) {
-          setConfig(allConfig);
-        } else if (targetDevice && newDeviceConfig) {
-          setConfig((prev) => ({
-            ...prev,
-            [targetDevice]: { ...prev[targetDevice as DeviceType], ...newDeviceConfig },
-          }));
-        } else {
-          setConfig((prev) => ({
-            ...prev,
-            desktop: {
-              ...prev.desktop,
-              opacity: customEvent.detail.opacity ?? prev.desktop.opacity,
-              scale: customEvent.detail.scale ?? prev.desktop.scale,
-              position: customEvent.detail.position ?? prev.desktop.position,
-            },
-          }));
-        }
+        setConfig((prev) => ({
+          ...prev,
+          ...customEvent.detail,
+        }));
       }
     };
 
@@ -151,90 +138,77 @@ export default function TeacherOverlay() {
     };
   }, [fetchConfigAndImage]);
 
-  if (!hasCustomImage) return null;
+  if (!hasCustomImage || !config.visible) return null;
 
-  const currentDeviceConfig = config[device] || DEFAULT_PORTRAIT_CONFIG[device];
-  if (!currentDeviceConfig.visible) return null;
-
-  const isCenter = currentDeviceConfig.position === 'center';
   const isMobile = device === 'mobile';
   const isTablet = device === 'tablet';
+  const isCenter = config.position === 'center' || isMobile;
 
-  // Determine specific device image endpoint (falls back gracefully to general portrait)
-  const imageType = isMobile ? 'portrait-mobile' : isTablet ? 'portrait-tablet' : 'portrait';
-  const imgSrc = `/api/settings/branding?type=${imageType}&t=${imageTimestamp}`;
+  // Auto-calculated smart dimensions and positioning based on screen size
+  let containerStyle: React.CSSProperties = {
+    position: 'fixed',
+    bottom: 0,
+    zIndex: 0,
+    pointerEvents: 'none',
+    userSelect: 'none',
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: isCenter ? 'center' : 'flex-start',
+    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+  };
 
-  // Strict Responsive Breakpoints styling parameters:
-  let containerStyle: React.CSSProperties = {};
-  let imageTransform = '';
-  let maskImageStyle = '';
-
-  if (device === 'desktop') {
-    // Desktop / Large screens (lg: min-width 1024px)
+  if (isMobile) {
+    // Smartphone: Centered watermark at the bottom
     containerStyle = {
-      position: 'fixed',
-      bottom: 0,
-      left: isCenter ? '50%' : 0,
-      transform: isCenter ? 'translateX(-50%)' : 'none',
-      height: 'clamp(450px, 80vh, 750px)',
-      width: isCenter ? '100vw' : 'clamp(320px, 32vw, 600px)',
-      zIndex: 1,
-      pointerEvents: 'none',
-    };
-    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
-      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
-    }%)`;
-    maskImageStyle = isCenter
-      ? 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)'
-      : 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)';
-  } else if (device === 'tablet') {
-    // Tablet (md: 768px to 1023px)
-    containerStyle = {
-      position: 'fixed',
-      bottom: 0,
-      left: isCenter ? '50%' : 0,
-      transform: isCenter ? 'translateX(-50%)' : 'none',
-      height: 'clamp(350px, 55vh, 500px)',
-      width: isCenter ? '100vw' : 'clamp(300px, 42vw, 480px)',
-      zIndex: 1,
-      pointerEvents: 'none',
-    };
-    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
-      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
-    }%)`;
-    maskImageStyle = isCenter
-      ? 'linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)'
-      : 'linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)';
-  } else {
-    // Mobile (sm / mobile: < 768px)
-    containerStyle = {
-      position: 'fixed',
-      bottom: 0,
+      ...containerStyle,
       left: '50%',
       transform: 'translateX(-50%)',
-      height: 'clamp(250px, 45vh, 400px)',
-      width: '100vw',
-      zIndex: 0,
-      pointerEvents: 'none',
+      width: 'min(92vw, 360px)',
+      height: 'clamp(200px, 38vh, 320px)',
     };
-    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
-      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
-    }%)`;
-    maskImageStyle = 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%)';
+  } else if (isTablet) {
+    // Tablet: Scaled and anchored neatly
+    containerStyle = {
+      ...containerStyle,
+      left: isCenter ? '50%' : '1rem',
+      transform: isCenter ? 'translateX(-50%)' : 'none',
+      width: isCenter ? 'min(85vw, 650px)' : 'min(42vw, 420px)',
+      height: 'clamp(280px, 50vh, 440px)',
+    };
+  } else {
+    // Desktop: Smart Corner or Center fit
+    containerStyle = {
+      ...containerStyle,
+      left: isCenter ? '50%' : '1.5rem',
+      transform: isCenter ? 'translateX(-50%)' : 'none',
+      width: isCenter ? 'min(80vw, 850px)' : 'min(35vw, 520px)',
+      height: 'clamp(340px, 62vh, 580px)',
+    };
   }
+
+  // Smart 360-degree soft feathering mask to remove all sharp borders/blackboard edges
+  const maskImageStyle = isCenter
+    ? 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)'
+    : 'radial-gradient(ellipse 95% 88% at 30% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+
+  // Smart opacity tuning: adapts based on device to guarantee readability of foreground cards
+  const effectiveOpacity = isMobile
+    ? Math.min(config.opacity, 0.15)
+    : isTablet
+    ? Math.min(config.opacity, 0.22)
+    : config.opacity;
+
+  const imgSrc = `/api/settings/branding?type=portrait&t=${imageTimestamp}`;
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none select-none flex items-end justify-center overflow-hidden transition-all duration-300 ease-out"
+      className="pointer-events-none select-none overflow-hidden"
       style={containerStyle}
     >
-      {/* Transformed image wrapper with strict mask gradient */}
       <div
-        className="w-full h-full flex items-end justify-center transition-all duration-200 ease-out"
+        className="w-full h-full flex items-end justify-center overflow-hidden transition-all duration-300"
         style={{
-          transform: imageTransform,
-          transformOrigin: isCenter || isMobile ? 'center bottom' : 'left bottom',
           maskImage: maskImageStyle,
           WebkitMaskImage: maskImageStyle,
         }}
@@ -243,10 +217,10 @@ export default function TeacherOverlay() {
         <img
           src={imgSrc}
           alt="صورة المستر"
-          className="w-full h-full object-contain object-bottom pointer-events-none"
+          className="w-full h-full object-contain object-bottom pointer-events-none transition-opacity duration-300"
           style={{
-            opacity: currentDeviceConfig.opacity,
-            transition: 'opacity 0.3s ease',
+            opacity: effectiveOpacity,
+            filter: 'contrast(1.04) saturate(1.04)',
           }}
           onError={() => setHasCustomImage(false)}
         />
