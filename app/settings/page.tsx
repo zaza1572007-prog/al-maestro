@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import HeroHeader from '@/components/HeroHeader';
-import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw, Layout, Maximize2 } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw, Layout, Maximize2, Sparkles } from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
 
@@ -432,39 +432,51 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="flex items-start gap-5">
-              {/* Preview thumbnail */}
-              <div className="relative w-24 h-32 rounded-2xl overflow-hidden border-2 border-purple-500/30 bg-slate-900/80 flex-shrink-0">
+            {/* ── Transparent Image Recommendation Banner ── */}
+            <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-purple-200">💡 نصيحة للحصول على أفضل مظهر مودرن واحترافي:</p>
+                <p className="text-slate-300 leading-relaxed">
+                  يُفضل رفع <span className="text-purple-300 font-bold">صورة مفرغة بدون خلفية (PNG أو WebP Transparent)</span> لدمج أطرافها بسلاسة تامة مع خلفية المنصة الداكنة وتأثيرات الإضاءة.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+              {/* Flexible Responsive Preview with Fixed Aspect Ratio (No Distortion) */}
+              <div className="relative w-32 sm:w-40 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-purple-500/40 bg-gradient-to-b from-slate-900 to-slate-950 shadow-inner flex-shrink-0 flex items-end justify-center p-1.5">
+                {/* Background grid pattern simulation */}
+                <div className="absolute inset-0 bg-[radial-gradient(#a855f7_1px,transparent_1px)] [background-size:12px_12px] opacity-15 pointer-events-none" />
+
                 {(localPreviewUrl || portraitUrl) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={localPreviewUrl ?? portraitUrl!}
                     alt="صورة المستر"
-                    className="w-full h-full object-cover object-top"
+                    className="w-full h-full object-contain object-bottom relative z-10 transition-transform duration-300"
+                    style={{
+                      transform: `scale(${portraitScale})`,
+                      transformOrigin: 'center bottom',
+                      opacity: portraitOpacity > 0.4 ? portraitOpacity : 0.6, // minimum visibility for preview card
+                    }}
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-                    {/* fallback to dynamic API image if static fails */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                      src="/api/settings/branding?type=portrait" 
-                      alt="" 
-                      className="w-full h-full object-cover object-top"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
-                    />
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative z-10">
                     <ImageIcon className="w-8 h-8 text-slate-600" />
-                    <p className="text-[10px] text-slate-600">لا توجد صورة</p>
+                    <p className="text-[11px] text-slate-500 text-center font-medium">لا توجد صورة مخصصة</p>
                   </div>
                 )}
                 {extractingColors && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/70 z-20 flex flex-col items-center justify-center gap-1.5 backdrop-blur-xs">
                     <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                    <span className="text-[10px] text-purple-300 font-bold">استخراج الألوان...</span>
                   </div>
                 )}
               </div>
 
               {/* Upload controls */}
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 w-full space-y-3">
                 {portraitMsg && (
                   <div className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
                     portraitMsg.ok
@@ -483,8 +495,8 @@ export default function SettingsPage() {
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-500/5 hover:bg-purple-500/10 text-purple-300 text-sm font-bold transition-all disabled:opacity-50"
                 >
                   {portraitUploading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع...</>
-                    : <><Upload className="w-4 h-4" /> اختر صورة المستر</>}
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع والمعالجة...</>
+                    : <><Upload className="w-4 h-4" /> رفع صورة جديدة (PNG / WebP)</>}
                 </button>
                 <input
                   ref={portraitInputRef}

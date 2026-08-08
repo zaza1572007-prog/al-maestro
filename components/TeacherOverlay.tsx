@@ -85,49 +85,51 @@ export default function TeacherOverlay() {
       aria-hidden="true"
       className="pointer-events-none select-none fixed bottom-0 left-0 z-0 hidden md:flex items-end justify-center overflow-hidden transition-all duration-500 ease-in-out"
       style={{ 
-        width: isCenter ? '100vw' : 'clamp(280px, 30vw, 550px)',
-        height: '100vh'
+        width: isCenter ? '100vw' : 'clamp(300px, 32vw, 580px)',
+        height: '80vh'
       }}
     >
-      {/* Right fade (only for side layout) */}
+      {/* Right gradient fade (for side layout) to blend smoothly with content */}
       {!isCenter && (
         <div
-          className="absolute inset-0 z-[2]"
+          className="absolute inset-0 z-[2] pointer-events-none"
           style={{
             background:
-              'linear-gradient(to right, transparent 0%, rgba(6,9,19,.15) 50%, rgba(6,9,19,.95) 100%)',
+              'linear-gradient(to right, transparent 0%, rgba(6,9,19,.10) 45%, rgba(6,9,19,.85) 85%, rgba(6,9,19,1) 100%)',
           }}
         />
       )}
-      {/* Top fade */}
+
+      {/* Top subtle fade */}
       <div
-        className="absolute top-0 left-0 w-full z-[3]"
+        className="absolute top-0 left-0 w-full z-[3] pointer-events-none"
         style={{
-          height: '25%',
-          background: 'linear-gradient(to bottom, rgba(6,9,19,.95), transparent)',
-        }}
-      />
-      {/* Bottom fade */}
-      <div
-        className="absolute bottom-0 left-0 w-full z-[3]"
-        style={{
-          height: '28%',
-          background: 'linear-gradient(to top, rgba(6,9,19,1), transparent)',
+          height: '20%',
+          background: 'linear-gradient(to bottom, rgba(6,9,19,.9), transparent)',
         }}
       />
 
-      {/* Dynamic scaled and opacity image container */}
-      <div 
-        className="absolute inset-0 z-[1] transition-all duration-300 ease-out"
+      {/* Bottom smooth fade to blend feet/base seamlessly */}
+      <div
+        className="absolute bottom-0 left-0 w-full z-[3] pointer-events-none"
         style={{
-          transform: `scale(${scale}) translateY(${(1 - scale) * 10}%)`, // dynamically center base on scale
+          height: '25%',
+          background: 'linear-gradient(to top, rgba(6,9,19,1) 0%, rgba(6,9,19,.8) 40%, transparent 100%)',
+        }}
+      />
+
+      {/* Dynamic scaled and opacity image container with smooth mask gradient */}
+      <div 
+        className="absolute inset-0 z-[1] flex items-end justify-center transition-all duration-300 ease-out"
+        style={{
+          transform: `scale(${scale}) translateY(${(1 - scale) * 8}%)`,
           transformOrigin: isCenter ? 'center bottom' : 'left bottom',
           maskImage: isCenter 
-            ? 'radial-gradient(ellipse at 50% 50%, black 25%, transparent 75%)'
-            : 'radial-gradient(circle at 15% 85%, black 20%, transparent 75%)',
+            ? 'linear-gradient(to top, transparent 0%, black 14%, black 85%, transparent 100%)'
+            : 'linear-gradient(to top, transparent 0%, black 12%, black 88%, transparent 100%)',
           WebkitMaskImage: isCenter
-            ? 'radial-gradient(ellipse at 50% 50%, black 25%, transparent 75%)'
-            : 'radial-gradient(circle at 15% 85%, black 20%, transparent 75%)',
+            ? 'linear-gradient(to top, transparent 0%, black 14%, black 85%, transparent 100%)'
+            : 'linear-gradient(to top, transparent 0%, black 12%, black 88%, transparent 100%)',
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
