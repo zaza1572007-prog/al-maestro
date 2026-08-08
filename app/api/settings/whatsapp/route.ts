@@ -52,6 +52,7 @@ export async function GET() {
           student: settings?.waTplStudent || '',
           parent: settings?.waTplParent || '',
           attendance: settings?.waTplAttendance || '',
+          absent: settings?.waTplAbsent || '',
         },
       },
     });
@@ -74,6 +75,7 @@ export async function PUT(req: NextRequest) {
     if (templates?.student !== undefined) data.waTplStudent = templates.student;
     if (templates?.parent !== undefined) data.waTplParent = templates.parent;
     if (templates?.attendance !== undefined) data.waTplAttendance = templates.attendance;
+    if (templates?.absent !== undefined) data.waTplAbsent = templates.absent;
 
     if (settings) {
       await prisma.systemSettings.update({ where: { id: settings.id }, data });

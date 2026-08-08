@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [tplStudent, setTplStudent] = useState('🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
   const [tplParent, setTplParent] = useState('👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل ابنك/بنتك [student_name] بمنصة المايسترو.\nبيانات دخولك كولي أمر:\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
   const [tplAttendance, setTplAttendance] = useState('📅 تنبيه حضور\nالطالب: [student_name]\nالحالة: [status]\nالوقت: [time]\nمنصة المايسترو 🏫');
+  const [tplAbsent, setTplAbsent] = useState('📅 تنبيه غياب\nالطالب: [student_name]\nتغيب عن حضور حصة اليوم بالمجموعة.\nيرجى المتابعة 🏫');
 
   // Account settings
   const [accountName, setAccountName] = useState('');
@@ -145,6 +146,7 @@ export default function SettingsPage() {
             if (waData.settings.templates.student) setTplStudent(waData.settings.templates.student);
             if (waData.settings.templates.parent) setTplParent(waData.settings.templates.parent);
             if (waData.settings.templates.attendance) setTplAttendance(waData.settings.templates.attendance);
+            if (waData.settings.templates.absent) setTplAbsent(waData.settings.templates.absent);
           }
         }
 
@@ -987,7 +989,7 @@ export default function SettingsPage() {
                         gatewayUrl: waGatewayUrl,
                         apiToken: waApiToken,
                         senderNumber: waSenderNumber,
-                        templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance },
+                        templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent },
                       }),
                     });
                     const data = await res.json();
@@ -1063,6 +1065,24 @@ export default function SettingsPage() {
                 value={tplAttendance}
                 onChange={(e) => setTplAttendance(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Absence Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-rose-300">📅 قالب تنبيه الغياب</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['[student_name]', '[time]'].map(v => (
+                    <span key={v} className="text-[9px] px-1.5 py-0.5 bg-rose-500/15 text-rose-400 border border-rose-500/20 rounded font-mono cursor-pointer" onClick={() => setTplAbsent(p => p + v)}>{v}</span>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={3}
+                value={tplAbsent}
+                onChange={(e) => setTplAbsent(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-rose-500 focus:outline-none"
               />
             </div>
 

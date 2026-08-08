@@ -53,6 +53,13 @@ export default function AttendancePage() {
   const [todayGroups, setTodayGroups] = useState<any[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [selectedGroupSheet, setSelectedGroupSheet] = useState<any>(null);
+
+  // Tab control in right panel: 'history' or 'absentees'
+  const [rightPanelTab, setRightPanelTab] = useState<'history' | 'absentees'>('history');
+  const [absenteesGroup, setAbsenteesGroup] = useState<string>('');
+  const [absentees, setAbsentees] = useState<any[]>([]);
+  const [loadingAbsentees, setLoadingAbsentees] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
   
   // Autocomplete search states
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -64,10 +71,37 @@ export default function AttendancePage() {
     targetGroupId?: string;
   } | null>(null);
 
-  // Scanner status: starts RED — only goes GREEN when barcode input is focused
+  // Scanner status: starts RED 🔴 only goes GREEN when barcode input is focused
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+
+  const fetchAbsentees = async (groupId: string) => {
+    if (!groupId) {
+      setAbsentees([]);
+      return;
+    }
+    setLoadingAbsentees(true);
+    try {
+      const res = await fetch(`/api/attendance/today-groups/absentees?groupId=${groupId}`);
+      const data = await res.json();
+      if (data.success) {
+        setAbsentees(data.absentees || []);
+      } else {
+        toast.error(data.error || 'فشل جلب الغائبين');
+      }
+    } catch {
+      toast.error('خطأ في الاتصال بالخادم');
+    } finally {
+      setLoadingAbsentees(false);
+    }
+  };
+
+  useEffect(() => {
+    if (rightPanelTab === 'absentees' && absenteesGroup) {
+      fetchAbsentees(absenteesGroup);
+    }
+  }, [rightPanelTab, absenteesGroup]);
 
   // Debounced search for student names
   useEffect(() => {
@@ -272,6 +306,7 @@ export default function AttendancePage() {
         setWarningData(null);
         await fetchHistory();
         await fetchTodayGroups();
+        if (absenteesGroup) fetchAbsentees(absenteesGroup);
         setCode('');
       } else if (data.warningType) {
         setWarningData({
@@ -585,37 +620,180 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* Recent Attendance */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
-            <h2 className="font-bold text-white text-sm">آخر سجلات الحضور</h2>
-            {loadingHistory ? (
-              <p className="text-slate-400 text-sm text-center py-4">جارٍ التحميل...</p>
-            ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {recentAttendances.slice(0, 20).map((att) => (
-                  <div key={att.id} className="flex items-center justify-between text-xs p-2.5 bg-slate-950/60 rounded-xl">
-                    <div>
-                      <p className="font-semibold text-white">{att.student?.name}</p>
-                      <p className="text-slate-500">{att.session?.group?.name}</p>
+          {/* Tabs Header */}
+          <div className="flex bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800 gap-1.5">
+            <button
+              onClick={() => setRightPanelTab('history')}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                rightPanelTab === 'history'
+                  ? 'bg-purple-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              أحدث سجلات الحضور 🕒
+            </button>
+            <button
+              onClick={() => {
+                setRightPanelTab('absentees');
+                if (!absenteesGroup && todayGroups.length > 0) {
+                  const openGrp = todayGroups.find(g => g.sessionStatus === 'OPEN' || g.sessionStatus === 'IN_PROGRESS');
+                  setAbsenteesGroup(openGrp ? openGrp.id : todayGroups[0].id);
+                }
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                rightPanelTab === 'absentees'
+                  ? 'bg-purple-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              الطلاب الغائبون 👥
+            </button>
+          </div>
+
+          {/* Tab Content 1: History */}
+          {rightPanelTab === 'history' && (
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
+              <h2 className="font-bold text-white text-sm">آخر سجلات الحضور</h2>
+              {loadingHistory ? (
+                <p className="text-slate-400 text-sm text-center py-4">جارٍ التحميل...</p>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {recentAttendances.slice(0, 20).map((att) => (
+                    <div key={att.id} className="flex items-center justify-between text-xs p-2.5 bg-slate-950/60 rounded-xl">
+                      <div>
+                        <p className="font-semibold text-white">{att.student?.name}</p>
+                        <p className="text-slate-500">{att.session?.group?.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-0.5 rounded-full border text-xs ${statusColors[att.status] || ''}`}>
+                          {statusLabels[att.status] || att.status}
+                        </span>
+                        {att.checkInTime && (
+                          <p className="text-slate-500 mt-0.5">
+                            {new Date(att.checkInTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-0.5 rounded-full border text-xs ${statusColors[att.status] || ''}`}>
-                        {statusLabels[att.status] || att.status}
-                      </span>
-                      {att.checkInTime && (
-                        <p className="text-slate-500 mt-0.5">
-                          {new Date(att.checkInTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                  ))}
+                  {recentAttendances.length === 0 && (
+                    <p className="text-slate-500 text-center py-4">لا توجد سجلات حضور</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content 2: Absentees */}
+          {rightPanelTab === 'absentees' && (
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-400">اختر المجموعة لعرض الغائبين:</label>
+                <select
+                  value={absenteesGroup}
+                  onChange={(e) => setAbsenteesGroup(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs font-bold focus:border-purple-500 focus:outline-none"
+                >
+                  <option value="">-- اختر مجموعة --</option>
+                  {todayGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.stats.present} / {g.stats.total} طالب)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {absenteesGroup && (
+                <>
+                  {/* Bulk WhatsApp Absence Alert Button */}
+                  {absentees.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        if (confirm(`هل تريد إرسال تنبيهات غياب عبر الواتس اب لجميع الطلاب الغائبين في هذه المجموعة (${absentees.length} طالب)؟`)) {
+                          setBulkSending(true);
+                          try {
+                            const res = await fetch('/api/attendance/today-groups/send-absent', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ groupId: absenteesGroup }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              toast.success(data.message || 'تم إرسال رسائل الغياب بنجاح 🎉');
+                              await fetchAbsentees(absenteesGroup);
+                              await fetchHistory();
+                              await fetchTodayGroups();
+                            } else {
+                              toast.error(data.error || 'فشل إرسال تنبيهات الغياب');
+                            }
+                          } catch {
+                            toast.error('خطأ في الاتصال بالخادم');
+                          } finally {
+                            setBulkSending(false);
+                          }
+                        }
+                      }}
+                      disabled={bulkSending}
+                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition shadow disabled:opacity-50"
+                    >
+                      {bulkSending ? 'جاري إرسال الرسائل...' : `✉️ إرسال الغياب للكل (${absentees.length} طالب)`}
+                    </button>
+                  )}
+
+                  {/* Absentees List */}
+                  {loadingAbsentees ? (
+                    <p className="text-slate-400 text-sm text-center py-4 font-bold animate-pulse">جاري جلب قائمة الغائبين...</p>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {absentees.map((s) => (
+                        <div key={s.id} className="flex items-center justify-between text-xs p-2.5 bg-slate-950/60 rounded-xl hover:bg-slate-950 transition">
+                          <div>
+                            <p className="font-bold text-white text-sm">{s.name}</p>
+                            <p className="text-slate-500 text-[10px] mt-0.5">الكود: {s.code}</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`هل أنت متأكد من تسجيل حضور الطالب "${s.name}" يدوياً الآن؟ سيتم إرسال إشعار فوري لولي أمره بالواتساب.`)) {
+                                try {
+                                  const res = await fetch('/api/attendance/scan', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      studentCode: s.code,
+                                      status: 'PRESENT',
+                                      homeworkStatus,
+                                      scanMode,
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) {
+                                    toast.success(`تم تسجيل حضور ${s.name} بنجاح 🟢`);
+                                    await fetchAbsentees(absenteesGroup);
+                                    await fetchHistory();
+                                    await fetchTodayGroups();
+                                  } else {
+                                    toast.error(data.error || 'فشل تسجيل الحضور اليدوي');
+                                  }
+                                } catch {
+                                  toast.error('خطأ في الاتصال بالخادم');
+                                }
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                          >
+                            🙋‍♂️ حضور
+                          </button>
+                        </div>
+                      ))}
+                      {absentees.length === 0 && (
+                        <p className="text-slate-500 text-center py-4">ممتاز! لا يوجد أي طلاب غائبين في هذه المجموعة اليوم 🎉</p>
                       )}
                     </div>
-                  </div>
-                ))}
-                {recentAttendances.length === 0 && (
-                  <p className="text-slate-500 text-center py-4">لا توجد سجلات حضور</p>
-                )}
-              </div>
-            )}
-          </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
