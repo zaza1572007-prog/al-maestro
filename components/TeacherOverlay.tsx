@@ -5,11 +5,12 @@ import { useEffect, useState, useCallback } from 'react';
 export interface DevicePortraitConfig {
   opacity: number;
   scale: number;
-  position: 'side' | 'center';
-  posX: number; // horizontal pan offset % (-50% to +50%)
-  posY: number; // vertical pan offset % (-50% to +50%)
+  position: 'side' | 'center' | 'fullscreen';
+  posX: number; // horizontal pan offset % (-60% to +60%)
+  posY: number; // vertical pan offset % (-60% to +60%)
   visible: boolean;
   mode?: 'subtle' | 'balanced' | 'vivid';
+  fit?: 'contain' | 'cover';
 }
 
 export type SmartPortraitConfig = DevicePortraitConfig;
@@ -28,22 +29,25 @@ export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
     posX: 0,
     posY: 0,
     visible: true,
+    fit: 'contain',
   },
   tablet: {
     opacity: 0.16,
-    scale: 0.95,
+    scale: 1.0,
     position: 'side',
     posX: 0,
     posY: 0,
     visible: true,
+    fit: 'contain',
   },
   mobile: {
     opacity: 0.12,
-    scale: 0.85,
+    scale: 0.95,
     position: 'center',
     posX: 0,
     posY: 0,
     visible: true,
+    fit: 'contain',
   },
 };
 
@@ -102,11 +106,12 @@ export default function TeacherOverlay() {
                 posX: parsed.posX ?? 0,
                 posY: parsed.posY ?? 0,
                 visible: parsed.visible ?? true,
+                fit: parsed.fit ?? 'contain',
               };
               loadedConfig = {
                 desktop: { ...base },
-                tablet: { ...base, opacity: Math.min(base.opacity, 0.16) },
-                mobile: { ...base, opacity: Math.min(base.opacity, 0.12), position: 'center' },
+                tablet: { ...base, opacity: Math.min(base.opacity, 0.18) },
+                mobile: { ...base, opacity: Math.min(base.opacity, 0.14), position: 'center' },
               };
             }
           } catch {
@@ -177,13 +182,14 @@ export default function TeacherOverlay() {
 
   const isMobile = device === 'mobile';
   const isTablet = device === 'tablet';
+  const isFullscreen = currentConfig.position === 'fullscreen';
   const isCenter = currentConfig.position === 'center' || isMobile;
 
   // Determine specific device image endpoint
   const imageType = isMobile ? 'portrait-mobile' : isTablet ? 'portrait-tablet' : 'portrait';
   const imgSrc = `/api/settings/branding?type=${imageType}&t=${imageTimestamp}`;
 
-  // Smart dimensions per device
+  // Smart unconstrained dimensions allowing image to fill screen as large as desired
   let containerStyle: React.CSSProperties = {
     position: 'fixed',
     bottom: 0,
@@ -192,44 +198,64 @@ export default function TeacherOverlay() {
     userSelect: 'none',
     display: 'flex',
     alignItems: 'flex-end',
-    justifyContent: isCenter ? 'center' : 'flex-start',
+    justifyContent: isCenter || isFullscreen ? 'center' : 'flex-start',
     transition: 'all 0.3s ease-out',
   };
 
-  if (isMobile) {
+  if (isFullscreen) {
+    // Full Screen Hero Coverage (fills 100% of viewport)
+    containerStyle = {
+      ...containerStyle,
+      top: 0,
+      left: 0,
+      right: 0,
+      width: '100vw',
+      height: '100vh',
+      justifyContent: 'center',
+      alignItems: 'center',
+    };
+  } else if (isMobile) {
+    // Smartphone layout
     containerStyle = {
       ...containerStyle,
       left: '50%',
       transform: 'translateX(-50%)',
-      width: 'min(92vw, 360px)',
-      height: 'clamp(220px, 40vh, 340px)',
+      width: '100vw',
+      height: 'clamp(260px, 50vh, 450px)',
     };
   } else if (isTablet) {
+    // Tablet layout
     containerStyle = {
       ...containerStyle,
-      left: isCenter ? '50%' : '1rem',
+      left: isCenter ? '50%' : 0,
       transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? 'min(85vw, 680px)' : 'min(42vw, 440px)',
-      height: 'clamp(300px, 55vh, 480px)',
+      width: isCenter ? '100vw' : 'clamp(450px, 60vw, 850px)',
+      height: 'clamp(380px, 75vh, 700px)',
     };
   } else {
+    // Desktop layout (Spacious corner or center)
     containerStyle = {
       ...containerStyle,
-      left: isCenter ? '50%' : '1.5rem',
+      left: isCenter ? '50%' : 0,
       transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? 'min(80vw, 880px)' : 'min(35vw, 540px)',
-      height: 'clamp(360px, 65vh, 600px)',
+      width: isCenter ? '100vw' : 'clamp(600px, 65vw, 1200px)',
+      height: 'clamp(480px, 90vh, 1000px)',
     };
   }
 
-  // 360-degree soft feathering mask to remove all sharp chalkboard/rectangular borders
-  const maskImageStyle = isCenter
-    ? 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)'
-    : 'radial-gradient(ellipse 95% 88% at 30% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+  // Smooth feathering mask based on placement mode
+  let maskImageStyle = '';
+  if (isFullscreen) {
+    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 50%, black 30%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.2) 85%, transparent 100%)';
+  } else if (isCenter) {
+    maskImageStyle = 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+  } else {
+    maskImageStyle = 'radial-gradient(ellipse 95% 88% at 25% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+  }
 
   const scale = currentConfig.scale ?? 1.0;
   const imageTransform = `scale(${scale}) translate(${currentConfig.posX || 0}%, ${
-    (currentConfig.posY || 0) + (1 - scale) * 6
+    (currentConfig.posY || 0) + (1 - scale) * 4
   }%)`;
 
   return (
@@ -242,7 +268,7 @@ export default function TeacherOverlay() {
         className="w-full h-full flex items-end justify-center overflow-hidden transition-all duration-200"
         style={{
           transform: imageTransform,
-          transformOrigin: isCenter ? 'center bottom' : 'left bottom',
+          transformOrigin: isFullscreen ? 'center center' : isCenter ? 'center bottom' : 'left bottom',
           maskImage: maskImageStyle,
           WebkitMaskImage: maskImageStyle,
         }}
@@ -254,6 +280,7 @@ export default function TeacherOverlay() {
           className="w-full h-full object-contain object-bottom pointer-events-none transition-opacity duration-300"
           style={{
             opacity: currentConfig.opacity,
+            objectFit: isFullscreen ? 'cover' : 'contain',
             filter: 'contrast(1.04) saturate(1.04)',
           }}
           onError={() => setHasCustomImage(false)}

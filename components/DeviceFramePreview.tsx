@@ -1,13 +1,15 @@
 'use client';
 
-import React from 'react';
+import { 
+  Laptop, Tablet, Smartphone, Sparkles, 
+  Users, BookOpen, CreditCard, ShieldCheck 
+} from 'lucide-react';
 import { DevicePortraitConfig } from './TeacherOverlay';
-import { Layout, Maximize2, ShieldCheck, Sparkles, User, Users, BookOpen, CreditCard } from 'lucide-react';
 
 interface DeviceFramePreviewProps {
   device: 'desktop' | 'tablet' | 'mobile';
   config: DevicePortraitConfig;
-  imgSrc: string | null;
+  imgSrc?: string | null;
   platformName?: string;
 }
 
@@ -17,20 +19,22 @@ export default function DeviceFramePreview({
   imgSrc,
   platformName = 'منصة المايسترو',
 }: DeviceFramePreviewProps) {
-  const isCenter = config.position === 'center';
+  const isFullscreen = config.position === 'fullscreen';
+  const isCenter = config.position === 'center' || isFullscreen;
   const isVisible = config.visible;
 
   const scale = config.scale ?? 1.0;
   const imageTransform = `scale(${scale}) translate(${config.posX || 0}%, ${
-    (config.posY || 0) + (1 - scale) * 8
+    (config.posY || 0) + (1 - scale) * 4
   }%)`;
 
-  const maskGradient =
-    device === 'mobile'
-      ? 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%)'
-      : isCenter
-      ? 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)'
-      : 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)';
+  const maskGradient = isFullscreen
+    ? 'radial-gradient(ellipse 95% 90% at 50% 50%, black 30%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.2) 85%, transparent 100%)'
+    : device === 'mobile'
+    ? 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%)'
+    : isCenter
+    ? 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)'
+    : 'radial-gradient(ellipse 95% 88% at 25% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
 
   return (
     <div className="w-full flex flex-col items-center justify-center p-3 sm:p-6 bg-slate-950/80 rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative">
@@ -63,14 +67,16 @@ export default function DeviceFramePreview({
                 <div
                   className="absolute bottom-0 left-0 h-full pointer-events-none z-0 flex items-end justify-center overflow-hidden transition-all duration-200"
                   style={{
-                    width: isCenter ? '100%' : '50%',
+                    width: isFullscreen || isCenter ? '100%' : '65%',
+                    left: isCenter ? '50%' : 0,
+                    transform: isCenter ? 'translateX(-50%)' : 'none',
                   }}
                 >
                   <div
                     className="w-full h-full flex items-end justify-center"
                     style={{
                       transform: imageTransform,
-                      transformOrigin: isCenter ? 'center bottom' : 'left bottom',
+                      transformOrigin: isFullscreen ? 'center center' : isCenter ? 'center bottom' : 'left bottom',
                       maskImage: maskGradient,
                       WebkitMaskImage: maskGradient,
                     }}
@@ -80,7 +86,10 @@ export default function DeviceFramePreview({
                       src={imgSrc}
                       alt=""
                       className="w-full h-full object-contain object-bottom"
-                      style={{ opacity: config.opacity }}
+                      style={{
+                        opacity: config.opacity,
+                        objectFit: isFullscreen ? 'cover' : 'contain',
+                      }}
                     />
                   </div>
                 </div>
@@ -157,14 +166,16 @@ export default function DeviceFramePreview({
                 <div
                   className="absolute bottom-0 left-0 h-full pointer-events-none z-0 flex items-end justify-center overflow-hidden transition-all duration-200"
                   style={{
-                    width: isCenter ? '100%' : '65%',
+                    width: isFullscreen || isCenter ? '100%' : '75%',
+                    left: isCenter ? '50%' : 0,
+                    transform: isCenter ? 'translateX(-50%)' : 'none',
                   }}
                 >
                   <div
                     className="w-full h-full flex items-end justify-center"
                     style={{
                       transform: imageTransform,
-                      transformOrigin: isCenter ? 'center bottom' : 'left bottom',
+                      transformOrigin: isFullscreen ? 'center center' : isCenter ? 'center bottom' : 'left bottom',
                       maskImage: maskGradient,
                       WebkitMaskImage: maskGradient,
                     }}
@@ -174,7 +185,10 @@ export default function DeviceFramePreview({
                       src={imgSrc}
                       alt=""
                       className="w-full h-full object-contain object-bottom"
-                      style={{ opacity: config.opacity }}
+                      style={{
+                        opacity: config.opacity,
+                        objectFit: isFullscreen ? 'cover' : 'contain',
+                      }}
                     />
                   </div>
                 </div>
@@ -230,7 +244,7 @@ export default function DeviceFramePreview({
               {/* Teacher Image Overlay */}
               {imgSrc && isVisible && (
                 <div
-                  className="absolute bottom-0 left-0 w-full h-[70%] pointer-events-none z-0 flex items-end justify-center overflow-hidden transition-all duration-200"
+                  className="absolute bottom-0 left-0 w-full h-[85%] pointer-events-none z-0 flex items-end justify-center overflow-hidden transition-all duration-200"
                 >
                   <div
                     className="w-full h-full flex items-end justify-center"
@@ -246,7 +260,10 @@ export default function DeviceFramePreview({
                       src={imgSrc}
                       alt=""
                       className="w-full h-full object-contain object-bottom"
-                      style={{ opacity: config.opacity }}
+                      style={{
+                        opacity: config.opacity,
+                        objectFit: isFullscreen ? 'cover' : 'contain',
+                      }}
                     />
                   </div>
                 </div>

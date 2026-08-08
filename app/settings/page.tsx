@@ -809,7 +809,7 @@ export default function SettingsPage() {
                     <input
                       type="range"
                       min="0.50"
-                      max="2.20"
+                      max="3.50"
                       step="0.05"
                       value={multiDeviceConfig[activeDeviceTab].scale ?? 1.0}
                       onChange={(e) => updateCurrentDeviceConfig({ scale: parseFloat(e.target.value) })}
@@ -831,7 +831,7 @@ export default function SettingsPage() {
                     <input
                       type="range"
                       min="0.04"
-                      max="0.80"
+                      max="0.90"
                       step="0.01"
                       value={multiDeviceConfig[activeDeviceTab].opacity}
                       onChange={(e) => updateCurrentDeviceConfig({ opacity: parseFloat(e.target.value) })}
@@ -852,8 +852,8 @@ export default function SettingsPage() {
                     </div>
                     <input
                       type="range"
-                      min="-40"
-                      max="40"
+                      min="-60"
+                      max="60"
                       step="1"
                       value={multiDeviceConfig[activeDeviceTab].posX || 0}
                       onChange={(e) => updateCurrentDeviceConfig({ posX: parseInt(e.target.value, 10) })}
@@ -874,8 +874,8 @@ export default function SettingsPage() {
                     </div>
                     <input
                       type="range"
-                      min="-30"
-                      max="30"
+                      min="-60"
+                      max="60"
                       step="1"
                       value={multiDeviceConfig[activeDeviceTab].posY || 0}
                       onChange={(e) => updateCurrentDeviceConfig({ posY: parseInt(e.target.value, 10) })}
@@ -884,33 +884,45 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Position */}
+                {/* Position and Fullscreen mode */}
                 <div className="space-y-2 pt-1">
-                  <span className="text-xs font-bold text-slate-400 block">موضع الصورة لهذا الجهاز:</span>
-                  <div className="grid grid-cols-2 gap-3">
+                  <span className="text-xs font-bold text-slate-400 block">موضع وحجم تغطية الصورة لهذا الجهاز:</span>
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => updateCurrentDeviceConfig({ position: 'side' })}
-                      className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
-                        multiDeviceConfig[activeDeviceTab].position === 'side'
-                          ? 'border-purple-500 bg-purple-500/10 text-white shadow-md shadow-purple-500/10'
+                      onClick={() => updateCurrentDeviceConfig({ position: 'fullscreen' })}
+                      className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                        multiDeviceConfig[activeDeviceTab].position === 'fullscreen'
+                          ? 'border-purple-500 bg-purple-500/20 text-white shadow-md shadow-purple-500/20'
                           : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
                       }`}
                     >
-                      <Layout className="w-4 h-4" />
-                      على الجانب (Side)
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                      ملء الشاشة 🖥️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateCurrentDeviceConfig({ position: 'side' })}
+                      className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                        multiDeviceConfig[activeDeviceTab].position === 'side'
+                          ? 'border-purple-500 bg-purple-500/20 text-white shadow-md shadow-purple-500/20'
+                          : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      }`}
+                    >
+                      <Layout className="w-3.5 h-3.5" />
+                      على الجانب 👈
                     </button>
                     <button
                       type="button"
                       onClick={() => updateCurrentDeviceConfig({ position: 'center' })}
-                      className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                      className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
                         multiDeviceConfig[activeDeviceTab].position === 'center'
-                          ? 'border-purple-500 bg-purple-500/10 text-white shadow-md shadow-purple-500/10'
+                          ? 'border-purple-500 bg-purple-500/20 text-white shadow-md shadow-purple-500/20'
                           : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
                       }`}
                     >
-                      <Maximize2 className="w-4 h-4" />
-                      في المنتصف (Center)
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      في المنتصف 🎯
                     </button>
                   </div>
                 </div>
