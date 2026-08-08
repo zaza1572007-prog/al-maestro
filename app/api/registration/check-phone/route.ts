@@ -45,14 +45,7 @@ export async function POST(request: Request) {
     if (parentPhone) {
       const existingParent = await prisma.parent.findFirst({
         where: { phone: parentPhone },
-        include: {
-          students: {
-            include: {
-              group: true,
-              academicStage: true,
-            },
-          },
-        },
+        select: { id: true, name: true },
       });
 
       if (existingParent) {
@@ -60,16 +53,8 @@ export async function POST(request: Request) {
           exists: true,
           type: 'PARENT_EXISTS',
           parent: {
-            id: existingParent.id,
+            isExisting: true,
             name: existingParent.name,
-            phone: existingParent.phone,
-            childrenCount: existingParent.students.length,
-            children: existingParent.students.map((s) => ({
-              id: s.id,
-              name: s.name,
-              stageName: s.academicStage.name,
-              groupName: s.group.name,
-            })),
           },
         });
       }

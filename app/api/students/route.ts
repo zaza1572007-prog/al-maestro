@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
 // Helper to fill dynamic template placeholders
@@ -36,6 +37,11 @@ async function tryDispatchWhatsApp(to: string, body: string) {
 
 export async function GET(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const groupId = searchParams.get('groupId');
     const academicStageId = searchParams.get('academicStageId') || searchParams.get('stageId');
@@ -53,7 +59,17 @@ export async function GET(req: Request) {
       include: {
         academicStage: true,
         group: true,
-        parent: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            relation: true,
+            whatsapp: true,
+            extraPhone: true,
+            createdAt: true,
+          }
+        },
         subscriptions: {
           orderBy: { endDate: 'desc' },
           take: 1,
@@ -69,6 +85,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+    }
+
     const { name, phone, academicStageId, groupId, parentName, parentPhone, parentRelation, parentWhatsapp, parentExtraPhone } = await req.json();
 
     // Validate required fields
@@ -109,7 +130,7 @@ export async function POST(req: Request) {
       where: { phone: actualParentPhone },
     });
 
-    // Track the plain text parent password for display
+    // Track the temporary parent password for initial setup/WhatsApp notification
     const parentPasswordPlain = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedParentPassword = await bcrypt.hash(parentPasswordPlain, 10);
 
@@ -122,7 +143,6 @@ export async function POST(req: Request) {
           whatsapp: parentWhatsapp || null,
           extraPhone: parentExtraPhone || null,
           password: hashedParentPassword,
-          passwordPlain: parentPasswordPlain,
         },
       });
     } else {
@@ -134,7 +154,6 @@ export async function POST(req: Request) {
       if (parentRelation) updateData.relation = parentRelation;
       if (!parent.password) {
         updateData.password = hashedParentPassword;
-        updateData.passwordPlain = parentPasswordPlain;
       }
       if (Object.keys(updateData).length > 0) {
         parent = await prisma.parent.update({
@@ -172,7 +191,6 @@ export async function POST(req: Request) {
         name,
         phone: phone || null,
         password: hashedStudentPassword,
-        passwordPlain: studentPasswordPlain,
         academicStageId,
         groupId,
         parentId: parent.id,
@@ -181,7 +199,16 @@ export async function POST(req: Request) {
       include: {
         academicStage: true,
         group: true,
-        parent: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            relation: true,
+            whatsapp: true,
+            extraPhone: true,
+          }
+        },
       },
     });
 

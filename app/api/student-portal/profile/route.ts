@@ -90,7 +90,6 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ success: false, error: 'كلمة المرور يجب أن تكون 4 أحرف على الأقل' }, { status: 400 });
       }
       updateData.password = await bcrypt.hash(password, 10);
-      updateData.passwordPlain = password; // maintain clear text for teacher panel references
     }
 
     if (Object.keys(updateData).length === 0) {

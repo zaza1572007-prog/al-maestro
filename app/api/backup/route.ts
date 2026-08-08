@@ -1,9 +1,29 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const students = await prisma.student.findMany();
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Unauthorized)' }, { status: 401 });
+    }
+
+    const students = await prisma.student.findMany({
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        phone: true,
+        academicStageId: true,
+        groupId: true,
+        parentId: true,
+        qrCode: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
     const groups = await prisma.group.findMany();
     const stages = await prisma.academicStage.findMany();
     const attendances = await prisma.attendance.findMany();
@@ -36,6 +56,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'عملية الاستعادة مسموحة فقط للمدير (OWNER)' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { data } = body;
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { verifyStaff, verifyToken } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -8,13 +8,35 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = await verifyToken(token);
+    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Authorization check: only staff or the student themselves or their parent
+    const isStaff = payload.role === 'OWNER' || payload.role === 'ASSISTANT';
+    const isSelfStudent = payload.role === 'STUDENT' && payload.userId === id;
+    
+    if (!isStaff && !isSelfStudent && payload.role !== 'PARENT') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const student = await prisma.student.findUnique({
       where: { id },
       include: {
         academicStage: true,
         group: true,
-        parent: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            relation: true,
+            whatsapp: true,
+            extraPhone: true,
+          }
+        },
         attendances: {
           include: { session: true },
           orderBy: { createdAt: 'desc' },
@@ -59,23 +81,18 @@ export async function GET(
   }
 }
 
-// PUT - Update a student
+// PUT - Update a student (Staff only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح لك بتعديل بيانات الطالب (Staff Only)' }, { status: 403 });
+    }
+
     const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-
-    if (!payload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
     const {
       name,
@@ -90,7 +107,7 @@ export async function PUT(
       where: { id },
       data: {
         ...(name && { name }),
-        ...(phone && { phone }),
+        ...(phone !== undefined && { phone: phone ? phone : null }),
         ...(academicStageId && { academicStageId }),
         ...(groupId && { groupId }),
         ...(parentId && { parentId }),
@@ -99,7 +116,16 @@ export async function PUT(
       include: {
         academicStage: true,
         group: true,
-        parent: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            relation: true,
+            whatsapp: true,
+            extraPhone: true,
+          }
+        },
       },
     });
 
@@ -113,22 +139,18 @@ export async function PUT(
   }
 }
 
-// PATCH - Update a student
+// PATCH - Update a student (Staff only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-
-    // Auth guard
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بتعديل بيانات الطالب (Staff Only)' }, { status: 403 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { name, phone, parentName, parentPhone, stageId, groupId, academicStageId } = body;
 
@@ -140,7 +162,6 @@ export async function PATCH(
         ...(groupId && { groupId }),
         ...(stageId && { academicStageId: stageId }),
         ...(academicStageId && { academicStageId }),
-        // Update parent if exists
       },
       include: { academicStage: true, group: true },
     });
@@ -168,22 +189,18 @@ export async function PATCH(
   }
 }
 
-
-// DELETE - Delete a student
+// DELETE - Delete a student (Owner only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-
-    // Auth guard
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ success: false, error: 'يرجى تسجيل الدخول أولاً' }, { status: 401 });
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ success: false, error: 'جلسة غير صالحة. يرجى إعادة تسجيل الدخول.' }, { status: 401 });
+    const staff = await verifyStaff(request);
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'عملية الحذف محصورة لمدير النظام (OWNER) فقط' }, { status: 403 });
     }
+
+    const { id } = await params;
 
     // Delete related data first (cascade)
     await prisma.attendance.deleteMany({ where: { studentId: id } });

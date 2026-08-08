@@ -23,6 +23,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'لم يتم إرسال أي ملف' }, { status: 400 });
     }
 
+    // Maximum file size check: 50MB
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ success: false, error: 'حجم الملف يتجاوز الحد الأقصى المسموح به (50 ميجابايت)' }, { status: 400 });
+    }
+
+    // Strict file extension allowlist
+    const ALLOWED_EXTENSIONS = new Set([
+      'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+      'jpg', 'jpeg', 'png', 'webp', 'gif',
+      'mp4', 'mov', 'avi', 'mkv', 'zip', 'rar'
+    ]);
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return NextResponse.json({
+        success: false,
+        error: `نوع الملف (.${ext}) غير مسموح به لأسباب أمنية. يُسمح فقط بالمستندات (PDF, Word, Excel, PowerPoint) والصور والفيديوهات والملفات المضغوطة.`
+      }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -42,13 +63,13 @@ export async function POST(request: NextRequest) {
     let fileType = 'OTHER';
     const fname = file.name.toLowerCase();
     const fmime = file.type.toLowerCase();
-    if (fmime.includes('pdf') || fname.endsWith('.pdf')) fileType = 'PDF';
-    else if (fmime.includes('word') || fname.endsWith('.doc') || fname.endsWith('.docx')) fileType = 'WORD';
-    else if (fmime.includes('excel') || fname.endsWith('.xls') || fname.endsWith('.xlsx')) fileType = 'EXCEL';
-    else if (fmime.includes('powerpoint') || fname.endsWith('.ppt') || fname.endsWith('.pptx')) fileType = 'POWERPOINT';
-    else if (fmime.includes('image')) fileType = 'IMAGE';
-    else if (fmime.includes('video') || fname.endsWith('.mp4') || fname.endsWith('.mov') || fname.endsWith('.avi') || fname.endsWith('.mkv')) fileType = 'VIDEO';
-    else if (fname.endsWith('.zip') || fname.endsWith('.rar')) fileType = 'ZIP';
+    if (ext === 'pdf' || fmime.includes('pdf')) fileType = 'PDF';
+    else if (['doc', 'docx'].includes(ext) || fmime.includes('word')) fileType = 'WORD';
+    else if (['xls', 'xlsx'].includes(ext) || fmime.includes('excel')) fileType = 'EXCEL';
+    else if (['ppt', 'pptx'].includes(ext) || fmime.includes('powerpoint')) fileType = 'POWERPOINT';
+    else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) || fmime.includes('image')) fileType = 'IMAGE';
+    else if (['mp4', 'mov', 'avi', 'mkv'].includes(ext) || fmime.includes('video')) fileType = 'VIDEO';
+    else if (['zip', 'rar'].includes(ext)) fileType = 'ZIP';
 
     const dbFile = await prisma.file.create({
       data: {

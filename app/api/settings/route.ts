@@ -1,13 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
 export async function GET() {
   try {
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await prisma.systemSettings.findFirst({
+      select: {
+        id: true,
+        platformName: true,
+        isRegistrationOpen: true,
+        logo: true,
+        favicon: true,
+        primaryColor: true,
+        secondaryColor: true,
+        backgroundImage: true,
+        welcomeMessage: true,
+        loginBackground: true,
+        enableDarkMode: true,
+        portraitBase64: true,
+        logoBase64: true,
+        contactPhone: true,
+        contactWhatsapp: true,
+        motivationQuote: true,
+        portraitOpacity: true,
+        portraitScale: true,
+        portraitPosition: true,
+        logoScale: true,
+      }
+    });
     if (!settings) {
-      settings = await prisma.systemSettings.create({
+      const created = await prisma.systemSettings.create({
         data: { platformName: 'منصة المايسترو', isRegistrationOpen: true },
       });
+      return NextResponse.json({ success: true, settings: created });
     }
     return NextResponse.json({ success: true, settings });
   } catch (e: any) {
@@ -17,6 +42,11 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'تعديل الإعدادات مسموح لمدير النظام (OWNER) فقط' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { 
       platformName, 

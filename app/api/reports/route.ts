@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
 async function syncSubscriptionStatuses() {
   const now = new Date();
@@ -14,8 +15,13 @@ async function syncSubscriptionStatuses() {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     await syncSubscriptionStatuses();
 
     const now = new Date();

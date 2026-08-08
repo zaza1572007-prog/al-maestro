@@ -18,10 +18,6 @@ interface Student {
   groupId: string;
   attendanceRate: string;
   subStatus: string;
-  password?: string;
-  parentPassword?: string;
-  passwordPlain?: string;
-  parentPasswordPlain?: string;
   qrCode?: string;
 }
 
@@ -88,10 +84,6 @@ function StudentsContent() {
           groupId: s.groupId || '',
           attendanceRate: '—',
           subStatus: s.subscriptions?.[0]?.status || 'NO_SUB',
-          password: s.password || '—',
-          parentPassword: s.parent?.password || '—',
-          passwordPlain: s.passwordPlain || '—',
-          parentPasswordPlain: s.parent?.passwordPlain || '—',
           qrCode: s.qrCode || '—',
         }));
         setStudents(formatted);
@@ -624,10 +616,8 @@ function StudentsContent() {
                 </div>
                 <div>
                   <p className="text-slate-500">كلمة المرور</p>
-                  <p className="font-mono text-emerald-400 font-bold text-sm">
-                    {credentialsStudent.passwordPlain && credentialsStudent.passwordPlain !== '—'
-                      ? credentialsStudent.passwordPlain
-                      : 'غير متوفرة (يرجى إعادة تعيينها)'}
+                  <p className="font-mono text-emerald-400 font-bold text-xs">
+                    •••••••• (مشفرة بأمان)
                   </p>
                 </div>
               </div>
@@ -647,10 +637,8 @@ function StudentsContent() {
                 </div>
                 <div className="col-span-2">
                   <p className="text-slate-500">كلمة المرور</p>
-                  <p className="font-mono text-emerald-400 font-bold text-sm">
-                    {credentialsStudent.parentPasswordPlain && credentialsStudent.parentPasswordPlain !== '—'
-                      ? credentialsStudent.parentPasswordPlain
-                      : 'غير متوفرة (يرجى إعادة تعيينها)'}
+                  <p className="font-mono text-emerald-400 font-bold text-xs">
+                    •••••••• (مشفرة بأمان)
                   </p>
                 </div>
               </div>

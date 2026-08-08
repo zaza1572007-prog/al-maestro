@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { verifyStaff } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
 export async function PUT(
@@ -8,15 +8,12 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح لك بتعديل بيانات الدخول (Staff Only)' }, { status: 403 });
+    }
+
     const { id: studentId } = await context.params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'غير مصرح بالدخول' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'غير مصرح بالدخول' }, { status: 401 });
-    }
 
     const body = await request.json();
     const {
@@ -41,19 +38,23 @@ export async function PUT(
     // 2. Prepare student data updates
     const studentData: any = {};
     if (studentCode) studentData.code = studentCode;
-    if (studentPhone) studentData.phone = studentPhone;
+    if (studentPhone !== undefined) studentData.phone = studentPhone || null;
     if (qrCode) studentData.qrCode = qrCode;
     if (studentPassword) {
+      if (studentPassword.length < 4) {
+        return NextResponse.json({ error: 'كلمة مرور الطالب يجب ألا تقل عن 4 خانات' }, { status: 400 });
+      }
       studentData.password = await bcrypt.hash(studentPassword, 10);
-      studentData.passwordPlain = studentPassword;
     }
 
     // 3. Prepare parent data updates
     const parentData: any = {};
     if (parentPhone) parentData.phone = parentPhone;
     if (parentPassword) {
+      if (parentPassword.length < 4) {
+        return NextResponse.json({ error: 'كلمة مرور ولي الأمر يجب ألا تقل عن 4 خانات' }, { status: 400 });
+      }
       parentData.password = await bcrypt.hash(parentPassword, 10);
-      parentData.passwordPlain = parentPassword;
     }
 
     // 4. Perform updates in transaction

@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
         where: { id: student.id },
         data: {
           password: hashedPassword,
-          passwordPlain: newPassword
         }
       });
 
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest) {
         where: { id: parent.id },
         data: {
           password: hashedPassword,
-          passwordPlain: newPassword
         }
       });
 

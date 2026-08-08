@@ -34,11 +34,18 @@ async function tryDispatchWhatsApp(to: string, body: string) {
   }
 }
 
+import { verifyStaff } from '@/lib/auth';
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح لك بتنفيذ هذا الإجراء (Staff Only)' }, { status: 403 });
+    }
+
     const { id: requestId } = await context.params;
     const { action, targetGroupId } = await request.json();
 
@@ -108,7 +115,6 @@ export async function POST(
             whatsapp: reqData.parentWhatsapp || null,
             extraPhone: reqData.parentExtraPhone || null,
             password: hashedParentPassword,
-            passwordPlain: parentPassword,
           },
         });
       } else {
@@ -118,7 +124,6 @@ export async function POST(
         if (reqData.parentExtraPhone) updateData.extraPhone = reqData.parentExtraPhone;
         if (!parent.password) {
           updateData.password = hashedParentPassword;
-          updateData.passwordPlain = parentPassword;
         }
         if (Object.keys(updateData).length > 0) {
           parent = await prisma.parent.update({
@@ -160,7 +165,6 @@ export async function POST(
           parentId: parent.id,
           qrCode: qrCode,
           password: hashedStudentPassword,
-          passwordPlain: studentPassword,
         },
       });
 

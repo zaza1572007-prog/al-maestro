@@ -38,9 +38,16 @@ export function fillTemplate(template: string, vars: Record<string, string>): st
   return result;
 }
 
+import { verifyStaff } from '@/lib/auth';
+
 // GET: load WhatsApp gateway settings
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+    }
+
     const settings = await prisma.systemSettings.findFirst();
     return NextResponse.json({
       success: true,
@@ -64,6 +71,11 @@ export async function GET() {
 // PUT: save gateway settings + templates
 export async function PUT(req: NextRequest) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'تعديل إعدادات الواتساب مسموح فقط لمدير النظام (OWNER)' }, { status: 403 });
+    }
+
     const body = await req.json();
     const { gatewayUrl, apiToken, senderNumber, templates } = body;
 
@@ -133,6 +145,11 @@ export async function PUT(req: NextRequest) {
 // POST: send a test message OR dispatch credentials
 export async function POST(req: NextRequest) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { action, to, message } = body;
 

@@ -29,17 +29,22 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!token) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Unauthorized)' }, { status: 401 });
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   try {
     const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ success: false, error: 'جلسة الدخول غير صالحة' }, { status: 401 });
+      }
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
     const role = payload.role as string;
-    const pathname = request.nextUrl.pathname;
 
     // Allowed paths for each role
     const isStudentPath = pathname.startsWith('/student-portal') || pathname.startsWith('/api/student-portal');
@@ -47,14 +52,23 @@ export async function middleware(request: NextRequest) {
     const isCommonApi = pathname.startsWith('/api/auth');
 
     if (role === 'STUDENT' && !isStudentPath && !isCommonApi) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 });
+      }
       return NextResponse.redirect(new URL('/student-portal', request.url));
     }
 
     if (role === 'PARENT' && !isParentPath && !isCommonApi) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 });
+      }
       return NextResponse.redirect(new URL('/parent-portal', request.url));
     }
 
   } catch (err) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ success: false, error: 'جلسة الدخول منتهية أو غير صالحة' }, { status: 401 });
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
