@@ -27,10 +27,10 @@ export default function DeviceFramePreview({
 
   const maskGradient =
     device === 'mobile'
-      ? 'radial-gradient(ellipse at 50% 70%, black 20%, transparent 80%)'
+      ? 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%)'
       : isCenter
-      ? 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)'
-      : 'linear-gradient(to top, transparent 0%, black 12%, black 88%, transparent 100%)';
+      ? 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)'
+      : 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)';
 
   return (
     <div className="w-full flex flex-col items-center justify-center p-3 sm:p-6 bg-slate-950/80 rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative">

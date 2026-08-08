@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GraduationCap, Users, ShieldCheck, Sparkles, ArrowLeft, UserPlus } from "lucide-react";
-import TeacherOverlay from "@/components/TeacherOverlay";
 
 export default function SelectRolePage() {
   const router = useRouter();
@@ -50,19 +49,16 @@ export default function SelectRolePage() {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col justify-center items-center p-6 bg-transparent">
-      {/* Teacher Overlay in background */}
-      <TeacherOverlay />
-
+    <div className="min-h-screen relative overflow-hidden flex flex-col justify-center items-center p-4 sm:p-6 bg-transparent">
       {/* Background Ambient Glows */}
-      <div className="ambient-glow-1"></div>
-      <div className="ambient-glow-2"></div>
+      <div className="ambient-glow-1" aria-hidden="true" />
+      <div className="ambient-glow-2" aria-hidden="true" />
 
       {/* Direct Registration Button Banner */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="z-10 mb-8"
+        className="relative z-10 mb-6 sm:mb-8"
       >
         <Link href="/register">
           <motion.button
@@ -97,7 +93,7 @@ export default function SelectRolePage() {
       </motion.div>
 
       {/* Role Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 z-10 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10 w-full max-w-6xl">
         {roles.map((role, idx) => {
           const Icon = role.icon;
           return (

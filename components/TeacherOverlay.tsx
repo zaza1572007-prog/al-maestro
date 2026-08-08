@@ -19,7 +19,7 @@ export interface MultiDevicePortraitConfig {
 
 export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
   desktop: {
-    opacity: 0.18,
+    opacity: 0.22,
     scale: 1.0,
     position: 'side',
     posX: 0,
@@ -27,7 +27,7 @@ export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
     visible: true,
   },
   tablet: {
-    opacity: 0.14,
+    opacity: 0.16,
     scale: 0.95,
     position: 'side',
     posX: 0,
@@ -35,7 +35,7 @@ export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
     visible: true,
   },
   mobile: {
-    opacity: 0.10,
+    opacity: 0.12,
     scale: 0.85,
     position: 'center',
     posX: 0,
@@ -52,7 +52,7 @@ export default function TeacherOverlay() {
   const [hasCustomImage, setHasCustomImage] = useState<boolean>(false);
   const [imageTimestamp, setImageTimestamp] = useState<number>(Date.now());
 
-  // 1. Detect screen size breakpoint
+  // 1. Strict Responsive Breakpoints Detection (Desktop >= 1024px | Tablet 768px-1023px | Mobile < 768px)
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -88,10 +88,10 @@ export default function TeacherOverlay() {
               mobile: { ...DEFAULT_PORTRAIT_CONFIG.mobile, ...(parsed.mobile || {}) },
             };
           } catch {
-            // fallback to legacy
+            // fallback
           }
         } else {
-          // Map legacy fields to desktop config
+          // Map legacy fields
           if (s.portraitOpacity !== undefined) loadedConfig.desktop.opacity = s.portraitOpacity;
           if (s.portraitScale !== undefined) loadedConfig.desktop.scale = s.portraitScale;
           if (s.portraitPosition !== undefined) loadedConfig.desktop.position = s.portraitPosition;
@@ -100,12 +100,12 @@ export default function TeacherOverlay() {
         setConfig(loadedConfig);
       }
 
-      // Check if image exists
+      // Check if portrait image is available
       const imgRes = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
       setHasCustomImage(imgRes.ok);
       setImageTimestamp(Date.now());
     } catch {
-      // ignore
+      // hide on failure
     }
   }, []);
 
@@ -114,7 +114,7 @@ export default function TeacherOverlay() {
 
     const refresh = () => fetchConfigAndImage();
 
-    // Live preview event handler for instant feedback from settings sliders
+    // Live preview event listener
     const handleLivePreview = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
@@ -127,7 +127,6 @@ export default function TeacherOverlay() {
             [targetDevice]: { ...prev[targetDevice as DeviceType], ...newDeviceConfig },
           }));
         } else {
-          // Legacy payload support
           setConfig((prev) => ({
             ...prev,
             desktop: {
@@ -161,73 +160,90 @@ export default function TeacherOverlay() {
   const isMobile = device === 'mobile';
   const isTablet = device === 'tablet';
 
-  // Determine specific device image endpoint (falls back on server to desktop image if missing)
+  // Determine specific device image endpoint (falls back gracefully to general portrait)
   const imageType = isMobile ? 'portrait-mobile' : isTablet ? 'portrait-tablet' : 'portrait';
   const imgSrc = `/api/settings/branding?type=${imageType}&t=${imageTimestamp}`;
+
+  // Strict Responsive Breakpoints styling parameters:
+  let containerStyle: React.CSSProperties = {};
+  let imageTransform = '';
+  let maskImageStyle = '';
+
+  if (device === 'desktop') {
+    // Desktop / Large screens (lg: min-width 1024px)
+    containerStyle = {
+      position: 'fixed',
+      bottom: 0,
+      left: isCenter ? '50%' : 0,
+      transform: isCenter ? 'translateX(-50%)' : 'none',
+      height: 'clamp(450px, 80vh, 750px)',
+      width: isCenter ? '100vw' : 'clamp(320px, 32vw, 600px)',
+      zIndex: 1,
+      pointerEvents: 'none',
+    };
+    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
+      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
+    }%)`;
+    maskImageStyle = isCenter
+      ? 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)'
+      : 'linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)';
+  } else if (device === 'tablet') {
+    // Tablet (md: 768px to 1023px)
+    containerStyle = {
+      position: 'fixed',
+      bottom: 0,
+      left: isCenter ? '50%' : 0,
+      transform: isCenter ? 'translateX(-50%)' : 'none',
+      height: 'clamp(350px, 55vh, 500px)',
+      width: isCenter ? '100vw' : 'clamp(300px, 42vw, 480px)',
+      zIndex: 1,
+      pointerEvents: 'none',
+    };
+    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
+      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
+    }%)`;
+    maskImageStyle = isCenter
+      ? 'linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)'
+      : 'linear-gradient(to top, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%), linear-gradient(to right, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)';
+  } else {
+    // Mobile (sm / mobile: < 768px)
+    containerStyle = {
+      position: 'fixed',
+      bottom: 0,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      height: 'clamp(250px, 45vh, 400px)',
+      width: '100vw',
+      zIndex: 0,
+      pointerEvents: 'none',
+    };
+    imageTransform = `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
+      (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 6
+    }%)`;
+    maskImageStyle = 'radial-gradient(ellipse at 50% 80%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 85%)';
+  }
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none select-none fixed bottom-0 left-0 z-0 flex items-end justify-center overflow-hidden transition-all duration-500 ease-in-out"
-      style={{
-        width: isCenter ? '100vw' : isMobile ? '100vw' : isTablet ? 'clamp(320px, 45vw, 550px)' : 'clamp(300px, 32vw, 600px)',
-        height: isMobile ? '65vh' : isTablet ? '75vh' : '80vh',
-      }}
+      className="pointer-events-none select-none flex items-end justify-center overflow-hidden transition-all duration-300 ease-out"
+      style={containerStyle}
     >
-      {/* Side gradient fade for non-center layouts */}
-      {!isCenter && !isMobile && (
-        <div
-          className="absolute inset-0 z-[2] pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(to right, transparent 0%, rgba(6,9,19,.10) 45%, rgba(6,9,19,.85) 85%, rgba(6,9,19,1) 100%)',
-          }}
-        />
-      )}
-
-      {/* Top subtle fade */}
+      {/* Transformed image wrapper with strict mask gradient */}
       <div
-        className="absolute top-0 left-0 w-full z-[3] pointer-events-none"
+        className="w-full h-full flex items-end justify-center transition-all duration-200 ease-out"
         style={{
-          height: isMobile ? '35%' : '20%',
-          background: 'linear-gradient(to bottom, rgba(6,9,19,.95), transparent)',
-        }}
-      />
-
-      {/* Bottom smooth fade to blend feet/base seamlessly */}
-      <div
-        className="absolute bottom-0 left-0 w-full z-[3] pointer-events-none"
-        style={{
-          height: isMobile ? '35%' : '25%',
-          background: 'linear-gradient(to top, rgba(6,9,19,1) 0%, rgba(6,9,19,.85) 45%, transparent 100%)',
-        }}
-      />
-
-      {/* Dynamic scaled, panned, and opacity image container */}
-      <div
-        className="absolute inset-0 z-[1] flex items-end justify-center transition-all duration-200 ease-out"
-        style={{
-          transform: `scale(${currentDeviceConfig.scale}) translate(${currentDeviceConfig.posX || 0}%, ${
-            (currentDeviceConfig.posY || 0) + (1 - currentDeviceConfig.scale) * 8
-          }%)`,
-          transformOrigin: isCenter ? 'center bottom' : 'left bottom',
-          maskImage: isMobile
-            ? 'radial-gradient(ellipse at 50% 70%, black 20%, transparent 80%)'
-            : isCenter
-            ? 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)'
-            : 'linear-gradient(to top, transparent 0%, black 12%, black 88%, transparent 100%)',
-          WebkitMaskImage: isMobile
-            ? 'radial-gradient(ellipse at 50% 70%, black 20%, transparent 80%)'
-            : isCenter
-            ? 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)'
-            : 'linear-gradient(to top, transparent 0%, black 12%, black 88%, transparent 100%)',
+          transform: imageTransform,
+          transformOrigin: isCenter || isMobile ? 'center bottom' : 'left bottom',
+          maskImage: maskImageStyle,
+          WebkitMaskImage: maskImageStyle,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imgSrc}
           alt="صورة المستر"
-          className="w-full h-full object-contain object-bottom"
+          className="w-full h-full object-contain object-bottom pointer-events-none"
           style={{
             opacity: currentDeviceConfig.opacity,
             transition: 'opacity 0.3s ease',
