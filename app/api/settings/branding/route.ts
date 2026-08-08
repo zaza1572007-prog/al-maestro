@@ -5,7 +5,7 @@ import { verifyStaff } from '@/lib/auth';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE_MB = 5;
 
-/** GET /api/settings/branding?type=portrait|logo
+/** GET /api/settings/branding?type=portrait|portrait-tablet|portrait-mobile|logo
  *  Returns the branding image as the actual image binary (for <img src> use).
  */
 export async function GET(request: NextRequest) {
@@ -13,8 +13,19 @@ export async function GET(request: NextRequest) {
     const type = request.nextUrl.searchParams.get('type') ?? 'portrait';
     const settings = await prisma.systemSettings.findFirst();
 
-    const b64 =
-      type === 'logo' ? settings?.logoBase64 : settings?.portraitBase64;
+    let b64: string | null | undefined = null;
+
+    if (type === 'logo') {
+      b64 = settings?.logoBase64;
+    } else if (type === 'portrait-tablet') {
+      // Use tablet-specific portrait or fallback to main portrait
+      b64 = settings?.portraitTabletBase64 || settings?.portraitBase64;
+    } else if (type === 'portrait-mobile') {
+      // Use mobile-specific portrait or fallback to main portrait
+      b64 = settings?.portraitMobileBase64 || settings?.portraitBase64;
+    } else {
+      b64 = settings?.portraitBase64;
+    }
 
     if (!b64) {
       return new NextResponse(null, { status: 404 });
@@ -41,7 +52,7 @@ export async function GET(request: NextRequest) {
 }
 
 /** POST /api/settings/branding
- *  Accepts a multipart form with `file` and `type` (portrait|logo).
+ *  Accepts a multipart form with `file` and `type` (portrait|portrait-tablet|portrait-mobile|logo).
  *  Converts the image to base64 and saves it in SystemSettings.
  */
 export async function POST(request: NextRequest) {
@@ -78,23 +89,38 @@ export async function POST(request: NextRequest) {
     const base64 = Buffer.from(bytes).toString('base64');
     const dataUri = `data:${file.type};base64,${base64}`;
 
+    // Map type to database field
+    let updateData: any = {};
+    let successMsg = 'تم رفع صورة المستر بنجاح ✅';
+
+    if (type === 'logo') {
+      updateData = { logoBase64: dataUri };
+      successMsg = 'تم رفع الشعار بنجاح ✅';
+    } else if (type === 'portrait-tablet') {
+      updateData = { portraitTabletBase64: dataUri };
+      successMsg = 'تم رفع صورة المستر المخصصة للتابلت بنجاح 📱';
+    } else if (type === 'portrait-mobile') {
+      updateData = { portraitMobileBase64: dataUri };
+      successMsg = 'تم رفع صورة المستر المخصصة للهاتف بنجاح 📲';
+    } else {
+      updateData = { portraitBase64: dataUri };
+      successMsg = 'تم رفع صورة المستر الرئيسية (الكمبيوتر) بنجاح 💻';
+    }
+
     // Upsert into SystemSettings
     let settings = await prisma.systemSettings.findFirst();
 
     if (settings) {
       settings = await prisma.systemSettings.update({
         where: { id: settings.id },
-        data:
-          type === 'logo'
-            ? { logoBase64: dataUri }
-            : { portraitBase64: dataUri },
+        data: updateData,
       });
     } else {
       settings = await prisma.systemSettings.create({
-        data:
-          type === 'logo'
-            ? { logoBase64: dataUri }
-            : { portraitBase64: dataUri },
+        data: {
+          platformName: 'منصة المايسترو',
+          ...updateData,
+        },
       });
     }
 
@@ -105,7 +131,7 @@ export async function POST(request: NextRequest) {
       success: true,
       url: urlPath,
       type,
-      message: type === 'logo' ? 'تم رفع الشعار بنجاح ✅' : 'تم رفع صورة المستر بنجاح ✅',
+      message: successMsg,
     });
   } catch (error: any) {
     console.error('[branding upload error]', error);

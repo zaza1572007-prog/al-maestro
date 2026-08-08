@@ -552,18 +552,22 @@ model SystemSettings {
   waTplAttendance     String?  @db.Text
   waTplAbsent         String?  @db.Text
   // Branding images (base64) – stored in DB to avoid filesystem writes on Vercel
-  portraitBase64  String?  @db.Text
-  logoBase64      String?  @db.Text
+  portraitBase64        String?  @db.Text
+  portraitTabletBase64  String?  @db.Text
+  portraitMobileBase64  String?  @db.Text
+  logoBase64            String?  @db.Text
   // Custom contact details & quotes
-  contactPhone    String?
-  contactWhatsapp String?
-  motivationQuote String?  @db.Text
-  // Portrait settings
-  portraitOpacity  Float?   @default(0.18)
-  portraitScale    Float?   @default(1.0)
-  portraitPosition String?  @default("side")
+  contactPhone          String?
+  contactWhatsapp       String?
+  motivationQuote       String?  @db.Text
+  // Legacy single-device portrait settings
+  portraitOpacity       Float?   @default(0.18)
+  portraitScale         Float?   @default(1.0)
+  portraitPosition      String?  @default("side")
+  // Multi-device JSON configuration
+  portraitConfig        String?  @db.Text
   // Logo settings
-  logoScale       Float?   @default(1.0)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  logoScale             Float?   @default(1.0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

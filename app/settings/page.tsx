@@ -2,9 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import HeroHeader from '@/components/HeroHeader';
-import { ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, Loader2, Palette, RefreshCw, Layout, Maximize2, Sparkles } from 'lucide-react';
+import { 
+  ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, 
+  Loader2, Palette, RefreshCw, Layout, Maximize2, Sparkles, 
+  Laptop, Tablet, Smartphone, Sliders, ZoomIn, Move, Eye, EyeOff, RotateCcw 
+} from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
+import DeviceFramePreview from '@/components/DeviceFramePreview';
+import { DEFAULT_PORTRAIT_CONFIG, MultiDevicePortraitConfig, DevicePortraitConfig } from '@/components/TeacherOverlay';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('registration');
@@ -48,7 +54,11 @@ export default function SettingsPage() {
   const [contactWhatsapp, setContactWhatsapp] = useState('');
   const [motivationQuote, setMotivationQuote] = useState('');
 
-  // Portrait layout configuration
+  // Multi-Device Portrait Configuration
+  const [activeDeviceTab, setActiveDeviceTab] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [multiDeviceConfig, setMultiDeviceConfig] = useState<MultiDevicePortraitConfig>(DEFAULT_PORTRAIT_CONFIG);
+
+  // Legacy single-device states
   const [portraitOpacity, setPortraitOpacity] = useState(0.18);
   const [portraitScale, setPortraitScale] = useState(1.0);
   const [portraitPosition, setPortraitPosition] = useState('side');
@@ -58,18 +68,67 @@ export default function SettingsPage() {
 
   // Branding uploads
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
+  const [portraitTabletUrl, setPortraitTabletUrl] = useState<string | null>(null);
+  const [portraitMobileUrl, setPortraitMobileUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
   const [portraitUploading, setPortraitUploading] = useState(false);
+  const [tabletUploading, setTabletUploading] = useState(false);
+  const [mobileUploading, setMobileUploading] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+
   const [portraitMsg, setPortraitMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [logoMsg, setLogoMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
   const portraitInputRef = useRef<HTMLInputElement>(null);
+  const tabletInputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Smart colour system
   const [palettes, setPalettes] = useState<ThemePalette[]>(() => getDefaultPalettes());
   const [extractingColors, setExtractingColors] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null); // object URL for instant preview
+
+  /** Helper to update config for the currently selected device tab */
+  const updateCurrentDeviceConfig = (partial: Partial<DevicePortraitConfig>) => {
+    setMultiDeviceConfig((prev) => {
+      const updatedDevice = {
+        ...prev[activeDeviceTab],
+        ...partial,
+      };
+      const updatedAll = {
+        ...prev,
+        [activeDeviceTab]: updatedDevice,
+      };
+
+      // Also sync legacy states if editing desktop
+      if (activeDeviceTab === 'desktop') {
+        if (partial.opacity !== undefined) setPortraitOpacity(partial.opacity);
+        if (partial.scale !== undefined) setPortraitScale(partial.scale);
+        if (partial.position !== undefined) setPortraitPosition(partial.position);
+      }
+
+      // Live event for instant overlay update in the background
+      window.dispatchEvent(
+        new CustomEvent('maestro-portrait-live-preview', {
+          detail: {
+            device: activeDeviceTab,
+            config: updatedDevice,
+            allConfig: updatedAll,
+          },
+        })
+      );
+
+      return updatedAll;
+    });
+  };
+
+  /** Reset current device config to standard recommended defaults */
+  const resetCurrentDeviceConfig = () => {
+    const defaultForTab = DEFAULT_PORTRAIT_CONFIG[activeDeviceTab];
+    updateCurrentDeviceConfig(defaultForTab);
+  };
 
   /** Extract colours from a local File object (before uploading) */
   const extractFromFile = useCallback(async (file: File) => {
@@ -86,11 +145,14 @@ export default function SettingsPage() {
 
   const handleBrandingUpload = async (
     file: File,
-    type: 'portrait' | 'logo'
+    type: 'portrait' | 'portrait-tablet' | 'portrait-mobile' | 'logo'
   ) => {
-    const setUploading = type === 'portrait' ? setPortraitUploading : setLogoUploading;
-    const setMsg = type === 'portrait' ? setPortraitMsg : setLogoMsg;
-    const setUrl = type === 'portrait' ? setPortraitUrl : setLogoUrl;
+    let setUploading = setPortraitUploading;
+    if (type === 'portrait-tablet') setUploading = setTabletUploading;
+    if (type === 'portrait-mobile') setUploading = setMobileUploading;
+    if (type === 'logo') setUploading = setLogoUploading;
+
+    const setMsg = type === 'logo' ? setLogoMsg : setPortraitMsg;
     setUploading(true);
     setMsg(null);
     try {
@@ -100,9 +162,14 @@ export default function SettingsPage() {
       const res = await fetch('/api/settings/branding', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setUrl(data.url + '?t=' + Date.now());
+        const fullUrl = data.url + '?t=' + Date.now();
+        if (type === 'portrait') setPortraitUrl(fullUrl);
+        else if (type === 'portrait-tablet') setPortraitTabletUrl(fullUrl);
+        else if (type === 'portrait-mobile') setPortraitMobileUrl(fullUrl);
+        else if (type === 'logo') setLogoUrl(fullUrl);
+
         setMsg({ text: data.message, ok: true });
-        if (type === 'portrait') {
+        if (type.startsWith('portrait')) {
           window.dispatchEvent(new Event('maestro-portrait-updated'));
         } else if (type === 'logo') {
           window.dispatchEvent(new Event('maestro-logo-updated'));
@@ -124,16 +191,38 @@ export default function SettingsPage() {
         const res = await fetch('/api/settings');
         const data = await res.json();
         if (data.success && data.settings) {
-          setPlatformName(data.settings.platformName || 'منصة المايسترو');
-          setIsRegistrationOpen(data.settings.isRegistrationOpen ?? true);
-          setEnableWhatsApp(data.settings.enableWhatsApp ?? true);
-          setContactPhone(data.settings.contactPhone || '');
-          setContactWhatsapp(data.settings.contactWhatsapp || '');
-          setMotivationQuote(data.settings.motivationQuote || '');
-          setPortraitOpacity(data.settings.portraitOpacity ?? 0.18);
-          setPortraitScale(data.settings.portraitScale ?? 1.0);
-          setPortraitPosition(data.settings.portraitPosition ?? 'side');
-          setLogoScale(data.settings.logoScale ?? 1.0);
+          const s = data.settings;
+          setPlatformName(s.platformName || 'منصة المايسترو');
+          setIsRegistrationOpen(s.isRegistrationOpen ?? true);
+          setEnableWhatsApp(s.enableWhatsApp ?? true);
+          setContactPhone(s.contactPhone || '');
+          setContactWhatsapp(s.contactWhatsapp || '');
+          setMotivationQuote(s.motivationQuote || '');
+          setPortraitOpacity(s.portraitOpacity ?? 0.18);
+          setPortraitScale(s.portraitScale ?? 1.0);
+          setPortraitPosition(s.portraitPosition ?? 'side');
+          setLogoScale(s.logoScale ?? 1.0);
+
+          // Populate multi-device configuration
+          let loadedMulti: MultiDevicePortraitConfig = { ...DEFAULT_PORTRAIT_CONFIG };
+          if (s.portraitConfig) {
+            try {
+              const parsed = typeof s.portraitConfig === 'string' ? JSON.parse(s.portraitConfig) : s.portraitConfig;
+              loadedMulti = {
+                desktop: { ...DEFAULT_PORTRAIT_CONFIG.desktop, ...(parsed.desktop || {}) },
+                tablet: { ...DEFAULT_PORTRAIT_CONFIG.tablet, ...(parsed.tablet || {}) },
+                mobile: { ...DEFAULT_PORTRAIT_CONFIG.mobile, ...(parsed.mobile || {}) },
+              };
+            } catch {
+              // fallback
+            }
+          } else {
+            // Map legacy fields
+            if (s.portraitOpacity !== undefined) loadedMulti.desktop.opacity = s.portraitOpacity;
+            if (s.portraitScale !== undefined) loadedMulti.desktop.scale = s.portraitScale;
+            if (s.portraitPosition !== undefined) loadedMulti.desktop.position = s.portraitPosition;
+          }
+          setMultiDeviceConfig(loadedMulti);
         }
         // Load WhatsApp gateway settings
         const waRes = await fetch('/api/settings/whatsapp');
@@ -150,17 +239,18 @@ export default function SettingsPage() {
           }
         }
 
-        // Fetch custom portrait presence
-        const portRes = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
-        if (portRes.ok) {
-          setPortraitUrl('/api/settings/branding?type=portrait&t=' + Date.now());
-        }
+        // Fetch custom portrait presences
+        const [portRes, portTabRes, portMobRes, logoCheck] = await Promise.all([
+          fetch('/api/settings/branding?type=portrait', { method: 'HEAD' }),
+          fetch('/api/settings/branding?type=portrait-tablet', { method: 'HEAD' }),
+          fetch('/api/settings/branding?type=portrait-mobile', { method: 'HEAD' }),
+          fetch('/api/settings/branding?type=logo', { method: 'HEAD' }),
+        ]);
 
-        // Fetch custom logo presence
-        const logoCheck = await fetch('/api/settings/branding?type=logo', { method: 'HEAD' });
-        if (logoCheck.ok) {
-          setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
-        }
+        if (portRes.ok) setPortraitUrl('/api/settings/branding?type=portrait&t=' + Date.now());
+        if (portTabRes.ok) setPortraitTabletUrl('/api/settings/branding?type=portrait-tablet&t=' + Date.now());
+        if (portMobRes.ok) setPortraitMobileUrl('/api/settings/branding?type=portrait-mobile&t=' + Date.now());
+        if (logoCheck.ok) setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
 
         // Fetch logged-in user profile details
         const meRes = await fetch('/api/auth/me');
@@ -420,15 +510,15 @@ export default function SettingsPage() {
       {activeTab === 'branding' && (
         <div className="space-y-8 max-w-2xl">
 
-          {/* ── Portrait Upload ── */}
-          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-5">
+          {/* ── Multi-Device Portrait Customizer ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-6">
             <div>
               <h3 className="font-bold text-lg text-white flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-purple-400" />
-                صورة خلفية المستر (الـ Overlay)
+                صورة المستر المتجاوبة (Multi-Device Hero Overlay)
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                ارفع صورتك — المنصة ستستخرج الألوان تلقائياً وتعرض عليك 5 ثيمات مقترحة بألوان الصورة ✨
+                تخصيص كامل ومستقل للظهور، التقريب (Zoom)، والإزاحة (Pan) على شاشات الكمبيوتر، التابلت، والهواتف الذكية ✨
               </p>
             </div>
 
@@ -438,219 +528,394 @@ export default function SettingsPage() {
               <div className="text-xs space-y-1">
                 <p className="font-bold text-purple-200">💡 نصيحة للحصول على أفضل مظهر مودرن واحترافي:</p>
                 <p className="text-slate-300 leading-relaxed">
-                  يُفضل رفع <span className="text-purple-300 font-bold">صورة مفرغة بدون خلفية (PNG أو WebP Transparent)</span> لدمج أطرافها بسلاسة تامة مع خلفية المنصة الداكنة وتأثيرات الإضاءة.
+                  يُفضل رفع <span className="text-purple-300 font-bold">صورة مفرغة بدون خلفية (PNG أو WebP Transparent)</span> لتندمج بسلاسة تامة مع خلفية المنصة الداكنة ونظام التوهج التلقائي.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-              {/* Flexible Responsive Preview with Fixed Aspect Ratio (No Distortion) */}
-              <div className="relative w-32 sm:w-40 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-purple-500/40 bg-gradient-to-b from-slate-900 to-slate-950 shadow-inner flex-shrink-0 flex items-end justify-center p-1.5">
-                {/* Background grid pattern simulation */}
-                <div className="absolute inset-0 bg-[radial-gradient(#a855f7_1px,transparent_1px)] [background-size:12px_12px] opacity-15 pointer-events-none" />
-
-                {(localPreviewUrl || portraitUrl) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={localPreviewUrl ?? portraitUrl!}
-                    alt="صورة المستر"
-                    className="w-full h-full object-contain object-bottom relative z-10 transition-transform duration-300"
-                    style={{
-                      transform: `scale(${portraitScale})`,
-                      transformOrigin: 'center bottom',
-                      opacity: portraitOpacity > 0.4 ? portraitOpacity : 0.6, // minimum visibility for preview card
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative z-10">
-                    <ImageIcon className="w-8 h-8 text-slate-600" />
-                    <p className="text-[11px] text-slate-500 text-center font-medium">لا توجد صورة مخصصة</p>
-                  </div>
-                )}
-                {extractingColors && (
-                  <div className="absolute inset-0 bg-black/70 z-20 flex flex-col items-center justify-center gap-1.5 backdrop-blur-xs">
-                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
-                    <span className="text-[10px] text-purple-300 font-bold">استخراج الألوان...</span>
-                  </div>
-                )}
+            {/* ── Device Switcher Tabs ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  <Sliders className="w-4 h-4 text-purple-400" />
+                  اختر نوع الجهاز لضبط أبعاد ومكان الصورة:
+                </span>
+                <span className="text-[11px] text-purple-400 font-mono">
+                  {activeDeviceTab === 'desktop' ? '💻 شاشات الكمبيوتر' : activeDeviceTab === 'tablet' ? '📱 أجهزة التابلت' : '📲 الهواتف الذكية'}
+                </span>
               </div>
 
-              {/* Upload controls */}
-              <div className="flex-1 w-full space-y-3">
+              <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-950/80 border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setActiveDeviceTab('desktop')}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-300 ${
+                    activeDeviceTab === 'desktop'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Laptop className="w-4 h-4" />
+                  <span className="hidden sm:inline">الكمبيوتر</span>
+                  <span className="sm:hidden">كمبيوتر</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveDeviceTab('tablet')}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-300 ${
+                    activeDeviceTab === 'tablet'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Tablet className="w-4 h-4" />
+                  <span className="hidden sm:inline">التابلت</span>
+                  <span className="sm:hidden">تابلت</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveDeviceTab('mobile')}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-300 ${
+                    activeDeviceTab === 'mobile'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span className="hidden sm:inline">الموبايل</span>
+                  <span className="sm:hidden">موبايل</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ── Live Interactive Device Frame Preview ── */}
+            <div className="space-y-2">
+              <DeviceFramePreview
+                device={activeDeviceTab}
+                config={multiDeviceConfig[activeDeviceTab]}
+                imgSrc={
+                  (activeDeviceTab === 'mobile' && portraitMobileUrl)
+                    ? portraitMobileUrl
+                    : (activeDeviceTab === 'tablet' && portraitTabletUrl)
+                    ? portraitTabletUrl
+                    : (localPreviewUrl ?? portraitUrl)
+                }
+                platformName={platformName}
+              />
+            </div>
+
+            {/* ── Active Device Configuration Controls ── */}
+            <div className="p-5 rounded-2xl bg-slate-900/60 border border-white/5 space-y-5">
+              {/* Device Header + Visibility Toggle */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    {activeDeviceTab === 'desktop' ? <Laptop className="w-4 h-4" /> : activeDeviceTab === 'tablet' ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">
+                      إعدادات {activeDeviceTab === 'desktop' ? 'شاشات الكمبيوتر' : activeDeviceTab === 'tablet' ? 'أجهزة التابلت' : 'شاشات الموبايل'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      {activeDeviceTab === 'desktop' ? 'تطبق على الشاشات العريضة (> 1024px)' : activeDeviceTab === 'tablet' ? 'تطبق على المقاسات المتوسطة (768px - 1024px)' : 'تطبق على شاشات الهواتف (< 768px)'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => updateCurrentDeviceConfig({ visible: !multiDeviceConfig[activeDeviceTab].visible })}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      multiDeviceConfig[activeDeviceTab].visible
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                        : 'bg-slate-800 text-slate-400 border border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {multiDeviceConfig[activeDeviceTab].visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    {multiDeviceConfig[activeDeviceTab].visible ? 'الصورة مفعّلة' : 'الصورة مخفية'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={resetCurrentDeviceConfig}
+                    title="استعادة الإعدادات الموصى بها لهذا الجهاز"
+                    className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-white border border-white/5 transition-all text-xs"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload Image Section for current device */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">🖼️ صورة الجهاز:</span>
+                  <span className="text-[10px] text-slate-500">
+                    {activeDeviceTab === 'desktop'
+                      ? 'الصورة الأساسية للمنصة'
+                      : activeDeviceTab === 'tablet' && portraitTabletUrl
+                      ? 'صورة مخصصة للتابلت مرفوعة'
+                      : activeDeviceTab === 'mobile' && portraitMobileUrl
+                      ? 'صورة مخصصة للموبايل مرفوعة'
+                      : 'تستخدم الصورة العامة تلقائياً'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeDeviceTab === 'desktop') portraitInputRef.current?.click();
+                      else if (activeDeviceTab === 'tablet') tabletInputRef.current?.click();
+                      else mobileInputRef.current?.click();
+                    }}
+                    disabled={portraitUploading || tabletUploading || mobileUploading}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-purple-500/30 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    {(activeDeviceTab === 'desktop' && portraitUploading) ||
+                    (activeDeviceTab === 'tablet' && tabletUploading) ||
+                    (activeDeviceTab === 'mobile' && mobileUploading) ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        جارٍ المعالجة...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        {activeDeviceTab === 'desktop' ? 'رفع صورة المستر الأساسية' : `رفع صورة مخصصة لـ ${activeDeviceTab === 'tablet' ? 'التابلت' : 'الموبايل'}`}
+                      </>
+                    )}
+                  </button>
+
+                  {/* Hidden file inputs */}
+                  <input
+                    ref={portraitInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      await extractFromFile(f);
+                      await handleBrandingUpload(f, 'portrait');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    ref={tabletInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      await handleBrandingUpload(f, 'portrait-tablet');
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    ref={mobileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      await handleBrandingUpload(f, 'portrait-mobile');
+                      e.target.value = '';
+                    }}
+                  />
+
+                  {/* Extract colors trigger for desktop */}
+                  {activeDeviceTab === 'desktop' && (portraitUrl || localPreviewUrl) && !extractingColors && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const src = localPreviewUrl ?? portraitUrl!;
+                        setExtractingColors(true);
+                        const colors = await extractDominantColors(src);
+                        setPalettes(generatePalettes(colors));
+                        setExtractingColors(false);
+                      }}
+                      className="p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
+                      title="إعادة استخراج الثيمات من الصورة"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
                 {portraitMsg && (
-                  <div className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
-                    portraitMsg.ok
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                  }`}>
+                  <div
+                    className={`flex items-center gap-2 text-xs font-bold p-2.5 rounded-xl ${
+                      portraitMsg.ok
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}
+                  >
                     {portraitMsg.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                     {portraitMsg.text}
                   </div>
                 )}
+              </div>
 
-                {/* Step 1 – pick file */}
-                <button
-                  onClick={() => portraitInputRef.current?.click()}
-                  disabled={portraitUploading}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-purple-400 bg-purple-500/5 hover:bg-purple-500/10 text-purple-300 text-sm font-bold transition-all disabled:opacity-50"
-                >
-                  {portraitUploading
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الرفع والمعالجة...</>
-                    : <><Upload className="w-4 h-4" /> رفع صورة جديدة (PNG / WebP)</>}
-                </button>
-                <input
-                  ref={portraitInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    // 1. instant local preview + extract colours
-                    await extractFromFile(f);
-                    // 2. upload to server
-                    await handleBrandingUpload(f, 'portrait');
-                    e.target.value = '';
-                  }}
-                />
+              {/* Sliders Grid: Zoom / Pan X / Pan Y / Opacity */}
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Zoom / Scale */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <ZoomIn className="w-3.5 h-3.5 text-purple-400" />
+                        التقريب والتكبير (Zoom):
+                      </span>
+                      <span className="text-purple-400 font-mono font-bold">
+                        {(multiDeviceConfig[activeDeviceTab].scale * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.50"
+                      max="2.20"
+                      step="0.05"
+                      value={multiDeviceConfig[activeDeviceTab].scale}
+                      onChange={(e) => updateCurrentDeviceConfig({ scale: parseFloat(e.target.value) })}
+                      className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
 
-                {/* Re-extract button (if portrait already set) */}
-                {(portraitUrl || localPreviewUrl) && !extractingColors && (
-                  <button
-                    onClick={async () => {
-                      const src = localPreviewUrl ?? portraitUrl!;
-                      setExtractingColors(true);
-                      const colors = await extractDominantColors(src);
-                      setPalettes(generatePalettes(colors));
-                      setExtractingColors(false);
-                    }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-xs font-medium transition-all"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> إعادة استخراج الألوان من الصورة الحالية
-                  </button>
-                )}
+                  {/* Opacity */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5 text-purple-400" />
+                        درجة الشفافية (Opacity):
+                      </span>
+                      <span className="text-purple-400 font-mono font-bold">
+                        {(multiDeviceConfig[activeDeviceTab].opacity * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.04"
+                      max="0.80"
+                      step="0.01"
+                      value={multiDeviceConfig[activeDeviceTab].opacity}
+                      onChange={(e) => updateCurrentDeviceConfig({ opacity: parseFloat(e.target.value) })}
+                      className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
 
-                <p className="text-[11px] text-slate-500">PNG · JPG · WEBP — الحد الأقصى: 5 ميجابايت</p>
+                  {/* Pan X (Horizontal Offset) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Move className="w-3.5 h-3.5 text-purple-400" />
+                        الإزاحة الأفقية (Pan X ↔):
+                      </span>
+                      <span className="text-purple-400 font-mono font-bold">
+                        {multiDeviceConfig[activeDeviceTab].posX > 0 ? `+${multiDeviceConfig[activeDeviceTab].posX}%` : `${multiDeviceConfig[activeDeviceTab].posX || 0}%`}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-40"
+                      max="40"
+                      step="1"
+                      value={multiDeviceConfig[activeDeviceTab].posX || 0}
+                      onChange={(e) => updateCurrentDeviceConfig({ posX: parseInt(e.target.value, 10) })}
+                      className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Pan Y (Vertical Offset) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Move className="w-3.5 h-3.5 text-purple-400 rotate-90" />
+                        الإزاحة الرأسية (Pan Y ↕):
+                      </span>
+                      <span className="text-purple-400 font-mono font-bold">
+                        {multiDeviceConfig[activeDeviceTab].posY > 0 ? `+${multiDeviceConfig[activeDeviceTab].posY}%` : `${multiDeviceConfig[activeDeviceTab].posY || 0}%`}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-30"
+                      max="30"
+                      step="1"
+                      value={multiDeviceConfig[activeDeviceTab].posY || 0}
+                      onChange={(e) => updateCurrentDeviceConfig({ posY: parseInt(e.target.value, 10) })}
+                      className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Position Selector */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-xs font-bold text-slate-400 block">موضع الصورة لهذا الجهاز:</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => updateCurrentDeviceConfig({ position: 'side' })}
+                      className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                        multiDeviceConfig[activeDeviceTab].position === 'side'
+                          ? 'border-purple-500 bg-purple-500/10 text-white shadow-md shadow-purple-500/10'
+                          : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      }`}
+                    >
+                      <Layout className="w-4 h-4" />
+                      على الجانب (Side)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateCurrentDeviceConfig({ position: 'center' })}
+                      className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all duration-300 ${
+                        multiDeviceConfig[activeDeviceTab].position === 'center'
+                          ? 'border-purple-500 bg-purple-500/10 text-white shadow-md shadow-purple-500/10'
+                          : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                      }`}
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      في المنتصف (Center)
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Live Opacity and Scale Sliders */}
-            <div className="pt-4 border-t border-white/5 space-y-4">
-              <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">📐 تعديل وضعية وحجم وشفافية الصورة على المنصة:</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">درجة الشفافية:</span>
-                    <span className="text-purple-400 font-mono">{(portraitOpacity * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.05"
-                    max="0.80"
-                    step="0.01"
-                    value={portraitOpacity}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setPortraitOpacity(val);
-                      // Live preview before saving via custom event
-                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
-                        detail: { opacity: val }
-                      }));
-                    }}
-                    className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-400">مقياس حجم الصورة (التكبير):</span>
-                    <span className="text-purple-400 font-mono">{(portraitScale * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.5"
-                    step="0.05"
-                    value={portraitScale}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setPortraitScale(val);
-                      // Live preview scale before saving via custom event
-                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
-                        detail: { scale: val }
-                      }));
-                    }}
-                    className="w-full accent-purple-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Position Selector */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-400 block">موضع عرض الصورة على الشاشة:</span>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPortraitPosition('side');
-                      // Live preview position via custom event
-                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
-                        detail: { position: 'side' }
-                      }));
-                    }}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all duration-300 ${
-                      portraitPosition === 'side'
-                        ? 'border-purple-500 bg-purple-500/10 text-white shadow-lg shadow-purple-500/10'
-                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                    }`}
-                  >
-                    <Layout className="w-4 h-4" />
-                    على الجانب (الافتراضي)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPortraitPosition('center');
-                      // Live preview position via custom event
-                      window.dispatchEvent(new CustomEvent('maestro-portrait-live-preview', {
-                        detail: { position: 'center' }
-                      }));
-                    }}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all duration-300 ${
-                      portraitPosition === 'center'
-                        ? 'border-purple-500 bg-purple-500/10 text-white shadow-lg shadow-purple-500/10'
-                        : 'border-white/10 bg-slate-950/40 text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                    }`}
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    في منتصف الشاشة
-                  </button>
-                </div>
-              </div>
-
+            {/* ── Global Save Button for All Devices ── */}
+            <div className="pt-2">
               <button
+                type="button"
                 onClick={async () => {
                   try {
                     const res = await fetch('/api/settings', {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        portraitOpacity,
-                        portraitScale,
-                        portraitPosition
-                      })
+                        portraitConfig: multiDeviceConfig,
+                        portraitOpacity: multiDeviceConfig.desktop.opacity,
+                        portraitScale: multiDeviceConfig.desktop.scale,
+                        portraitPosition: multiDeviceConfig.desktop.position,
+                      }),
                     });
                     if (res.ok) {
-                      setPortraitMsg({ text: 'تم حفظ أبعاد ووضعية الصورة بنجاح ✅', ok: true });
+                      setPortraitMsg({ text: 'تم حفظ وتطبيق إعدادات جميع الأجهزة بنجاح ✅', ok: true });
                       window.dispatchEvent(new Event('maestro-portrait-config-updated'));
+                    } else {
+                      setPortraitMsg({ text: 'فشل حفظ الإعدادات، تأكد من الصلاحيات ❌', ok: false });
                     }
                   } catch {
                     setPortraitMsg({ text: 'حدث خطأ أثناء حفظ التعديلات ❌', ok: false });
                   }
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md shadow-purple-500/20"
+                className="w-full py-3.5 rounded-2xl text-sm font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition-all shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 cursor-pointer"
               >
-                💾 حفظ أبعاد الشفافية والحجم والوضعية
+                💾 حفظ وتطبيق إعدادات كافة الأجهزة (الكمبيوتر والتابلت والموبايل)
               </button>
             </div>
           </div>
