@@ -2,17 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
-export interface SmartPortraitConfig {
+export interface DevicePortraitConfig {
   opacity: number;
-  mode?: 'subtle' | 'balanced' | 'vivid';
+  scale: number;
   position: 'side' | 'center';
+  posX: number; // horizontal pan offset % (-50% to +50%)
+  posY: number; // vertical pan offset % (-50% to +50%)
   visible: boolean;
-  scale?: number;
-  posX?: number;
-  posY?: number;
+  mode?: 'subtle' | 'balanced' | 'vivid';
 }
 
-export type DevicePortraitConfig = SmartPortraitConfig;
+export type SmartPortraitConfig = DevicePortraitConfig;
 
 export interface MultiDevicePortraitConfig {
   desktop: DevicePortraitConfig;
@@ -20,29 +20,44 @@ export interface MultiDevicePortraitConfig {
   mobile: DevicePortraitConfig;
 }
 
-export const DEFAULT_SMART_CONFIG: SmartPortraitConfig = {
-  opacity: 0.18,
-  mode: 'subtle',
-  position: 'side',
-  visible: true,
-  scale: 1.0,
+export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
+  desktop: {
+    opacity: 0.22,
+    scale: 1.0,
+    position: 'side',
+    posX: 0,
+    posY: 0,
+    visible: true,
+  },
+  tablet: {
+    opacity: 0.16,
+    scale: 0.95,
+    position: 'side',
+    posX: 0,
+    posY: 0,
+    visible: true,
+  },
+  mobile: {
+    opacity: 0.12,
+    scale: 0.85,
+    position: 'center',
+    posX: 0,
+    posY: 0,
+    visible: true,
+  },
 };
 
-export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
-  desktop: { ...DEFAULT_SMART_CONFIG },
-  tablet: { ...DEFAULT_SMART_CONFIG, opacity: 0.14 },
-  mobile: { ...DEFAULT_SMART_CONFIG, opacity: 0.10, position: 'center' },
-};
+export const DEFAULT_SMART_CONFIG: SmartPortraitConfig = DEFAULT_PORTRAIT_CONFIG.desktop;
 
 type DeviceType = 'desktop' | 'tablet' | 'mobile';
 
 export default function TeacherOverlay() {
   const [device, setDevice] = useState<DeviceType>('desktop');
-  const [config, setConfig] = useState<SmartPortraitConfig>(DEFAULT_SMART_CONFIG);
+  const [config, setConfig] = useState<MultiDevicePortraitConfig>(DEFAULT_PORTRAIT_CONFIG);
   const [hasCustomImage, setHasCustomImage] = useState<boolean>(false);
   const [imageTimestamp, setImageTimestamp] = useState<number>(Date.now());
 
-  // 1. Auto-detect screen size and device type intelligently
+  // 1. Auto-detect screen size and device breakpoint
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -60,43 +75,47 @@ export default function TeacherOverlay() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 2. Fetch config from server
+  // 2. Fetch multi-device configuration from server
   const fetchConfigAndImage = useCallback(async () => {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
       if (data.success && data.settings) {
         const s = data.settings;
-        let loadedConfig: SmartPortraitConfig = { ...DEFAULT_SMART_CONFIG };
+        let loadedConfig: MultiDevicePortraitConfig = { ...DEFAULT_PORTRAIT_CONFIG };
 
         if (s.portraitConfig) {
           try {
             const parsed = typeof s.portraitConfig === 'string' ? JSON.parse(s.portraitConfig) : s.portraitConfig;
-            // Handle both new smart format and legacy device format
-            if (parsed.mode || parsed.opacity !== undefined) {
+            if (parsed.desktop || parsed.tablet || parsed.mobile) {
               loadedConfig = {
-                ...DEFAULT_SMART_CONFIG,
-                opacity: parsed.opacity ?? DEFAULT_SMART_CONFIG.opacity,
-                mode: parsed.mode ?? 'subtle',
-                position: parsed.position ?? 'side',
-                visible: parsed.visible ?? true,
-                scale: parsed.scale ?? 1.0,
+                desktop: { ...DEFAULT_PORTRAIT_CONFIG.desktop, ...(parsed.desktop || {}) },
+                tablet: { ...DEFAULT_PORTRAIT_CONFIG.tablet, ...(parsed.tablet || {}) },
+                mobile: { ...DEFAULT_PORTRAIT_CONFIG.mobile, ...(parsed.mobile || {}) },
               };
-            } else if (parsed.desktop) {
+            } else {
+              // Legacy flat format
+              const base: DevicePortraitConfig = {
+                opacity: parsed.opacity ?? s.portraitOpacity ?? 0.20,
+                scale: parsed.scale ?? 1.0,
+                position: parsed.position ?? s.portraitPosition ?? 'side',
+                posX: parsed.posX ?? 0,
+                posY: parsed.posY ?? 0,
+                visible: parsed.visible ?? true,
+              };
               loadedConfig = {
-                ...DEFAULT_SMART_CONFIG,
-                opacity: parsed.desktop.opacity ?? 0.18,
-                position: parsed.desktop.position ?? 'side',
-                visible: parsed.desktop.visible ?? true,
-                scale: parsed.desktop.scale ?? 1.0,
+                desktop: { ...base },
+                tablet: { ...base, opacity: Math.min(base.opacity, 0.16) },
+                mobile: { ...base, opacity: Math.min(base.opacity, 0.12), position: 'center' },
               };
             }
           } catch {
             // fallback
           }
         } else {
-          if (s.portraitOpacity !== undefined) loadedConfig.opacity = s.portraitOpacity;
-          if (s.portraitPosition !== undefined) loadedConfig.position = s.portraitPosition;
+          if (s.portraitOpacity !== undefined) loadedConfig.desktop.opacity = s.portraitOpacity;
+          if (s.portraitScale !== undefined) loadedConfig.desktop.scale = s.portraitScale;
+          if (s.portraitPosition !== undefined) loadedConfig.desktop.position = s.portraitPosition;
         }
 
         setConfig(loadedConfig);
@@ -116,14 +135,27 @@ export default function TeacherOverlay() {
 
     const refresh = () => fetchConfigAndImage();
 
-    // Live preview event listener for instant responsiveness in settings
+    // Live preview event listener for instant slider feedback
     const handleLivePreview = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
-        setConfig((prev) => ({
-          ...prev,
-          ...customEvent.detail,
-        }));
+        const { device: targetDevice, config: newDeviceConfig, allConfig } = customEvent.detail;
+        if (allConfig) {
+          setConfig(allConfig);
+        } else if (targetDevice && newDeviceConfig) {
+          setConfig((prev) => ({
+            ...prev,
+            [targetDevice]: { ...prev[targetDevice as DeviceType], ...newDeviceConfig },
+          }));
+        } else {
+          setConfig((prev) => ({
+            ...prev,
+            [device]: {
+              ...prev[device],
+              ...customEvent.detail,
+            },
+          }));
+        }
       }
     };
 
@@ -136,15 +168,22 @@ export default function TeacherOverlay() {
       window.removeEventListener('maestro-portrait-config-updated', refresh);
       window.removeEventListener('maestro-portrait-live-preview', handleLivePreview);
     };
-  }, [fetchConfigAndImage]);
+  }, [fetchConfigAndImage, device]);
 
-  if (!hasCustomImage || !config.visible) return null;
+  if (!hasCustomImage) return null;
+
+  const currentConfig = config[device] || DEFAULT_PORTRAIT_CONFIG[device];
+  if (!currentConfig.visible) return null;
 
   const isMobile = device === 'mobile';
   const isTablet = device === 'tablet';
-  const isCenter = config.position === 'center' || isMobile;
+  const isCenter = currentConfig.position === 'center' || isMobile;
 
-  // Auto-calculated smart dimensions and positioning based on screen size
+  // Determine specific device image endpoint
+  const imageType = isMobile ? 'portrait-mobile' : isTablet ? 'portrait-tablet' : 'portrait';
+  const imgSrc = `/api/settings/branding?type=${imageType}&t=${imageTimestamp}`;
+
+  // Smart dimensions per device
   let containerStyle: React.CSSProperties = {
     position: 'fixed',
     bottom: 0,
@@ -154,51 +193,44 @@ export default function TeacherOverlay() {
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: isCenter ? 'center' : 'flex-start',
-    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+    transition: 'all 0.3s ease-out',
   };
 
   if (isMobile) {
-    // Smartphone: Centered watermark at the bottom
     containerStyle = {
       ...containerStyle,
       left: '50%',
       transform: 'translateX(-50%)',
       width: 'min(92vw, 360px)',
-      height: 'clamp(200px, 38vh, 320px)',
+      height: 'clamp(220px, 40vh, 340px)',
     };
   } else if (isTablet) {
-    // Tablet: Scaled and anchored neatly
     containerStyle = {
       ...containerStyle,
       left: isCenter ? '50%' : '1rem',
       transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? 'min(85vw, 650px)' : 'min(42vw, 420px)',
-      height: 'clamp(280px, 50vh, 440px)',
+      width: isCenter ? 'min(85vw, 680px)' : 'min(42vw, 440px)',
+      height: 'clamp(300px, 55vh, 480px)',
     };
   } else {
-    // Desktop: Smart Corner or Center fit
     containerStyle = {
       ...containerStyle,
       left: isCenter ? '50%' : '1.5rem',
       transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? 'min(80vw, 850px)' : 'min(35vw, 520px)',
-      height: 'clamp(340px, 62vh, 580px)',
+      width: isCenter ? 'min(80vw, 880px)' : 'min(35vw, 540px)',
+      height: 'clamp(360px, 65vh, 600px)',
     };
   }
 
-  // Smart 360-degree soft feathering mask to remove all sharp borders/blackboard edges
+  // 360-degree soft feathering mask to remove all sharp chalkboard/rectangular borders
   const maskImageStyle = isCenter
     ? 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)'
     : 'radial-gradient(ellipse 95% 88% at 30% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
 
-  // Smart opacity tuning: adapts based on device to guarantee readability of foreground cards
-  const effectiveOpacity = isMobile
-    ? Math.min(config.opacity, 0.15)
-    : isTablet
-    ? Math.min(config.opacity, 0.22)
-    : config.opacity;
-
-  const imgSrc = `/api/settings/branding?type=portrait&t=${imageTimestamp}`;
+  const scale = currentConfig.scale ?? 1.0;
+  const imageTransform = `scale(${scale}) translate(${currentConfig.posX || 0}%, ${
+    (currentConfig.posY || 0) + (1 - scale) * 6
+  }%)`;
 
   return (
     <div
@@ -207,8 +239,10 @@ export default function TeacherOverlay() {
       style={containerStyle}
     >
       <div
-        className="w-full h-full flex items-end justify-center overflow-hidden transition-all duration-300"
+        className="w-full h-full flex items-end justify-center overflow-hidden transition-all duration-200"
         style={{
+          transform: imageTransform,
+          transformOrigin: isCenter ? 'center bottom' : 'left bottom',
           maskImage: maskImageStyle,
           WebkitMaskImage: maskImageStyle,
         }}
@@ -219,7 +253,7 @@ export default function TeacherOverlay() {
           alt="صورة المستر"
           className="w-full h-full object-contain object-bottom pointer-events-none transition-opacity duration-300"
           style={{
-            opacity: effectiveOpacity,
+            opacity: currentConfig.opacity,
             filter: 'contrast(1.04) saturate(1.04)',
           }}
           onError={() => setHasCustomImage(false)}
