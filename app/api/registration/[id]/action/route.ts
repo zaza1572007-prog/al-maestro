@@ -204,28 +204,34 @@ export async function POST(
         data: { status: 'APPROVED' },
       });
 
-      // 6. Dispatch WhatsApp credentials (fire-and-forget, non-blocking)
+      // 6. Dispatch WhatsApp credentials
       const settings = await prisma.systemSettings.findFirst();
-      if (settings?.enableWhatsApp) {
+      if (settings?.enableWhatsApp !== false) {
         // Student message
-        const studentTpl = settings.waTplStudent || '🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟';
+        const studentTpl = settings?.waTplStudent || '🎓 مرحباً [student_name]\nتم قبول طلب تسجيلك بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم: [username]\nكلمة المرور: [password]\nنتمنى لك عاماً دراسياً موفقاً وناجحاً 🌟';
         const studentMsg = fillTemplate(studentTpl, {
           student_name: reqData.studentName,
-          username: reqData.studentPhone,
+          student_code: studentCode,
+          username: reqData.studentPhone || studentCode,
           password: studentPassword,
         });
-        tryDispatchWhatsApp(reqData.studentPhone, studentMsg);
+        if (reqData.studentPhone) {
+          await tryDispatchWhatsApp(reqData.studentPhone, studentMsg);
+        }
 
         // Parent message (use whatsapp number if available, fallback to main phone)
-        const parentTpl = settings.waTplParent || '👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل [student_name] بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟';
+        const parentTpl = settings?.waTplParent || '👨‍👩‍👦 أهلاً بك يا أ. [parent_name]\nتم قبول وتسجيل الطالب: [student_name] بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم (رقم الهاتف): [username]\nكلمة المرور: [password]\nتمنياتنا لأبنائك بدوام التميز والتفوق 🌟';
         const parentMsg = fillTemplate(parentTpl, {
-          parent_name: reqData.parentName,
+          parent_name: reqData.parentName || 'ولي أمر الطالب',
           student_name: reqData.studentName,
+          student_code: studentCode,
           username: reqData.parentPhone,
           password: parentPassword,
         });
         const parentWhatsappTarget = reqData.parentWhatsapp || reqData.parentPhone;
-        tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+        if (parentWhatsappTarget) {
+          await tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+        }
       }
 
       return NextResponse.json({

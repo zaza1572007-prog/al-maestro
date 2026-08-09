@@ -265,28 +265,34 @@ export async function POST(req: Request) {
       },
     });
 
-    // Dispatch WhatsApp welcome messages (fire-and-forget, non-blocking)
+    // Dispatch WhatsApp welcome messages
     const settings = await prisma.systemSettings.findFirst();
-    if (settings?.enableWhatsApp) {
+    if (settings?.enableWhatsApp !== false) {
       // Student message
-      const studentTpl = settings.waTplStudent || '🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟';
+      const studentTpl = settings?.waTplStudent || '🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم: [username]\nكلمة المرور: [password]\nنتمنى لك عاماً دراسياً موفقاً وناجحاً 🌟';
       const studentMsg = fillTemplate(studentTpl, {
         student_name: name,
-        username: phone,
+        student_code: code,
+        username: phone || code,
         password: studentPasswordPlain,
       });
-      tryDispatchWhatsApp(phone, studentMsg);
+      if (phone) {
+        await tryDispatchWhatsApp(phone, studentMsg);
+      }
 
       // Parent message
-      const parentTpl = settings.waTplParent || '👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل [student_name] بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟';
+      const parentTpl = settings?.waTplParent || '👨‍👩‍👦 أهلاً بك يا أ. [parent_name]\nتم تسجيل الطالب: [student_name] بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم (رقم الهاتف): [username]\nكلمة المرور: [password]\nتمنياتنا لأبنائك بدوام التميز والتفوق 🌟';
       const parentMsg = fillTemplate(parentTpl, {
-        parent_name: parent.name,
+        parent_name: parent.name || 'ولي أمر الطالب',
         student_name: name,
+        student_code: code,
         username: actualParentPhone,
         password: parentPasswordPlain,
       });
       const parentWhatsappTarget = parentWhatsapp || actualParentPhone;
-      tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+      if (parentWhatsappTarget) {
+        await tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+      }
     }
 
     return NextResponse.json({

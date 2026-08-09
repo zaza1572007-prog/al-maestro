@@ -70,7 +70,7 @@ export async function initWhatsApp(forceNew = false): Promise<WASocket> {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false, // handled manually with qrcode-terminal
-        browser: ['Al Maestro Platform', 'Chrome', '1.0.0'],
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
@@ -95,6 +95,7 @@ export async function initWhatsApp(forceNew = false): Promise<WASocket> {
         if (connection === 'close') {
           global.__waSocket = null;
           global.__waConnectionStatus = 'DISCONNECTED';
+          global.__waConnectingPromise = null;
           const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
@@ -116,6 +117,7 @@ export async function initWhatsApp(forceNew = false): Promise<WASocket> {
           global.__waSocket = sock;
           global.__waConnectionStatus = 'CONNECTED';
           global.__waLastQr = null;
+          global.__waConnectingPromise = null;
           const userJid = sock.user?.id || '01100775230';
           console.log('======================================================');
           console.log(`✅ [WhatsApp] Connected successfully! Logged in as: ${userJid}`);
