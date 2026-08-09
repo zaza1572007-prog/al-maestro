@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Plus, CreditCard, User, BookOpen, Gift } from 'lucide-react';
+import { RefreshCw, Plus, CreditCard, User, BookOpen, Gift, Search } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
 interface Subscription {
@@ -47,6 +47,7 @@ export default function SubscriptionsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [newSub, setNewSub] = useState({
     studentId: '',
     groupId: '',
@@ -148,10 +149,20 @@ export default function SubscriptionsPage() {
     }
   };
 
-  const filtered = filterStatus === 'ALL' ? subs : subs.filter((s) => s.status === filterStatus);
+  const filtered = subs.filter((s) => {
+    const matchesStatus = filterStatus === 'ALL' || s.status === filterStatus;
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return matchesStatus;
+
+    const matchesSearch =
+      (s.student?.name || '').toLowerCase().includes(q) ||
+      (s.student?.code || '').toLowerCase().includes(q) ||
+      (s.group?.name || '').toLowerCase().includes(q);
+
+    return matchesStatus && matchesSearch;
+  });
 
   const totalPaid = (sub: Subscription) => sub.payments?.reduce((acc, p) => acc + p.paidAmount, 0) || 0;
-
 
   return (
     <div className="space-y-6">
@@ -190,6 +201,38 @@ export default function SubscriptionsPage() {
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Search Filter Bar */}
+      {!loading && subs.length > 0 && (
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="البحث باسم الطالب، الكود، أو اسم المجموعة..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pr-10 pl-9 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs px-1"
+                title="مسح البحث"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>النتائج المعروضة:</span>
+            <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg font-mono text-emerald-400 font-bold">
+              {filtered.length} اشتراك
+            </span>
+          </div>
         </div>
       )}
 
@@ -304,7 +347,19 @@ export default function SubscriptionsPage() {
           {filtered.length === 0 && (
             <div className="text-center py-16 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
               <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              لا توجد اشتراكات
+              <p className="text-base font-semibold text-slate-300">
+                {searchQuery.trim()
+                  ? `لا توجد اشتراكات مطابقة لبحثك عن "${searchQuery}"`
+                  : 'لا توجد اشتراكات مسجلة في هذا القسم'}
+              </p>
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 text-xs text-emerald-400 hover:text-emerald-300 underline"
+                >
+                  إعادة ضبط البحث
+                </button>
+              )}
             </div>
           )}
         </div>
