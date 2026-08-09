@@ -77,6 +77,16 @@ export async function POST(req: Request) {
           .trim();
       };
 
+      const stripHonorifics = (text: string) => {
+        return text
+          .replace(/^(الاستاذ|الأستاذ|استاذ|أستاذ|مستر|دكتور|د\/|أ\/|ا\/)\s+/gi, '')
+          .trim();
+      };
+
+      const cleanForMatching = (text: string) => {
+        return normalizeArabic(stripHonorifics(normalizeArabic(text)));
+      };
+
       const queryIdentifier = phone.trim();
 
       // 1. Try exact phone match
@@ -84,7 +94,7 @@ export async function POST(req: Request) {
         where: { phone: queryIdentifier },
       });
 
-      // 2. If not found by phone, try exact full name match (exact full string comparison)
+      // 2. If not found by phone, try exact full name match in DB
       if (!targetUser) {
         targetUser = await prisma.user.findFirst({
           where: {
@@ -96,12 +106,13 @@ export async function POST(req: Request) {
         });
       }
 
-      // 3. Strict full normalized name match (full string equality === without substring matching)
+      // 3. Strict full name equality (ignoring honorifics like 'الأستاذ' and hamzas, but requiring full name)
       if (!targetUser) {
         const allUsers = await prisma.user.findMany();
-        const normalizedQuery = normalizeArabic(queryIdentifier);
+        const cleanedQuery = cleanForMatching(queryIdentifier);
         targetUser = allUsers.find(user => 
-          normalizeArabic(user.name) === normalizedQuery
+          cleanForMatching(user.name) === cleanedQuery ||
+          normalizeArabic(user.name) === normalizeArabic(queryIdentifier)
         ) || null;
       }
 
