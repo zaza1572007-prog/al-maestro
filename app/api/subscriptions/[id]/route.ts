@@ -8,7 +8,34 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, totalSessions, price, endDate } = body;
+    const { status, totalSessions, price, endDate, renewExempt } = body;
+
+    if (renewExempt) {
+      const existing = await prisma.subscription.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ success: false, error: 'الاشتراك غير موجود' }, { status: 404 });
+      }
+
+      const now = new Date();
+      const baseDate = existing.endDate && new Date(existing.endDate) > now ? new Date(existing.endDate) : now;
+      const nextMonthEnd = new Date(baseDate.getFullYear(), baseDate.getMonth() + 2, 0, 23, 59, 59, 999);
+
+      const subscription = await prisma.subscription.update({
+        where: { id },
+        data: {
+          status: 'ACTIVE',
+          price: 0,
+          endDate: nextMonthEnd,
+          usedSessions: 0,
+        },
+        include: { student: true, group: true, payments: true },
+      });
+
+      return NextResponse.json({ success: true, subscription, message: 'تم تجديد الاشتراك كإعفاء بنجاح 🎁' });
+    }
 
     const subscription = await prisma.subscription.update({
       where: { id },

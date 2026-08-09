@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Plus, CreditCard, User, BookOpen } from 'lucide-react';
+import { RefreshCw, Plus, CreditCard, User, BookOpen, Gift } from 'lucide-react';
+import { useToast } from '@/components/ToastProvider';
 
 interface Subscription {
   id: string;
@@ -125,6 +126,28 @@ export default function SubscriptionsPage() {
     } catch {}
   };
 
+  const toast = useToast();
+
+  const handleExemptStudent = async (id: string, studentName?: string) => {
+    if (!confirm(`هل أنت متأكد من تجديد اشتراك الطالب "${studentName || ''}" كإعفاء كامل (مجاناً بدون تسجيل مدفوعات)؟`)) return;
+    try {
+      const res = await fetch(`/api/subscriptions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ renewExempt: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`تم تجديد اشتراك ${studentName || 'الطالب'} كإعفاء بنجاح 🎁`);
+        fetchData();
+      } else {
+        toast.error(data.error || 'تعذّر تجديد الاشتراك كإعفاء');
+      }
+    } catch {
+      toast.error('خطأ في الاتصال بالخادم');
+    }
+  };
+
   const filtered = filterStatus === 'ALL' ? subs : subs.filter((s) => s.status === filterStatus);
 
   const totalPaid = (sub: Subscription) => sub.payments?.reduce((acc, p) => acc + p.paidAmount, 0) || 0;
@@ -193,9 +216,16 @@ export default function SubscriptionsPage() {
                       <p className="text-xs text-slate-400">{sub.group?.name} · كود: {sub.student?.code}</p>
                     </div>
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${statusColors[sub.status] || ''}`}>
-                    {statusLabels[sub.status] || sub.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {sub.price === 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/20 text-purple-300 font-bold">
+                        معفي 🎁
+                      </span>
+                    )}
+                    <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${statusColors[sub.status] || ''}`}>
+                      {statusLabels[sub.status] || sub.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -230,11 +260,11 @@ export default function SubscriptionsPage() {
                   <span>من: {new Date(sub.startDate).toLocaleDateString('ar-EG')}</span>
                   <span>إلى: {new Date(sub.endDate).toLocaleDateString('ar-EG')}</span>
                 </div>
-                <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-800 flex-wrap">
                   {sub.status !== 'SUSPENDED' && (
                     <button
                       onClick={() => handleUpdateStatus(sub.id, 'SUSPENDED')}
-                      className="px-3 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                      className="px-3 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
                     >
                       إيقاف مؤقت
                     </button>
@@ -242,20 +272,28 @@ export default function SubscriptionsPage() {
                   {sub.status === 'SUSPENDED' && (
                     <button
                       onClick={() => handleUpdateStatus(sub.id, 'ACTIVE')}
-                      className="px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                      className="px-3 py-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
                     >
                       تفعيل
                     </button>
                   )}
                   <button
+                    onClick={() => handleExemptStudent(sub.id, sub.student?.name)}
+                    className="px-3 py-1 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-purple-500/30"
+                    title="تجديد الاشتراك كإعفاء بدون تسجيل مدفوعات"
+                  >
+                    <Gift className="w-3.5 h-3.5" />
+                    إعفاء الطالب
+                  </button>
+                  <button
                     onClick={() => {/* TODO: Implement edit logic */}}
-                    className="px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                    className="px-3 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
                   >
                     ✏️ تعديل
                   </button>
                   <button
                     onClick={() => handleDeleteSub(sub.id, sub.student?.name)}
-                    className="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition mr-auto"
+                    className="px-3 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition mr-auto cursor-pointer"
                   >
                     🗑️ حذف
                   </button>
