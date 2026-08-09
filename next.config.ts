@@ -4,9 +4,7 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  serverExternalPackages: ['@whiskeysockets/baileys', 'pino'],
 };
 
 export default nextConfig;
