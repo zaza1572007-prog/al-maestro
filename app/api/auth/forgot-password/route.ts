@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,14 +9,6 @@ export async function POST(req: NextRequest) {
 
     if (!phone) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف مطلوب' }, { status: 400 });
-    }
-
-    const settings = await prisma.systemSettings.findFirst();
-    if (!settings?.enableWhatsApp || !settings?.waGatewayUrl || !settings?.waApiToken) {
-      return NextResponse.json({
-        success: false,
-        error: 'خدمة استعادة كلمة المرور عبر الواتساب غير مهيأة حالياً. يرجى التواصل مع الإدارة مباشرة.'
-      }, { status: 400 });
     }
 
     const newPassword = Math.floor(100000 + Math.random() * 900000).toString();
@@ -69,27 +62,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'الدور المحدد غير صالح' }, { status: 400 });
     }
 
-    // Dispatch WhatsApp message via configured HTTP gateway
-    const res = await fetch(settings.waGatewayUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.waApiToken}`,
-      },
-      body: JSON.stringify({
-        token: settings.waApiToken,
-        to: targetPhone,
-        body: messageText,
-      }),
-    });
+    // Dispatch WhatsApp message via direct Baileys connection or fallback HTTP gateway
+    const sendResult = await sendWhatsAppMessage(targetPhone, messageText);
+    if (!sendResult.success) {
+      const settings = await prisma.systemSettings.findFirst();
+      if (settings?.waGatewayUrl && settings?.waApiToken) {
+        const res = await fetch(settings.waGatewayUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${settings.waApiToken}`,
+          },
+          body: JSON.stringify({
+            token: settings.waApiToken,
+            to: targetPhone,
+            body: messageText,
+          }),
+        });
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('WhatsApp Gateway Error:', text);
-      return NextResponse.json({
-        success: false,
-        error: 'فشل إرسال الرسالة عبر الواتساب. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.'
-      }, { status: 500 });
+        if (!res.ok) {
+          return NextResponse.json({
+            success: false,
+            error: 'فشل إرسال الرسالة عبر الواتساب. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.'
+          }, { status: 500 });
+        }
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: sendResult.error || 'فشل إرسال الرسالة عبر الواتساب'
+        }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

@@ -150,19 +150,37 @@ export async function sendWhatsAppMessage(
       return { success: false, error: 'Invalid phone number format' };
     }
 
-    let sock = global.__waSocket;
-    if (!sock || global.__waConnectionStatus !== 'CONNECTED') {
-      sock = await initWhatsApp();
+    // Ensure initialization is started
+    if (!global.__waSocket || global.__waConnectionStatus !== 'CONNECTED') {
+      initWhatsApp().catch(() => {});
     }
 
-    // If still not connected
+    // Wait up to 12s for socket to connect if in progress
+    if (global.__waConnectionStatus !== 'CONNECTED') {
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 12000);
+        const interval = setInterval(() => {
+          if (global.__waConnectionStatus === 'CONNECTED') {
+            clearTimeout(timeout);
+            clearInterval(interval);
+            resolve();
+          } else if (global.__waConnectionStatus === 'DISCONNECTED' && !global.__waConnectingPromise) {
+            clearTimeout(timeout);
+            clearInterval(interval);
+            resolve();
+          }
+        }, 300);
+      });
+    }
+
+    const sock = global.__waSocket;
     if (!sock || global.__waConnectionStatus !== 'CONNECTED') {
       return {
         success: false,
         error:
           global.__waConnectionStatus === 'QR_READY'
-            ? 'يرجى مسح كود الـ QR أولاً من تطبيق الواتساب لربط الرقم.'
-            : 'خدمة الواتساب غير متصلة حالياً. جاري إعادة الاتصال...',
+            ? 'يرجى مسح كود الـ QR أو إدخال كود الربط من تطبيق الواتساب.'
+            : 'خدمة الواتساب غير متصلة حالياً. يرجى التأكد من تشغيل الخدمة.',
       };
     }
 

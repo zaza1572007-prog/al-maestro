@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/error-handler';
 import { syncTodaySessionsState } from '@/lib/session-sync';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 function fillTemplate(template: string, vars: Record<string, string>): string {
   let result = template;
@@ -13,13 +14,18 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 
 async function tryDispatchWA(to: string, body: string) {
   try {
+    if (!to || !body) return;
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) return;
+
     const settings = await prisma.systemSettings.findFirst();
-    if (!settings?.enableWhatsApp || !settings?.waGatewayUrl || !settings?.waApiToken) return;
-    await fetch(settings.waGatewayUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
-      body: JSON.stringify({ token: settings.waApiToken, to, body }),
-    });
+    if (settings?.waGatewayUrl && settings?.waApiToken) {
+      await fetch(settings.waGatewayUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
+        body: JSON.stringify({ token: settings.waApiToken, to, body }),
+      });
+    }
   } catch { /* fire-and-forget */ }
 }
 

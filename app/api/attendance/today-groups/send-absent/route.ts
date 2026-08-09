@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 function fillTemplate(template: string, vars: Record<string, string>): string {
   let result = template;
@@ -10,17 +11,24 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
   return result;
 }
 
-async function tryDispatchWA(gatewayUrl: string, apiToken: string, to: string, body: string) {
+async function tryDispatchWA(gatewayUrl: string | null | undefined, apiToken: string | null | undefined, to: string, body: string) {
   try {
-    const res = await fetch(gatewayUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}` 
-      },
-      body: JSON.stringify({ token: apiToken, to, body }),
-    });
-    return res.ok;
+    if (!to || !body) return false;
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) return true;
+
+    if (gatewayUrl && apiToken) {
+      const res = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiToken}` 
+        },
+        body: JSON.stringify({ token: apiToken, to, body }),
+      });
+      return res.ok;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -40,9 +48,6 @@ export async function POST(req: NextRequest) {
     }
 
     const settings = await prisma.systemSettings.findFirst();
-    if (!settings?.enableWhatsApp || !settings?.waGatewayUrl || !settings?.waApiToken) {
-      return NextResponse.json({ success: false, error: 'بوابة الواتساب غير مهيأة أو معطلة' }, { status: 400 });
-    }
 
     // Egypt Date boundaries
     const egyptTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' });

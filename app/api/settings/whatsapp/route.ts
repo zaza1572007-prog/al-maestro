@@ -1,32 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendWhatsAppMessage as directSendWA } from '@/lib/whatsapp';
 
-// Utility: send a WhatsApp message via configured HTTP gateway
+// Utility: send a WhatsApp message via Baileys direct connection with HTTP gateway fallback
 export async function sendWhatsAppMessage(to: string, body: string) {
+  // 1. Try direct Baileys connection
+  const directResult = await directSendWA(to, body);
+  if (directResult.success) {
+    return { success: true, messageId: directResult.messageId };
+  }
+
+  // 2. Fallback to HTTP gateway if configured
   const settings = await prisma.systemSettings.findFirst();
-  if (!settings?.waGatewayUrl || !settings?.waApiToken) {
-    throw new Error('WhatsApp gateway not configured');
+  if (settings?.waGatewayUrl && settings?.waApiToken) {
+    const res = await fetch(settings.waGatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${settings.waApiToken}`,
+      },
+      body: JSON.stringify({
+        token: settings.waApiToken,
+        to,
+        body,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Gateway responded ${res.status}: ${text}`);
+    }
+
+    return await res.json();
   }
 
-  const res = await fetch(settings.waGatewayUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${settings.waApiToken}`,
-    },
-    body: JSON.stringify({
-      token: settings.waApiToken,
-      to,
-      body,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Gateway responded ${res.status}: ${text}`);
-  }
-
-  return await res.json();
+  // If Baileys failed and no gateway
+  throw new Error(directResult.error || 'فشل إرسال رسالة الواتساب');
 }
 
 // Replace template placeholders with actual values

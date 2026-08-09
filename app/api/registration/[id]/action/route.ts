@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 // Helper to fill dynamic template placeholders
 function fillTemplate(template: string, vars: Record<string, string>): string {
@@ -11,24 +12,34 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
   return result;
 }
 
-// Helper to send WhatsApp via configured HTTP gateway (fire-and-forget)
+// Helper to send WhatsApp via direct Baileys connection or fallback HTTP gateway (fire-and-forget)
 async function tryDispatchWhatsApp(to: string, body: string) {
   try {
-    const settings = await prisma.systemSettings.findFirst();
-    if (!settings?.enableWhatsApp || !settings?.waGatewayUrl || !settings?.waApiToken) return;
+    if (!to || !body) return;
 
-    await fetch(settings.waGatewayUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.waApiToken}`,
-      },
-      body: JSON.stringify({
-        token: settings.waApiToken,
-        to,
-        body,
-      }),
-    });
+    // Direct Baileys dispatch
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) {
+      console.log(`✅ [WhatsApp] Message sent successfully to ${to}`);
+      return;
+    }
+
+    // Fallback to external HTTP gateway if configured
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings?.waGatewayUrl && settings?.waApiToken) {
+      await fetch(settings.waGatewayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.waApiToken}`,
+        },
+        body: JSON.stringify({
+          token: settings.waApiToken,
+          to,
+          body,
+        }),
+      });
+    }
   } catch (err) {
     console.warn('WhatsApp dispatch failed (non-blocking):', err);
   }
