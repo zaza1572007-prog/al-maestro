@@ -43,3 +43,6 @@ next-env.d.ts
 /app/generated/prisma
 
 .vercel
+whatsapp_auth_info/
+check-health.js
+
