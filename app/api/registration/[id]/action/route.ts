@@ -115,6 +115,7 @@ export async function POST(
             whatsapp: reqData.parentWhatsapp || null,
             extraPhone: reqData.parentExtraPhone || null,
             password: hashedParentPassword,
+            passwordPlain: parentPassword,
           },
         });
       } else {
@@ -124,6 +125,7 @@ export async function POST(
         if (reqData.parentExtraPhone) updateData.extraPhone = reqData.parentExtraPhone;
         if (!parent.password) {
           updateData.password = hashedParentPassword;
+          updateData.passwordPlain = parentPassword;
         }
         if (Object.keys(updateData).length > 0) {
           parent = await prisma.parent.update({
@@ -165,6 +167,7 @@ export async function POST(
           parentId: parent.id,
           qrCode: qrCode,
           password: hashedStudentPassword,
+          passwordPlain: studentPassword,
         },
       });
 

@@ -45,6 +45,7 @@ export async function PUT(
         return NextResponse.json({ error: 'كلمة مرور الطالب يجب ألا تقل عن 4 خانات' }, { status: 400 });
       }
       studentData.password = await bcrypt.hash(studentPassword, 10);
+      studentData.passwordPlain = studentPassword;
     }
 
     // 3. Prepare parent data updates
@@ -55,6 +56,7 @@ export async function PUT(
         return NextResponse.json({ error: 'كلمة مرور ولي الأمر يجب ألا تقل عن 4 خانات' }, { status: 400 });
       }
       parentData.password = await bcrypt.hash(parentPassword, 10);
+      parentData.passwordPlain = parentPassword;
     }
 
     // 4. Perform updates in transaction

@@ -10,8 +10,10 @@ interface Student {
   code: string;
   name: string;
   phone: string;
+  passwordPlain?: string;
   parentPhone: string;
   parentName: string;
+  parentPasswordPlain?: string;
   stage: string;
   stageId: string;
   group: string;
@@ -49,6 +51,8 @@ function StudentsContent() {
   const [studentToDelete, setStudentToDelete] = useState<{id: string, name: string} | null>(null);
   const [credentialsStudent, setCredentialsStudent] = useState<Student | null>(null);
   const [credentialsForm, setCredentialsForm] = useState({ studentPassword: '', parentPassword: '' });
+  const [showStudentPass, setShowStudentPass] = useState(true);
+  const [showParentPass, setShowParentPass] = useState(true);
   const [isSavingCreds, setIsSavingCreds] = useState(false);
   const [newStudentCredentials, setNewStudentCredentials] = useState<{studentName: string; studentCode: string; studentPhone: string; studentPassword: string; parentName: string; parentPhone: string; parentPassword: string} | null>(null);
   
@@ -76,8 +80,10 @@ function StudentsContent() {
           code: s.code,
           name: s.name,
           phone: s.phone,
+          passwordPlain: s.passwordPlain || '',
           parentPhone: s.parent?.phone || s.phone,
           parentName: s.parent?.name || 'ولي أمر',
+          parentPasswordPlain: s.parent?.passwordPlain || '',
           stage: s.academicStage?.name || '—',
           stageId: s.academicStageId || '',
           group: s.group?.name || '—',
@@ -608,17 +614,45 @@ function StudentsContent() {
                 </div>
                 <div>
                   <p className="text-slate-500">رقم الهاتف</p>
-                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone}</p>
+                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone || '—'}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">الباركود</p>
                   <p className="font-mono text-purple-400 font-bold">{credentialsStudent.qrCode}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">كلمة المرور</p>
-                  <p className="font-mono text-emerald-400 font-bold text-xs">
-                    •••••••• (مشفرة بأمان)
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-500">كلمة المرور</p>
+                    {credentialsStudent.passwordPlain && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStudentPass(v => !v)}
+                        className="text-[10px] text-purple-400 hover:text-purple-300 transition"
+                      >
+                        {showStudentPass ? 'إخفاء' : 'إظهار'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {credentialsStudent.passwordPlain
+                        ? (showStudentPass ? credentialsStudent.passwordPlain : '••••••••')
+                        : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
+                    </p>
+                    {credentialsStudent.passwordPlain && (
+                      <button
+                        type="button"
+                        title="نسخ كلمة مرور الطالب"
+                        onClick={() => {
+                          navigator.clipboard.writeText(credentialsStudent.passwordPlain!);
+                          toast.success('تم نسخ كلمة مرور الطالب 📋');
+                        }}
+                        className="text-xs p-1 text-slate-400 hover:text-emerald-400 transition"
+                      >
+                        📋
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -633,13 +667,41 @@ function StudentsContent() {
                 </div>
                 <div>
                   <p className="text-slate-500">رقم الهاتف</p>
-                  <p className="font-mono text-emerald-400 font-bold">{credentialsStudent.parentPhone}</p>
+                  <p className="font-mono text-emerald-400 font-bold">{credentialsStudent.parentPhone || '—'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-slate-500">كلمة المرور</p>
-                  <p className="font-mono text-emerald-400 font-bold text-xs">
-                    •••••••• (مشفرة بأمان)
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-slate-500">كلمة المرور</p>
+                    {credentialsStudent.parentPasswordPlain && (
+                      <button
+                        type="button"
+                        onClick={() => setShowParentPass(v => !v)}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 transition"
+                      >
+                        {showParentPass ? 'إخفاء' : 'إظهار'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      {credentialsStudent.parentPasswordPlain
+                        ? (showParentPass ? credentialsStudent.parentPasswordPlain : '••••••••')
+                        : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
+                    </p>
+                    {credentialsStudent.parentPasswordPlain && (
+                      <button
+                        type="button"
+                        title="نسخ كلمة مرور ولي الأمر"
+                        onClick={() => {
+                          navigator.clipboard.writeText(credentialsStudent.parentPasswordPlain!);
+                          toast.success('تم نسخ كلمة مرور ولي الأمر 📋');
+                        }}
+                        className="text-xs p-1 text-slate-400 hover:text-emerald-400 transition"
+                      >
+                        📋
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

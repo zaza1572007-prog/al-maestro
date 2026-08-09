@@ -67,6 +67,7 @@ export async function GET(req: Request) {
             relation: true,
             whatsapp: true,
             extraPhone: true,
+            passwordPlain: true,
             createdAt: true,
           }
         },
@@ -143,6 +144,7 @@ export async function POST(req: Request) {
           whatsapp: parentWhatsapp || null,
           extraPhone: parentExtraPhone || null,
           password: hashedParentPassword,
+          passwordPlain: parentPasswordPlain,
         },
       });
     } else {
@@ -154,6 +156,7 @@ export async function POST(req: Request) {
       if (parentRelation) updateData.relation = parentRelation;
       if (!parent.password) {
         updateData.password = hashedParentPassword;
+        updateData.passwordPlain = parentPasswordPlain;
       }
       if (Object.keys(updateData).length > 0) {
         parent = await prisma.parent.update({
@@ -191,6 +194,7 @@ export async function POST(req: Request) {
         name,
         phone: phone || null,
         password: hashedStudentPassword,
+        passwordPlain: studentPasswordPlain,
         academicStageId,
         groupId,
         parentId: parent.id,
@@ -207,6 +211,7 @@ export async function POST(req: Request) {
             relation: true,
             whatsapp: true,
             extraPhone: true,
+            passwordPlain: true,
           }
         },
       },
