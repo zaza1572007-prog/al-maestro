@@ -22,7 +22,7 @@
     "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "@types/bcrypt": "^6.0.0",
-    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "@whiskeysockets/baileys": "^6.7.24",
     "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "cookies": "^0.9.1",
