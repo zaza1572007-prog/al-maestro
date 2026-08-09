@@ -351,13 +351,19 @@ export default function Sidebar() {
               </div>
             )}
           </div>
-          <Link
-            href="/select-role"
-            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/20 transition-colors"
-            title="تبديل الحساب / خروج"
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+              } catch {}
+              window.location.href = '/select-role';
+            }}
+            className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/20 transition-colors cursor-pointer"
+            title="تسجيل الخروج وتبديل الحساب"
           >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </div>
     </motion.aside>

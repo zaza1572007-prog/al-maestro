@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 
 export async function POST(req: Request) {
   try {
-    const { phone, studentName, password, role } = await req.json();
+    const { phone, studentName, password, role, rememberMe } = await req.json();
     let userRole = role || 'TEACHER';
 
     if (userRole === 'STUDENT') {
@@ -123,13 +123,20 @@ export async function POST(req: Request) {
       },
     });
 
-    res.cookies.set('auth-token', token, {
+    const cookieOptions: any = {
       httpOnly: true,
       path: '/',
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    };
+
+    // If rememberMe is explicitly true, persist for 7 days.
+    // Otherwise, omit maxAge to make it a Session Cookie (cleared on browser close).
+    if (rememberMe === true) {
+      cookieOptions.maxAge = 60 * 60 * 24 * 7;
+    }
+
+    res.cookies.set('auth-token', token, cookieOptions);
     return res;
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'حدث خطأ غير متوقع';

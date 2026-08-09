@@ -398,13 +398,19 @@ export default function Navbar() {
                   </Link>
                 )}
                 <div className="border-t border-white/10 my-1"></div>
-                <Link
-                  href="/select-role"
-                  className="flex items-center gap-3 p-3 hover:bg-rose-500/10 text-rose-400 rounded-2xl font-bold transition-colors"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await fetch('/api/auth/logout', { method: 'POST' });
+                    } catch {}
+                    window.location.href = '/select-role';
+                  }}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-rose-500/10 text-rose-400 rounded-2xl font-bold transition-colors cursor-pointer text-right"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>تبديل الحساب / خروج</span>
-                </Link>
+                  <span>تسجيل الخروج / تبديل الحساب</span>
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

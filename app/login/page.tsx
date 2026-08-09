@@ -29,7 +29,7 @@ function LoginForm() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -98,7 +98,8 @@ function LoginForm() {
           studentName: payloadStudentName, 
           phone: payloadPhone, 
           password, 
-          role: roleParam 
+          role: roleParam,
+          rememberMe
         }),
       });
       const data = await res.json();
