@@ -69,7 +69,7 @@ function parseScheduleDays(daysInput: any): string[] {
   
   let text = '';
   if (Array.isArray(daysInput)) {
-    text = daysInput.join(' ');
+    text = daysInput.map((d: any) => (typeof d === 'object' && d ? d.day : d)).join(' ');
   } else if (typeof daysInput === 'string') {
     text = daysInput;
   } else {
@@ -78,12 +78,12 @@ function parseScheduleDays(daysInput: any): string[] {
   
   const possibleDays = [
     { key: 'السبت', patterns: [/السبت/] },
-    { key: 'الأحد', patterns: [/الأحد/, /الاحد/] },
-    { key: 'الاثنين', patterns: [/الاثنين/, /الإثنين/] },
-    { key: 'الثلاثاء', patterns: [/الثلاثاء/] },
-    { key: 'الأربعاء', patterns: [/الأربعاء/, /الاربعاء/] },
+    { key: 'الأحد', patterns: [/الأحد/, /الاحد/, /الحد/] },
+    { key: 'الاثنين', patterns: [/الاثنين/, /الإثنين/, /الاتنين/] },
+    { key: 'الثلاثاء', patterns: [/الثلاثاء/, /التلات/, /التلاتاء/] },
+    { key: 'الأربعاء', patterns: [/الأربعاء/, /الاربعاء/, /الاربع/] },
     { key: 'الخميس', patterns: [/الخميس/] },
-    { key: 'الجمعة', patterns: [/الجمعة/] },
+    { key: 'الجمعة', patterns: [/الجمعة/, /الجمعه/] },
   ];
   
   const matchedDays: string[] = [];
@@ -138,10 +138,33 @@ export async function PUT(
       scheduleDays,
       startTime,
       endTime,
+      schedule,
       assistantId,
       location,
       description,
     } = body;
+
+    let finalSchedule = schedule;
+    let finalDays = scheduleDays ? parseScheduleDays(scheduleDays) : undefined;
+    let finalStart = startTime;
+    let finalEnd = endTime;
+
+    if (Array.isArray(schedule) && schedule.length > 0) {
+      finalSchedule = schedule.map((s: any) => ({
+        day: s.day?.trim() || 'السبت',
+        startTime: s.startTime || '16:00',
+        endTime: s.endTime || '18:00',
+      }));
+      finalDays = finalSchedule.map((s: any) => s.day);
+      finalStart = finalSchedule[0]?.startTime || finalStart;
+      finalEnd = finalSchedule[0]?.endTime || finalEnd;
+    } else if (finalDays && finalDays.length > 0 && finalStart && finalEnd) {
+      finalSchedule = finalDays.map(day => ({
+        day,
+        startTime: finalStart,
+        endTime: finalEnd,
+      }));
+    }
 
     const group = await prisma.group.update({
       where: { id },
@@ -149,9 +172,10 @@ export async function PUT(
         ...(name && { name }),
         ...(academicStageId && { academicStageId }),
         ...(year && { year }),
-        ...(scheduleDays && { scheduleDays: parseScheduleDays(scheduleDays) }),
-        ...(startTime && { startTime }),
-        ...(endTime && { endTime }),
+        ...(finalDays && { scheduleDays: finalDays }),
+        ...(finalStart && { startTime: finalStart }),
+        ...(finalEnd && { endTime: finalEnd }),
+        ...(finalSchedule !== undefined && { schedule: finalSchedule }),
         ...(assistantId !== undefined && { assistantId }),
         ...(location !== undefined && { location }),
         ...(description !== undefined && { description }),
@@ -186,10 +210,10 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, days, scheduleDays, time, startTime, endTime, room, location, price, maxStudents } = body;
+    const { name, days, scheduleDays, time, startTime, endTime, schedule, room, location, price, maxStudents } = body;
 
-    // Normalizing scheduleDays
-    const finalScheduleDays = parseScheduleDays(scheduleDays || days);
+    let finalSchedule = schedule;
+    let finalScheduleDays = parseScheduleDays(scheduleDays || days);
 
     // Parse time string fallback
     let finalStartTime = startTime;
@@ -204,6 +228,23 @@ export async function PATCH(
       }
     }
 
+    if (Array.isArray(schedule) && schedule.length > 0) {
+      finalSchedule = schedule.map((s: any) => ({
+        day: s.day?.trim() || 'السبت',
+        startTime: s.startTime || '16:00',
+        endTime: s.endTime || '18:00',
+      }));
+      finalScheduleDays = finalSchedule.map((s: any) => s.day);
+      finalStartTime = finalSchedule[0]?.startTime || finalStartTime;
+      finalEndTime = finalSchedule[0]?.endTime || finalEndTime;
+    } else if (finalScheduleDays && finalScheduleDays.length > 0 && finalStartTime && finalEndTime) {
+      finalSchedule = finalScheduleDays.map(day => ({
+        day,
+        startTime: finalStartTime,
+        endTime: finalEndTime,
+      }));
+    }
+
     const updatedGroup = await prisma.group.update({
       where: { id },
       data: {
@@ -211,6 +252,7 @@ export async function PATCH(
         ...(finalScheduleDays && finalScheduleDays.length > 0 && { scheduleDays: finalScheduleDays }),
         ...(finalStartTime && { startTime: finalStartTime }),
         ...(finalEndTime && { endTime: finalEndTime }),
+        ...(finalSchedule !== undefined && { schedule: finalSchedule }),
         ...( (room || location) && { location: room || location }),
         ...(maxStudents && { maxCapacity: parseInt(maxStudents, 10) }),
       },

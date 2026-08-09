@@ -334,7 +334,15 @@ export default function RegisterPage() {
                             {grp.name}
                           </h4>
                           <p className="text-xs text-slate-400 mt-1">
-                            🗓️ الأيام: {grp.scheduleDays?.join(' و ')} | ⏰ الموعد: {grp.startTime} إلى {grp.endTime}
+                            {Array.isArray(grp.schedule) && grp.schedule.length > 0 ? (
+                              <span>
+                                🗓️ المواعيد: {grp.schedule.map((s: any) => `${s.day} (${s.startTime} - ${s.endTime})`).join(' • ')}
+                              </span>
+                            ) : (
+                              <span>
+                                🗓️ الأيام: {grp.scheduleDays?.join(' و ')} | ⏰ الموعد: {grp.startTime} إلى {grp.endTime}
+                              </span>
+                            )}
                           </p>
                         </div>
 

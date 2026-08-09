@@ -37,6 +37,7 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "portraitMobileBase64" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "portraitConfig" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "Student" ALTER COLUMN "phone" DROP NOT NULL;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Group" ADD COLUMN IF NOT EXISTS "schedule" JSONB;`);
 
   console.log('✅ Branding and dynamic columns are ready.');
 }

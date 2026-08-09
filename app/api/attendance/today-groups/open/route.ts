@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
 import { verifyStaff } from '@/lib/auth';
+import { getGroupSlotForDay } from '@/lib/session-sync';
 
 export async function POST(req: Request) {
   try {
@@ -40,6 +40,20 @@ export async function POST(req: Request) {
       }
     });
 
+    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayDay = weekdays[now.getDay()];
+    const weekdaysArabic: Record<string, string> = {
+      'Sunday': 'الأحد',
+      'Monday': 'الاثنين',
+      'Tuesday': 'الثلاثاء',
+      'Wednesday': 'الأربعاء',
+      'Thursday': 'الخميس',
+      'Friday': 'الجمعة',
+      'Saturday': 'السبت'
+    };
+    const todayDayArabic = weekdaysArabic[todayDay];
+    const slot = getGroupSlotForDay(group, todayDayArabic);
+
     if (session) {
       if (session.status === 'COMPLETED' || session.status === 'CANCELLED') {
         // Reopen it
@@ -68,8 +82,8 @@ export async function POST(req: Request) {
           title: `جلسة ${group.name}`,
           groupId,
           date: new Date(egyptTimeStr),
-          startTime: group.startTime,
-          endTime: group.endTime,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
           status: 'OPEN',
           type: 'LECTURE'
         }

@@ -18,6 +18,20 @@ export function parseTimeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
+export function getGroupSlotForDay(group: any, todayDayArabic: string): { startTime: string; endTime: string } {
+  if (Array.isArray(group.schedule) && group.schedule.length > 0) {
+    const normToday = todayDayArabic.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+    const match = group.schedule.find((s: any) => {
+      const normDay = (s.day || '').replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+      return normDay === normToday || normDay.includes(normToday) || normToday.includes(normDay);
+    });
+    if (match && match.startTime && match.endTime) {
+      return { startTime: match.startTime, endTime: match.endTime };
+    }
+  }
+  return { startTime: group.startTime || '16:00', endTime: group.endTime || '18:00' };
+}
+
 export async function syncTodaySessionsState() {
   // Use Africa/Cairo time zone to ensure the date and time align with Egypt local time
   const egyptTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' });
@@ -49,9 +63,9 @@ export async function syncTodaySessionsState() {
   // Filter groups scheduled for today
   const groupsToday = allGroups.filter(g => {
     return g.scheduleDays.some(day => {
-      const normalizedDay = day.replace(/[أإآا]/g, 'ا').trim();
-      const normalizedToday = todayDayArabic.replace(/[أإآا]/g, 'ا').trim();
-      return normalizedDay === normalizedToday;
+      const normalizedDay = day.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+      const normalizedToday = todayDayArabic.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+      return normalizedDay === normalizedToday || normalizedDay.includes(normalizedToday) || normalizedToday.includes(normalizedDay);
     });
   });
 
@@ -68,8 +82,9 @@ export async function syncTodaySessionsState() {
   });
 
   for (const group of groupsToday) {
-    const start = parseTimeToMinutes(group.startTime);
-    const end = parseTimeToMinutes(group.endTime);
+    const slot = getGroupSlotForDay(group, todayDayArabic);
+    const start = parseTimeToMinutes(slot.startTime);
+    const end = parseTimeToMinutes(slot.endTime);
 
     const session = todaySessions.find(s => s.groupId === group.id);
 
@@ -82,8 +97,8 @@ export async function syncTodaySessionsState() {
             title: `جلسة ${group.name}`,
             groupId: group.id,
             date: new Date(egyptTimeStr), // save in database using correct current time
-            startTime: group.startTime,
-            endTime: group.endTime,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
             status: 'OPEN',
             type: 'LECTURE',
           }
@@ -105,8 +120,8 @@ export async function syncTodaySessionsState() {
             title: `جلسة ${group.name}`,
             groupId: group.id,
             date: new Date(egyptTimeStr),
-            startTime: group.startTime,
-            endTime: group.endTime,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
             status: 'COMPLETED',
             type: 'LECTURE',
           }

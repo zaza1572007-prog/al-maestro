@@ -21,7 +21,7 @@ function parseScheduleDays(daysInput: any): string[] {
   
   let text = '';
   if (Array.isArray(daysInput)) {
-    text = daysInput.join(' ');
+    text = daysInput.map((d: any) => (typeof d === 'object' && d ? d.day : d)).join(' ');
   } else if (typeof daysInput === 'string') {
     text = daysInput;
   } else {
@@ -30,12 +30,12 @@ function parseScheduleDays(daysInput: any): string[] {
   
   const possibleDays = [
     { key: 'السبت', patterns: [/السبت/] },
-    { key: 'الأحد', patterns: [/الأحد/, /الاحد/] },
-    { key: 'الاثنين', patterns: [/الاثنين/, /الإثنين/] },
-    { key: 'الثلاثاء', patterns: [/الثلاثاء/] },
-    { key: 'الأربعاء', patterns: [/الأربعاء/, /الاربعاء/] },
+    { key: 'الأحد', patterns: [/الأحد/, /الاحد/, /الحد/] },
+    { key: 'الاثنين', patterns: [/الاثنين/, /الإثنين/, /الاتنين/] },
+    { key: 'الثلاثاء', patterns: [/الثلاثاء/, /التلات/, /التلاتاء/] },
+    { key: 'الأربعاء', patterns: [/الأربعاء/, /الاربعاء/, /الاربع/] },
     { key: 'الخميس', patterns: [/الخميس/] },
-    { key: 'الجمعة', patterns: [/الجمعة/] },
+    { key: 'الجمعة', patterns: [/الجمعة/, /الجمعه/] },
   ];
   
   const matchedDays: string[] = [];
@@ -49,7 +49,8 @@ function parseScheduleDays(daysInput: any): string[] {
 
 export async function POST(req: Request) {
   try {
-    const { name, academicStageId, year, scheduleDays, startTime, endTime, location } = await req.json();
+    const body = await req.json();
+    const { name, academicStageId, year, scheduleDays, startTime, endTime, schedule, location } = body;
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -65,16 +66,46 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'المرحلة الدراسية المحددة غير موجودة في قاعدة البيانات.' }, { status: 400 });
     }
 
+    let finalSchedule: Array<{ day: string; startTime: string; endTime: string }> = [];
+    let finalDays: string[] = [];
+    let finalStart = startTime || '16:00';
+    let finalEnd = endTime || '18:00';
+
+    if (Array.isArray(schedule) && schedule.length > 0) {
+      finalSchedule = schedule.map((s: any) => ({
+        day: s.day?.trim() || 'السبت',
+        startTime: s.startTime || '16:00',
+        endTime: s.endTime || '18:00',
+      }));
+      finalDays = finalSchedule.map(s => s.day);
+      finalStart = finalSchedule[0]?.startTime || finalStart;
+      finalEnd = finalSchedule[0]?.endTime || finalEnd;
+    } else {
+      finalDays = parseScheduleDays(scheduleDays);
+      if (finalDays.length === 0) {
+        finalDays = ['السبت', 'الثلاثاء'];
+      }
+      finalSchedule = finalDays.map(day => ({
+        day,
+        startTime: finalStart,
+        endTime: finalEnd,
+      }));
+    }
+
     const group = await prisma.group.create({
       data: {
         name: name.trim(),
         academicStageId,
         year: year || '2025/2026',
-        scheduleDays: parseScheduleDays(scheduleDays) || ['السبت', 'الثلاثاء'],
-        startTime: startTime || '16:00',
-        endTime: endTime || '18:00',
+        scheduleDays: finalDays,
+        startTime: finalStart,
+        endTime: finalEnd,
+        schedule: finalSchedule,
         location,
       },
+      include: {
+        academicStage: true,
+      }
     });
     return NextResponse.json({ success: true, group });
   } catch (e: any) {

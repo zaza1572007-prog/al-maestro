@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { syncTodaySessionsState } from '@/lib/session-sync';
+import { syncTodaySessionsState, getGroupSlotForDay } from '@/lib/session-sync';
 
 import { verifyStaff } from '@/lib/auth';
 
@@ -68,9 +68,9 @@ export async function GET(req: Request) {
     // Today's groups: scheduled for today, or has a session today
     const groupsToday = allGroups.filter(g => {
       const isScheduledToday = g.scheduleDays.some(day => {
-        const normalizedDay = day.replace(/[أإآا]/g, 'ا').trim();
-        const normalizedToday = todayDayArabic.replace(/[أإآا]/g, 'ا').trim();
-        return normalizedDay === normalizedToday;
+        const normalizedDay = day.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+        const normalizedToday = todayDayArabic.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').trim();
+        return normalizedDay === normalizedToday || normalizedDay.includes(normalizedToday) || normalizedToday.includes(normalizedDay);
       });
       const hasSessionToday = todaySessions.some(s => s.groupId === g.id);
       return isScheduledToday || hasSessionToday;
@@ -78,6 +78,7 @@ export async function GET(req: Request) {
 
     const results = await Promise.all(groupsToday.map(async (group) => {
       const session = todaySessions.find(s => s.groupId === group.id);
+      const slot = getGroupSlotForDay(group, todayDayArabic);
       
       let sessionStatus = 'NOT_STARTED'; // NOT_STARTED, OPEN, IN_PROGRESS, COMPLETED, etc.
       let sessionId = null;
@@ -116,8 +117,8 @@ export async function GET(req: Request) {
         id: group.id,
         name: group.name,
         stageName: group.academicStage?.name,
-        startTime: group.startTime,
-        endTime: group.endTime,
+        startTime: session?.startTime || slot.startTime,
+        endTime: session?.endTime || slot.endTime,
         sessionStatus,
         sessionId,
         stats: {

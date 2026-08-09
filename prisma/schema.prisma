@@ -237,6 +237,7 @@ model Group {
   scheduleDays         String[]              // ["Saturday", "Monday"]
   startTime            String
   endTime              String
+  schedule             Json?                 // [{"day": "السبت", "startTime": "16:00", "endTime": "18:00"}]
   maxCapacity          Int                   @default(30)
   assistantId          String?
   assistant            User?                 @relation(fields: [assistantId], references: [id])
