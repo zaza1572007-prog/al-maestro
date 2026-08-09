@@ -12,6 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "whatsapp": "tsx scripts/start-whatsapp.ts",
+    "whatsapp:service": "tsx whatsapp-server/start-service.ts",
+    "gateway": "tsx whatsapp-server/gateway.ts",
     "test:e2e": "playwright test"
   },
   "prisma": {
@@ -44,12 +46,14 @@
   "devDependencies": {
     "@playwright/test": "^1.45.0",
     "@tailwindcss/postcss": "^4",
+    "@types/localtunnel": "^2.0.4",
     "@types/node": "^20",
     "@types/qrcode-terminal": "^0.12.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
+    "localtunnel": "^2.0.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vercel": "^58.7.1"

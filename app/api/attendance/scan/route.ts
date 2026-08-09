@@ -15,17 +15,25 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 async function tryDispatchWA(to: string, body: string) {
   try {
     if (!to || !body) return;
-    const directResult = await sendWhatsAppMessage(to, body);
-    if (directResult.success) return;
 
+    // 1. HTTP Gateway priority (Vercel)
     const settings = await prisma.systemSettings.findFirst();
     if (settings?.waGatewayUrl && settings?.waApiToken) {
-      await fetch(settings.waGatewayUrl, {
+      const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.waApiToken}`,
+          'bypass-tunnel-reminder': 'true',
+        },
         body: JSON.stringify({ token: settings.waApiToken, to, body }),
       });
+      if (res.ok) return;
     }
+
+    // 2. Direct Baileys fallback
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) return;
   } catch { /* fire-and-forget */ }
 }
 

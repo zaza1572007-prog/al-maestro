@@ -14,20 +14,25 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
 async function tryDispatchWA(gatewayUrl: string | null | undefined, apiToken: string | null | undefined, to: string, body: string) {
   try {
     if (!to || !body) return false;
-    const directResult = await sendWhatsAppMessage(to, body);
-    if (directResult.success) return true;
 
+    // 1. Gateway Priority
     if (gatewayUrl && apiToken) {
       const res = await fetch(gatewayUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken}` 
+          'Authorization': `Bearer ${apiToken}`,
+          'bypass-tunnel-reminder': 'true',
         },
         body: JSON.stringify({ token: apiToken, to, body }),
       });
-      return res.ok;
+      if (res.ok) return true;
     }
+
+    // 2. Direct fallback
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) return true;
+
     return false;
   } catch {
     return false;

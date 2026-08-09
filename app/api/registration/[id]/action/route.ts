@@ -12,26 +12,20 @@ function fillTemplate(template: string, vars: Record<string, string>): string {
   return result;
 }
 
-// Helper to send WhatsApp via direct Baileys connection or fallback HTTP gateway (fire-and-forget)
+// Helper to send WhatsApp via configured HTTP gateway or direct Baileys connection
 async function tryDispatchWhatsApp(to: string, body: string) {
   try {
     if (!to || !body) return;
 
-    // Direct Baileys dispatch
-    const directResult = await sendWhatsAppMessage(to, body);
-    if (directResult.success) {
-      console.log(`✅ [WhatsApp] Message sent successfully to ${to}`);
-      return;
-    }
-
-    // Fallback to external HTTP gateway if configured
+    // 1. If HTTP gateway is configured (e.g. for Vercel deployment), dispatch immediately via Gateway
     const settings = await prisma.systemSettings.findFirst();
     if (settings?.waGatewayUrl && settings?.waApiToken) {
-      await fetch(settings.waGatewayUrl, {
+      const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${settings.waApiToken}`,
+          'bypass-tunnel-reminder': 'true',
         },
         body: JSON.stringify({
           token: settings.waApiToken,
@@ -39,6 +33,17 @@ async function tryDispatchWhatsApp(to: string, body: string) {
           body,
         }),
       });
+      if (res.ok) {
+        console.log(`✅ [WhatsApp Gateway] Delivered message to ${to}`);
+        return;
+      }
+    }
+
+    // 2. Direct Baileys fallback
+    const directResult = await sendWhatsAppMessage(to, body);
+    if (directResult.success) {
+      console.log(`✅ [WhatsApp Direct] Message sent successfully to ${to}`);
+      return;
     }
   } catch (err) {
     console.warn('WhatsApp dispatch failed (non-blocking):', err);
