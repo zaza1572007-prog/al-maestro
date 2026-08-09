@@ -74,6 +74,43 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
 
+  // Generate plain passwords for legacy students who don't have passwordPlain
+  const studentsWithoutPlain = await prisma.student.findMany({
+    where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },
+    select: { id: true },
+  });
+
+  const bcrypt = require('bcrypt');
+  for (const stu of studentsWithoutPlain) {
+    const plainPass = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashed = await bcrypt.hash(plainPass, 10);
+    await prisma.student.update({
+      where: { id: stu.id },
+      data: {
+        password: hashed,
+        passwordPlain: plainPass,
+      },
+    });
+  }
+
+  // Generate plain passwords for legacy parents who don't have passwordPlain
+  const parentsWithoutPlain = await prisma.parent.findMany({
+    where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },
+    select: { id: true },
+  });
+
+  for (const pr of parentsWithoutPlain) {
+    const plainPass = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashed = await bcrypt.hash(plainPass, 10);
+    await prisma.parent.update({
+      where: { id: pr.id },
+      data: {
+        password: hashed,
+        passwordPlain: plainPass,
+      },
+    });
+  }
+
   console.log('✅ Branding and dynamic columns are ready.');
 }
 
