@@ -73,26 +73,43 @@ export async function POST(req: Request) {
           .replace(/[أإآ]/g, 'ا')
           .replace(/ة/g, 'ه')
           .replace(/ى/g, 'ي')
+          .replace(/\s+/g, ' ')
           .trim();
       };
 
-      const queryPhone = phone.trim();
-      // First try exact phone match
+      const queryIdentifier = phone.trim();
+
+      // 1. Try exact phone match
       targetUser = await prisma.user.findFirst({
-        where: { phone: queryPhone },
+        where: { phone: queryIdentifier },
       });
 
-      // If not found, try normalized name search
+      // 2. If not found by phone, try exact full name match (exact full string comparison)
+      if (!targetUser) {
+        targetUser = await prisma.user.findFirst({
+          where: {
+            name: {
+              equals: queryIdentifier,
+              mode: 'insensitive',
+            },
+          },
+        });
+      }
+
+      // 3. Strict full normalized name match (full string equality === without substring matching)
       if (!targetUser) {
         const allUsers = await prisma.user.findMany();
-        const normalizedQuery = normalizeArabic(queryPhone);
+        const normalizedQuery = normalizeArabic(queryIdentifier);
         targetUser = allUsers.find(user => 
-          normalizeArabic(user.name).includes(normalizedQuery)
+          normalizeArabic(user.name) === normalizedQuery
         ) || null;
       }
 
       if (!targetUser) {
-        return NextResponse.json({ success: false, error: 'لم يتم العثور على حساب المعلم/المساعد' }, { status: 401 });
+        return NextResponse.json({ 
+          success: false, 
+          error: 'بيانات الدخول غير صحيحة. يجب كتابة اسم المستخدم الكامل المسجل أو رقم الهاتف كاملاً مع كلمة السر.' 
+        }, { status: 401 });
       }
 
       if (!targetUser.password) {
