@@ -27,6 +27,7 @@ function StudentsContent() {
   const searchParams = useSearchParams();
   const groupIdFilter = searchParams.get('groupId');
   const stageIdFilter = searchParams.get('stageId');
+  const searchParam = searchParams.get('search');
 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +35,7 @@ function StudentsContent() {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [stagesOptions, setStagesOptions] = useState<any[]>([]);
   const [groupsOptions, setGroupsOptions] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParam || '');
   
   const [newStudent, setNewStudent] = useState({
     name: '',
@@ -76,12 +77,12 @@ function StudentsContent() {
 
       if (dataStu.success && dataStu.students) {
         const formatted: Student[] = dataStu.students.map((s: any) => ({
-          id: s.id,
-          code: s.code,
-          name: s.name,
-          phone: s.phone,
+          id: s.id || '',
+          code: s.code || '',
+          name: s.name || '',
+          phone: s.phone || '',
           passwordPlain: s.passwordPlain || '',
-          parentPhone: s.parent?.phone || s.phone,
+          parentPhone: s.parent?.phone || s.phone || '',
           parentName: s.parent?.name || 'ولي أمر',
           parentPasswordPlain: s.parent?.passwordPlain || '',
           stage: s.academicStage?.name || '—',
@@ -226,13 +227,19 @@ function StudentsContent() {
   const filteredStudents = students.filter((s) => {
     const matchesGroup = groupIdFilter ? s.groupId === groupIdFilter : true;
     const matchesStage = stageIdFilter ? s.stageId === stageIdFilter : true;
-    const q = searchQuery.toLowerCase();
-    const matchesSearch = !q ||
-      s.name.toLowerCase().includes(q) ||
-      s.code.toLowerCase().includes(q) ||
-      s.phone.includes(q) ||
-      s.parentPhone.includes(q) ||
-      s.parentName.toLowerCase().includes(q);
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) return matchesGroup && matchesStage;
+
+    const matchesSearch =
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.code || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      (s.parentPhone || '').toLowerCase().includes(q) ||
+      (s.parentName || '').toLowerCase().includes(q) ||
+      (s.qrCode || '').toLowerCase().includes(q) ||
+      (s.stage || '').toLowerCase().includes(q) ||
+      (s.group || '').toLowerCase().includes(q);
+
     return matchesGroup && matchesStage && matchesSearch;
   });
 
@@ -347,8 +354,10 @@ function StudentsContent() {
               )}
               {!loading && filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-500 bg-slate-900/40 border border-slate-800">
-                    لا يوجد طلاب مسجلون حالياً في قاعدة البيانات.
+                  <td colSpan={7} className="text-center py-12 text-slate-500 bg-slate-900/40 border border-slate-800">
+                    {searchQuery.trim()
+                      ? `لا توجد نتائج مطابقة للبحث عن "${searchQuery}"`
+                      : 'لا يوجد طلاب مسجلون حالياً في قاعدة البيانات.'}
                   </td>
                 </tr>
               )}

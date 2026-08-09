@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { RefreshCw, Plus, BookOpen, Calendar, Award, Pencil, Trash2 } from 'lucide-react';
+import { RefreshCw, Plus, BookOpen, Calendar, Award, Pencil, Trash2, Search } from 'lucide-react';
 
 interface Student { id: string; name: string; code: string; }
 interface ExamResult { score: number; percentage: number; student: Student; }
@@ -42,6 +42,7 @@ export default function ExamsPage() {
   const [groupStudents, setGroupStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [isSavingGrades, setIsSavingGrades] = useState(false);
+  const [gradingSearchQuery, setGradingSearchQuery] = useState('');
 
   const [newExam, setNewExam] = useState({
     title: '', description: '', groupId: '',
@@ -90,9 +91,10 @@ export default function ExamsPage() {
 
   const openGrading = async (exam: Exam) => {
     setGradingExam(exam);
+    setGradingSearchQuery('');
     // Pre-fill existing scores
     const existing: Record<string, string> = {};
-    exam.results.forEach((r) => { existing[r.student.id] = String(r.score); });
+    exam.results?.forEach((r) => { if (r?.student?.id) existing[r.student.id] = String(r.score); });
     // Fetch group students
     const res = await fetch(`/api/students?groupId=${exam.group.id}`);
     const data = await res.json();
@@ -310,36 +312,77 @@ export default function ExamsPage() {
               <button onClick={() => setGradingExam(null)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {groupStudents.length === 0 && (
-                <p className="text-center text-slate-500 py-8">لا يوجد طلاب في هذه المجموعة</p>
-              )}
-              {groupStudents.map((stu) => (
-                <div key={stu.id} className="flex items-center gap-3 bg-slate-950 rounded-xl px-4 py-2.5 border border-slate-800">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-white">{stu.name}</p>
-                    <p className="text-xs text-slate-500 font-mono">{stu.code}</p>
-                  </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={gradingExam.maxScore}
-                    step="0.5"
-                    placeholder={`/ ${gradingExam.maxScore}`}
-                    value={grades[stu.id] || ''}
-                    onChange={(e) => setGrades({ ...grades, [stu.id]: e.target.value })}
-                    className="w-24 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm text-center focus:border-purple-500 focus:outline-none"
-                  />
-                  {grades[stu.id] && (
-                    <span className={`text-xs font-bold w-10 text-center ${
-                      (parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100 >= 60
-                        ? 'text-emerald-400' : 'text-rose-400'
-                    }`}>
-                      {((parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100).toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-3">
+              {/* Search bar inside grading modal */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="ابحث بالاسم أو كود الطالب..."
+                  value={gradingSearchQuery}
+                  onChange={(e) => setGradingSearchQuery(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pr-10 pl-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
+                />
+                {gradingSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setGradingSearchQuery('')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {groupStudents.length === 0 ? (
+                  <p className="text-center text-slate-500 py-8">لا يوجد طلاب في هذه المجموعة</p>
+                ) : (
+                  (() => {
+                    const q = (gradingSearchQuery || '').trim().toLowerCase();
+                    const filtered = groupStudents.filter((stu) =>
+                      !q ||
+                      (stu.name || '').toLowerCase().includes(q) ||
+                      (stu.code || '').toLowerCase().includes(q)
+                    );
+
+                    if (filtered.length === 0) {
+                      return (
+                        <p className="text-center text-slate-500 py-8">
+                          لا توجد نتائج مطابقة لبحثك عن "{gradingSearchQuery}"
+                        </p>
+                      );
+                    }
+
+                    return filtered.map((stu) => (
+                      <div key={stu.id} className="flex items-center gap-3 bg-slate-950 rounded-xl px-4 py-2.5 border border-slate-800 hover:border-slate-700 transition">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-white">{stu.name}</p>
+                          <p className="text-xs text-slate-500 font-mono">{stu.code}</p>
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          max={gradingExam.maxScore}
+                          step="0.5"
+                          placeholder={`/ ${gradingExam.maxScore}`}
+                          value={grades[stu.id] ?? ''}
+                          onChange={(e) => setGrades({ ...grades, [stu.id]: e.target.value })}
+                          className="w-24 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm text-center focus:border-purple-500 focus:outline-none"
+                        />
+                        {grades[stu.id] !== undefined && grades[stu.id] !== '' && !isNaN(Number(grades[stu.id])) && (
+                          <span className={`text-xs font-bold w-10 text-center ${
+                            (parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100 >= 60
+                              ? 'text-emerald-400' : 'text-rose-400'
+                          }`}>
+                            {((parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                    ));
+                  })()
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
