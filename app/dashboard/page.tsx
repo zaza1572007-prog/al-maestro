@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import HeroHeader from '@/components/HeroHeader';
 import {
   Users,
   GraduationCap,
@@ -16,7 +15,16 @@ import {
   BarChart2,
   CheckCircle2,
   ArrowUpRight,
-  Clock
+  Clock,
+  Calendar,
+  BookOpen,
+  Award,
+  Printer,
+  ChevronLeft,
+  Sparkles,
+  Layers,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -25,8 +33,19 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid
+  CartesianGrid,
 } from 'recharts';
+
+interface TodayGroup {
+  id: string;
+  name: string;
+  academicStage?: { name: string };
+  studentsCount: number;
+  presentCount: number;
+  absentCount: number;
+  sessionStatus?: 'OPEN' | 'CLOSED' | 'SCHEDULED' | 'NOT_STARTED';
+  timeSlot?: string;
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -39,25 +58,37 @@ export default function DashboardPage() {
     todayAttendancesCount: 0,
   });
 
+  const [todayGroups, setTodayGroups] = useState<TodayGroup[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Real-time clock update
+  // Real-time clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch real statistics from database API
-  const fetchDashboardRealStats = async () => {
+  // Fetch real statistics & today's groups from API
+  const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/dashboard/stats');
-      const data = await res.json();
-      if (data.success && data.stats) {
-        setStats(data.stats);
-        setRecentActivities(data.logs || []);
+      const [statsRes, groupsRes] = await Promise.all([
+        fetch('/api/dashboard/stats'),
+        fetch('/api/attendance/today-groups').catch(() => null),
+      ]);
+
+      const statsData = await statsRes.json();
+      if (statsData.success && statsData.stats) {
+        setStats(statsData.stats);
+        setRecentActivities(statsData.logs || []);
+      }
+
+      if (groupsRes) {
+        const grpData = await groupsRes.json();
+        if (grpData.success && grpData.todayGroups) {
+          setTodayGroups(grpData.todayGroups);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -67,8 +98,12 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchDashboardRealStats();
+    fetchDashboardData();
   }, []);
+
+  // Dynamic greeting based on hour
+  const currentHour = currentTime.getHours();
+  const greeting = currentHour < 12 ? 'صباح الخير والبركة' : 'مساء الخير والتميز';
 
   const chartData = [
     { name: 'السبت', attendance: stats.totalStudents ? 90 : 0 },
@@ -80,218 +115,417 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Hero Header */}
-      <HeroHeader
-        title="صباح الخير أ/ أحمد راضي 👋"
-        badge="لوحة المدرس الرئيسية - المايسترو Premium"
-        subtitle={`إجمالي الطلاب المسجلين حالياً بالقواعد: ${stats.totalStudents} طالب | عدد المجموعات: ${stats.activeGroups} مجموعة`}
-        stats={[
-          { label: "حضور اليوم", value: stats.todayAttendanceRate, color: "text-emerald-400" },
-          { label: "المجموعات النشطة", value: `${stats.activeGroups} مجموعة`, color: "text-purple-300" },
-        ]}
-      />
-
-      {/* Live Clock Card */}
+    <div className="space-y-6 pb-12">
+      {/* 🌟 Modern Compact Executive Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-5 rounded-3xl flex items-center justify-between border border-white/10"
+        className="relative rounded-3xl p-5 md:p-6 glass-panel border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/70"
       >
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20">
-            <Clock className="w-6 h-6 text-purple-400" />
+        {/* Background Subtle Spotlights */}
+        <div className="absolute -top-20 -left-20 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          {/* Greeting & Info */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold shadow-inner">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                لوحة التحكم الذكية · المايسترو
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                النظام متصل ونشط
+              </span>
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              {greeting}، <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-indigo-200 to-white">أ/ أحمد راضي كحلة</span> 👋
+            </h1>
+
+            <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2 flex-wrap">
+              <span>إجمالي الطلاب: <b className="text-white font-mono">{stats.totalStudents}</b> طالب</span>
+              <span>·</span>
+              <span>المجموعات النشطة: <b className="text-purple-300 font-mono">{stats.activeGroups}</b> مجموعة</span>
+              <span>·</span>
+              <span>حضور اليوم: <b className="text-emerald-400 font-mono">{stats.todayAttendanceRate}</b></span>
+            </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-400 font-semibold">التاريخ والساعة الآن</p>
-            <p className="text-2xl font-black text-white tracking-wide font-mono" dir="ltr">
-              {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {currentTime.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+
+          {/* Compact Clock & Quick Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start lg:self-center">
+            {/* Sleek Clock Pill */}
+            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-lg">
+              <Clock className="w-4 h-4 text-purple-400 animate-pulse flex-shrink-0" />
+              <div className="text-right leading-tight">
+                <p className="text-sm font-black text-white font-mono tracking-wider" dir="ltr">
+                  {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {currentTime.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Link href="/attendance">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>ماسح الـ QR</span>
+                </motion.button>
+              </Link>
+
+              <Link href="/students">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-2xl text-xs font-bold transition cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>إضافة طالب</span>
+                </motion.button>
+              </Link>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Quick Action Bar */}
-      <div className="flex flex-wrap items-center gap-4 z-10">
-        <Link href="/attendance">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="glass-button-primary px-6 py-3 font-semibold text-sm flex items-center gap-2 cursor-pointer"
-          >
-            <QrCode className="w-5 h-5" />
-            <span>فتح ماسح الـ QR للطلاب</span>
-          </motion.button>
-        </Link>
-        <Link href="/students">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="glass-button px-6 py-3 font-semibold text-sm flex items-center gap-2 cursor-pointer"
-          >
-            <UserPlus className="w-5 h-5 text-purple-400" />
-            <span>تسجيل طالب جديد</span>
-          </motion.button>
-        </Link>
-      </div>
-
-      {/* Metric Animated Cards with Real Database Counts */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden text-right"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">إجمالي الطلاب المسجلين</p>
-              <h3 className="text-3xl font-black text-white mt-1">{loading ? '...' : stats.totalStudents}</h3>
-            </div>
-            <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300 shadow-inner">
-              <GraduationCap className="w-7 h-7" />
-            </div>
-          </div>
-          <p className="text-xs text-emerald-400 mt-4 font-semibold flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>بيانات حقيقية من قاعدة البيانات</span>
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden text-right"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">المجموعات النشطة</p>
-              <h3 className="text-3xl font-black text-white mt-1">{loading ? '...' : stats.activeGroups}</h3>
-            </div>
-            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300 shadow-inner">
-              <Users className="w-7 h-7" />
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 mt-4 font-medium">المجموعات المضافة فعلياً</p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="glass-card p-6 rounded-3xl relative overflow-hidden text-right"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">نسبة الحضور الفعلي</p>
-              <h3 className="text-3xl font-black text-white mt-1">{loading ? '...' : stats.todayAttendanceRate}</h3>
-            </div>
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 shadow-inner">
-              <CheckCircle2 className="w-7 h-7" />
-            </div>
-          </div>
-          <p className="text-xs text-emerald-400 mt-4 font-semibold">معدل الحضور التراكمي</p>
-        </motion.div>
-
-        <Link href="/registration-requests" className="block">
+      {/* 📊 High-Density Metric KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Card 1: Students */}
+        <Link href="/students" className="block group">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-            className="glass-card p-6 rounded-3xl relative overflow-hidden text-right hover:border-amber-500/30 transition-all duration-200 group cursor-pointer"
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-purple-500/10"
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</p>
-                <h3 className="text-3xl font-black text-amber-400 mt-1">{loading ? '...' : stats.pendingRegistrations}</h3>
-              </div>
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 shadow-inner group-hover:bg-amber-500/20 transition-colors">
-                <AlertTriangle className="w-7 h-7" />
+              <span className="text-xs font-semibold text-slate-400">إجمالي الطلاب</span>
+              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-400 border border-purple-500/25">
+                <GraduationCap className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-xs text-amber-400 mt-4 font-semibold flex items-center gap-1 group-hover:underline">
-              <span>اضغط لمراجعة الطلبات</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+            <p className="text-2xl md:text-3xl font-black text-white mt-2 font-mono">
+              {loading ? '...' : stats.totalStudents}
+            </p>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
+              <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                <TrendingUp className="w-3 h-3" /> مسجلين بالقواعد
+              </span>
+              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-300 transition-transform group-hover:-translate-x-1" />
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Card 2: Active Groups */}
+        <Link href="/groups" className="block group">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-blue-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-blue-500/10"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400">المجموعات التعليمية</span>
+              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-white mt-2 font-mono">
+              {loading ? '...' : stats.activeGroups}
+            </p>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
+              <span className="text-slate-400 font-medium">مجموعات نشطة</span>
+              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-300 transition-transform group-hover:-translate-x-1" />
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Card 3: Today's Attendance */}
+        <Link href="/attendance" className="block group">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-emerald-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-emerald-500/10"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400">نسبة حضور اليوم</span>
+              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            </div>
+            <p className="text-2xl md:text-3xl font-black text-emerald-400 mt-2 font-mono">
+              {loading ? '...' : stats.todayAttendanceRate}
+            </p>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
+              <span className="text-slate-400 font-medium">
+                {stats.todayAttendancesCount > 0 ? `${stats.todayAttendancesCount} طالب حاضر` : 'بانتظار تسجيل الحضور'}
+              </span>
+              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-300 transition-transform group-hover:-translate-x-1" />
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Card 4: Pending Registrations */}
+        <Link href="/registration-requests" className="block group">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-amber-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-amber-500/10"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</span>
+              <div className={`p-2.5 rounded-2xl border ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+            </div>
+            <p className={`text-2xl md:text-3xl font-black mt-2 font-mono ${stats.pendingRegistrations > 0 ? 'text-amber-400' : 'text-white'}`}>
+              {loading ? '...' : stats.pendingRegistrations}
+            </p>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
+              <span className={stats.pendingRegistrations > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>
+                {stats.pendingRegistrations > 0 ? 'مطلوب المراجعة والقبول' : 'لا توجد طلبات معلقة'}
+              </span>
+              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
       </div>
 
-      {/* Main Interactive Charts & Activity Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Animated Recharts Glass Card */}
-        <div className="lg:col-span-2 glass-panel p-6 md:p-8 rounded-3xl border border-white/10 shadow-2xl text-right">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <BarChart2 className="w-5 h-5 text-purple-400" />
-                <span>تحليلات الحضور ومستوى التفاعل الأسبوعي</span>
-              </h2>
-              <p className="text-slate-400 text-xs mt-1">معدلات حضور الطلاب الفعلية المسجلة بقاعدة البيانات</p>
-            </div>
-            <span className="text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">
-              بيانات حقيقية
-            </span>
-          </div>
+      {/* 🚀 Main 2-Column Command Center */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (8 cols): Today's Schedule + Analytics Chart */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Today's Scheduled Sessions Center */}
+          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-white/10 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-500/25">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">جدول ومجموعات اليوم</h2>
+                  <p className="text-[11px] text-slate-400">متابعة الحصص والمجموعات المجدولة لليوم</p>
+                </div>
+              </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.5}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    borderColor: 'rgba(255, 255, 255, 0.15)',
-                    borderRadius: '16px',
-                    color: '#fff',
-                    backdropFilter: 'blur(12px)',
-                  }}
-                />
-                <Area type="monotone" dataKey="attendance" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorAttendance)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Live Activity Feed */}
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 shadow-2xl flex flex-col justify-between text-right">
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-400" />
-                <span>سجل الأحداث والعمليات</span>
-              </h2>
-              <Link href="/audit-log" className="text-xs text-purple-400 hover:underline">
-                عرض الكل
+              <Link href="/attendance">
+                <button className="text-xs text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 cursor-pointer">
+                  <span>فتح شاشة الحضور</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </Link>
             </div>
 
-            <div className="space-y-4">
+            {todayGroups.length === 0 ? (
+              <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-slate-800/80 space-y-2">
+                <Calendar className="w-8 h-8 mx-auto opacity-30 text-slate-400" />
+                <p className="text-xs font-semibold text-slate-300">لا توجد مجموعات مجدولة لهذا اليوم</p>
+                <Link href="/attendance">
+                  <button className="mt-1 text-xs text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer">
+                    فتح مجموعة يدوياً لتسجيل الحضور
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {todayGroups.map((grp) => {
+                  const pct = grp.studentsCount > 0 ? Math.round((grp.presentCount / grp.studentsCount) * 100) : 0;
+                  return (
+                    <div
+                      key={grp.id}
+                      className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/30 transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-white text-sm">{grp.name}</h3>
+                          <p className="text-[11px] text-slate-400">{grp.academicStage?.name || 'مجموعة دراسية'}</p>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${grp.sessionStatus === 'OPEN' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {grp.sessionStatus === 'OPEN' ? '🟢 الجلسة مفتوحة' : 'مجدولة'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] text-slate-400">
+                          <span>الحضور: <b className="text-white font-mono">{grp.presentCount}</b> / {grp.studentsCount}</span>
+                          <span className="font-mono text-emerald-400 font-bold">{pct}%</span>
+                        </div>
+                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-slate-500">{grp.timeSlot || 'موعد اليوم'}</span>
+                        <Link href="/attendance">
+                          <button className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
+                            تسجيل الحضور ←
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Weekly Attendance Performance Chart */}
+          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-white/10 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center border border-blue-500/25">
+                  <BarChart2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white">معدل الحضور والتفاعل الأسبوعي</h2>
+                  <p className="text-[11px] text-slate-400">تحليل بياني أسبوعي للحضور الفعلي للطلاب</p>
+                </div>
+              </div>
+
+              <span className="text-[11px] text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full font-semibold">
+                بيانات حية
+              </span>
+            </div>
+
+            <div className="h-56 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorAttendanceGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      borderColor: 'rgba(255, 255, 255, 0.15)',
+                      borderRadius: '16px',
+                      color: '#fff',
+                      backdropFilter: 'blur(12px)',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="attendance"
+                    name="نسبة الحضور (%)"
+                    stroke="#8b5cf6"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorAttendanceGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (4 cols): Shortcuts Hub + Live Activity Feed */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* ⚡ Quick Navigation Shortcuts Hub */}
+          <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-2xl space-y-3.5">
+            <div className="flex items-center gap-2 pb-2.5 border-b border-white/10">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <h2 className="text-sm font-bold text-white">الوصول السريع والإجراءات</h2>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <Link href="/attendance" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">ماسح الحضور</p>
+                </div>
+              </Link>
+
+              <Link href="/students" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-purple-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">إضافة طالب</p>
+                </div>
+              </Link>
+
+              <Link href="/exams" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-blue-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">الامتحانات والنتائج</p>
+                </div>
+              </Link>
+
+              <Link href="/subscriptions" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-amber-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">الاشتراكات</p>
+                </div>
+              </Link>
+
+              <Link href="/cards" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-teal-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <Printer className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">طباعة الكروت</p>
+                </div>
+              </Link>
+
+              <Link href="/reports" className="block">
+                <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-pink-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-white">التقارير الشاملة</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* ⚡ Live Operations Activity Feed */}
+          <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-bold text-white">سجل العمليات الأخير</h2>
+              </div>
+              <Link href="/audit-log" className="text-[11px] text-purple-400 hover:underline">
+                عرض السجل الكامل
+              </Link>
+            </div>
+
+            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-0.5">
               {recentActivities.length === 0 ? (
-                <div className="text-xs text-slate-500 text-center py-8">لا توجد أنشطة سابقة مسجلة حالياً</div>
+                <p className="text-xs text-slate-500 text-center py-6">لا توجد عمليات مسجلة حالياً</p>
               ) : (
-                recentActivities.map((act) => (
+                recentActivities.slice(0, 6).map((act) => (
                   <div
                     key={act.id}
-                    className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-start gap-3 hover:border-purple-500/30 transition-colors"
+                    className="p-2.5 rounded-xl bg-slate-950/70 border border-white/5 flex items-start gap-2.5 hover:border-purple-500/20 transition-all"
                   >
-                    <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 flex-shrink-0 animate-ping"></div>
+                    <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-slate-200 leading-relaxed font-medium">{act.text}</p>
-                      <span className="text-[10px] text-slate-500 block mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
+                      <p className="text-xs text-slate-300 font-medium truncate">{act.text}</p>
+                      <span className="text-[10px] text-slate-500 block mt-0.5 font-mono">
                         {act.time}
                       </span>
                     </div>
@@ -299,13 +533,11 @@ export default function DashboardPage() {
                 ))
               )}
             </div>
-          </div>
 
-          <div className="mt-6 pt-4 border-t border-white/10">
-            <Link href="/reports">
-              <button className="w-full glass-button p-3 rounded-2xl text-xs font-semibold text-purple-300 flex items-center justify-center gap-2 cursor-pointer">
-                <span>استخراج التقرير الأسبوعي الشامل</span>
-                <ArrowUpRight className="w-4 h-4" />
+            <Link href="/reports" className="block pt-1">
+              <button className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-xl text-xs font-bold text-purple-300 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer">
+                <span>تصدير التقرير الشامل</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </Link>
           </div>
