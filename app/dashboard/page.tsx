@@ -39,11 +39,12 @@ import {
 interface TodayGroup {
   id: string;
   name: string;
-  academicStage?: { name: string };
+  stageName?: string;
+  scheduleDays?: string[];
   studentsCount: number;
   presentCount: number;
   absentCount: number;
-  sessionStatus?: 'OPEN' | 'CLOSED' | 'SCHEDULED' | 'NOT_STARTED';
+  sessionStatus?: string;
   timeSlot?: string;
 }
 
@@ -59,6 +60,8 @@ export default function DashboardPage() {
   });
 
   const [todayGroups, setTodayGroups] = useState<TodayGroup[]>([]);
+  const [allGroupsList, setAllGroupsList] = useState<TodayGroup[]>([]);
+  const [activeGroupTab, setActiveGroupTab] = useState<'TODAY' | 'ALL'>('TODAY');
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -73,9 +76,10 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [statsRes, groupsRes] = await Promise.all([
+      const [statsRes, groupsRes, allGrpRes] = await Promise.all([
         fetch('/api/dashboard/stats'),
         fetch('/api/attendance/today-groups').catch(() => null),
+        fetch('/api/groups').catch(() => null),
       ]);
 
       const statsData = await statsRes.json();
@@ -86,9 +90,36 @@ export default function DashboardPage() {
 
       if (groupsRes) {
         const grpData = await groupsRes.json();
-        if (grpData.success && grpData.todayGroups) {
-          setTodayGroups(grpData.todayGroups);
-        }
+        const rawGroups = grpData.groups || grpData.todayGroups || [];
+        const formatted: TodayGroup[] = rawGroups.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          stageName: g.stageName || g.academicStage?.name,
+          scheduleDays: g.scheduleDays || [],
+          studentsCount: g.stats?.total ?? g.students?.length ?? g._count?.students ?? 0,
+          presentCount: g.stats?.present ?? 0,
+          absentCount: g.stats?.absent ?? 0,
+          sessionStatus: g.sessionStatus || 'NOT_STARTED',
+          timeSlot: g.startTime ? `${g.startTime}${g.endTime ? ` - ${g.endTime}` : ''}` : undefined,
+        }));
+        setTodayGroups(formatted);
+      }
+
+      if (allGrpRes) {
+        const allData = await allGrpRes.json();
+        const rawAll = allData.groups || [];
+        const formattedAll: TodayGroup[] = rawAll.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          stageName: g.academicStage?.name,
+          scheduleDays: g.scheduleDays || [],
+          studentsCount: g._count?.students ?? g.students?.length ?? 0,
+          presentCount: 0,
+          absentCount: 0,
+          sessionStatus: 'SCHEDULED',
+          timeSlot: g.scheduleDays && g.scheduleDays.length > 0 ? g.scheduleDays.join(' · ') : undefined,
+        }));
+        setAllGroupsList(formattedAll);
       }
     } catch (err) {
       console.error(err);
@@ -307,77 +338,155 @@ export default function DashboardPage() {
         <div className="lg:col-span-8 space-y-6">
           {/* Today's Scheduled Sessions Center */}
           <div className="glass-panel p-5 md:p-6 rounded-3xl border border-white/10 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/10 gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-500/25">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">جدول ومجموعات اليوم</h2>
-                  <p className="text-[11px] text-slate-400">متابعة الحصص والمجموعات المجدولة لليوم</p>
+                  <h2 className="text-base font-bold text-white">جدول ومجموعات الدروس</h2>
+                  <p className="text-[11px] text-slate-400">متابعة الحصص والمجموعات وإدارة الحضور المباشر</p>
                 </div>
               </div>
 
-              <Link href="/attendance">
-                <button className="text-xs text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 cursor-pointer">
-                  <span>فتح شاشة الحضور</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+              {/* Tab Switcher */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-2xl border border-white/10 self-start sm:self-auto">
+                <button
+                  onClick={() => setActiveGroupTab('TODAY')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    activeGroupTab === 'TODAY'
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>مجموعات اليوم</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-mono">
+                    {todayGroups.length}
+                  </span>
                 </button>
-              </Link>
+                <button
+                  onClick={() => setActiveGroupTab('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    activeGroupTab === 'ALL'
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>جميع المجموعات</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-mono">
+                    {allGroupsList.length || stats.activeGroups}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            {todayGroups.length === 0 ? (
-              <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-slate-800/80 space-y-2">
-                <Calendar className="w-8 h-8 mx-auto opacity-30 text-slate-400" />
-                <p className="text-xs font-semibold text-slate-300">لا توجد مجموعات مجدولة لهذا اليوم</p>
-                <Link href="/attendance">
-                  <button className="mt-1 text-xs text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer">
-                    فتح مجموعة يدوياً لتسجيل الحضور
-                  </button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {todayGroups.map((grp) => {
-                  const pct = grp.studentsCount > 0 ? Math.round((grp.presentCount / grp.studentsCount) * 100) : 0;
-                  return (
-                    <div
-                      key={grp.id}
-                      className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/30 transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-bold text-white text-sm">{grp.name}</h3>
-                          <p className="text-[11px] text-slate-400">{grp.academicStage?.name || 'مجموعة دراسية'}</p>
-                        </div>
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${grp.sessionStatus === 'OPEN' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                          {grp.sessionStatus === 'OPEN' ? '🟢 الجلسة مفتوحة' : 'مجدولة'}
-                        </span>
-                      </div>
+            {/* Display list based on active tab */}
+            {(() => {
+              const displayList = activeGroupTab === 'TODAY' ? todayGroups : allGroupsList;
 
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-400">
-                          <span>الحضور: <b className="text-white font-mono">{grp.presentCount}</b> / {grp.studentsCount}</span>
-                          <span className="font-mono text-emerald-400 font-bold">{pct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
+              if (displayList.length === 0) {
+                return (
+                  <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-slate-800/80 space-y-2.5">
+                    <Calendar className="w-8 h-8 mx-auto opacity-30 text-slate-400" />
+                    <p className="text-xs font-semibold text-slate-300">
+                      {activeGroupTab === 'TODAY'
+                        ? 'لا توجد مجموعات مجدولة لموعد اليوم'
+                        : 'لا توجد مجموعات مسجلة في النظام'}
+                    </p>
+                    {activeGroupTab === 'TODAY' && allGroupsList.length > 0 && (
+                      <button
+                        onClick={() => setActiveGroupTab('ALL')}
+                        className="text-xs text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer"
+                      >
+                        عرض جميع المجموعات النشطة ({allGroupsList.length}) ←
+                      </button>
+                    )}
+                  </div>
+                );
+              }
 
-                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-slate-500">{grp.timeSlot || 'موعد اليوم'}</span>
-                        <Link href="/attendance">
-                          <button className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
-                            تسجيل الحضور ←
-                          </button>
-                        </Link>
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                  {displayList.map((grp) => {
+                    const pct =
+                      grp.studentsCount > 0
+                        ? Math.round((grp.presentCount / grp.studentsCount) * 100)
+                        : 0;
+
+                    return (
+                      <div
+                        key={grp.id}
+                        className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-bold text-white text-sm leading-snug">{grp.name}</h3>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {grp.stageName || 'مجموعة دراسية'}
+                              </p>
+                            </div>
+                            <span
+                              className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border flex-shrink-0 ${
+                                grp.sessionStatus === 'OPEN'
+                                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                  : grp.sessionStatus === 'COMPLETED'
+                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              {grp.sessionStatus === 'OPEN'
+                                ? '🟢 الجلسة مفتوحة'
+                                : grp.sessionStatus === 'COMPLETED'
+                                ? 'مكتملة'
+                                : 'مجدولة'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] text-slate-400">
+                              <span>
+                                الطلاب:{' '}
+                                <b className="text-white font-mono">
+                                  {activeGroupTab === 'TODAY' ? `${grp.presentCount} / ` : ''}
+                                  {grp.studentsCount}
+                                </b>{' '}
+                                طالب
+                              </span>
+                              {activeGroupTab === 'TODAY' && (
+                                <span className="font-mono text-emerald-400 font-bold">{pct}%</span>
+                              )}
+                            </div>
+                            {activeGroupTab === 'TODAY' && (
+                              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-slate-500 truncate max-w-[130px]">
+                            {grp.timeSlot ||
+                              (grp.scheduleDays && grp.scheduleDays.length > 0
+                                ? grp.scheduleDays.join(' · ')
+                                : 'مواعيد منتظمة')}
+                          </span>
+                          <Link href={`/attendance?groupId=${grp.id}`}>
+                            <button className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
+                              تسجيل الحضور ←
+                            </button>
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Weekly Attendance Performance Chart */}
