@@ -5,7 +5,12 @@ export async function GET() {
   try {
     const exams = await prisma.exam.findMany({
       include: {
-        group: true,
+        group: {
+          include: {
+            academicStage: true,
+            _count: { select: { students: true } },
+          },
+        },
         results: {
           include: { student: true },
         },

@@ -192,7 +192,8 @@ const server = http.createServer(async (req, res) => {
         const token =
           body.token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader);
 
-        if (token !== API_TOKEN) {
+        const normalizeToken = (t: string) => (t || '').trim().replace(/[\s_-]+/g, '').toLowerCase();
+        if (normalizeToken(token) !== normalizeToken(API_TOKEN)) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: Invalid API Token' }));
           return;
