@@ -53,6 +53,9 @@ export async function POST(req: NextRequest) {
     }
 
     const settings = await prisma.systemSettings.findFirst();
+    if (!settings) {
+      return NextResponse.json({ success: false, error: 'إعدادات النظام غير متوفرة' }, { status: 500 });
+    }
 
     // Egypt Date boundaries
     const egyptTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' });
