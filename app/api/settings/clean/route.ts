@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
 
     // 1. Delete Attendance/Absence (حذف الغياب)
     if (type === 'attendance') {
+      if (password !== '147369258') {
+        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
+      }
       let count = 0;
       if (scope === 'all') {
         const result = await prisma.attendance.deleteMany({
@@ -62,6 +65,9 @@ export async function POST(req: NextRequest) {
 
     // 2. Delete Notifications (حذف الإشعارات)
     if (type === 'notifications') {
+      if (password !== '147369258') {
+        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
+      }
       const result = await prisma.notification.deleteMany({});
       return NextResponse.json({ success: true, message: `تم حذف جميع الإشعارات بنجاح (العدد: ${result.count}).` });
     }
