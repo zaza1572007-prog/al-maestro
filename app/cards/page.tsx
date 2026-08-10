@@ -109,18 +109,18 @@ export default function CardsPage() {
           }
 
           @page {
-            size: 50mm 25mm;
+            size: 38mm 25mm;
             margin: 0;
           }
 
           .sticker-card {
-            width: 50mm !important;
+            width: 38mm !important;
             height: 25mm !important;
-            max-width: 50mm !important;
+            max-width: 38mm !important;
             max-height: 25mm !important;
-            min-width: 50mm !important;
+            min-width: 38mm !important;
             min-height: 25mm !important;
-            padding: 1.5mm 2mm !important;
+            padding: 1mm 1.5mm !important;
             margin: 0 !important;
             box-sizing: border-box !important;
             background: white !important;
@@ -254,7 +254,7 @@ export default function CardsPage() {
                   ${isSelected ? 'border-purple-500 shadow-purple-950/20 scale-[1.01]' : 'border-blue-500/20 hover:border-blue-500/40'}
                   ${isAnySelected && !isSelected ? 'opacity-40 hover:opacity-75' : ''}
                   ${shouldHidePrint ? 'not-selected-print' : ''}
-                  print:border print:border-black/10 print:bg-white print:text-black print:shadow-none print:opacity-100 print:scale-100 print:w-[50mm] print:h-[25mm]
+                  print:border print:border-black/10 print:bg-white print:text-black print:shadow-none print:opacity-100 print:scale-100 print:w-[38mm] print:h-[25mm]
                 `}
               >
                 {/* On-screen Checkbox indicator */}
@@ -267,7 +267,7 @@ export default function CardsPage() {
                 </div>
 
                 {/* Card Header */}
-                <div className="flex items-center justify-between print:mb-0.5 pl-6">
+                <div className="flex items-center justify-between print:mb-0.5 pl-6 print:pl-0">
                   <div>
                     <h3 className="font-extrabold text-sm text-white print:text-black print:text-[8px] print:leading-tight">منصة المايسترو</h3>
                     <p className="text-[10px] text-amber-400 print:text-amber-600 font-bold print:text-[7px] print:leading-tight">أ. أحمد راضي كحلة</p>
@@ -276,8 +276,8 @@ export default function CardsPage() {
                 </div>
 
                 {/* Card Body */}
-                <div className="flex items-center gap-3 my-3 print:my-0.5 print:gap-1.5">
-                  <div className="w-28 h-12 bg-white p-1 rounded-lg flex items-center justify-center overflow-hidden print:border print:border-slate-200 print:w-[100px] print:h-[30px] print:p-0.5 flex-shrink-0">
+                <div className="flex items-center gap-3 my-3 print:my-0.5 print:gap-1">
+                  <div className="w-28 h-12 bg-white p-1 rounded-lg flex items-center justify-center overflow-hidden print:border print:border-slate-200 print:w-[70px] print:h-[22px] print:p-0.5 flex-shrink-0">
                     <Barcode value={stu.qrCode || stu.code} width={0.8} height={18} />
                   </div>
                   <div className="flex-1 min-w-0 print:text-right">
@@ -288,7 +288,7 @@ export default function CardsPage() {
 
                 {/* Card Footer with Quick Print Button */}
                 <div className="flex items-center justify-between border-t border-slate-800/80 print:border-slate-200 pt-1.5 print:pt-0.5">
-                  <p className="text-[9px] text-slate-600 print:text-slate-400 text-center print:text-[6px] print:leading-none">
+                  <p className="text-[9px] text-slate-600 print:text-slate-400 text-center print:text-[6px] print:leading-none print:w-full print:text-center">
                     كود التعريف: {stu.qrCode || stu.code}
                   </p>
                   
