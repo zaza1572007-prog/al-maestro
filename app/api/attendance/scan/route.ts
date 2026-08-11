@@ -73,11 +73,50 @@ export async function POST(req: Request) {
     // Maintain session states matching Cairo timezone
     await syncTodaySessionsState();
 
+    // Normalize code in case of Arabic keyboard layout translations (e.g. STU-4371 typed as لإا-4371)
+    let searchCodes = [studentCode];
+    
+    // 1. Translate Arabic keyboard layout characters back to English
+    const arabicMap: Record<string, string> = {
+      'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p',
+      'ج': '[', 'د': ']', 'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k',
+      'م': 'l', 'ك': ';', 'ط': "'", 'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'لا': 'b', 'ى': 'n', 'ة': 'm',
+      'و': ',', 'ز': '.', 'ظ': '/',
+      'أ': 's', 'لإ': 't', 'إ': 'u', 'لأ': 'g', 'لآ': 'b', 'آ': 'n'
+    };
+    let translated = '';
+    for (let i = 0; i < studentCode.length; i++) {
+      const char = studentCode[i];
+      if (i < studentCode.length - 1 && arabicMap[char + studentCode[i+1]]) {
+        translated += arabicMap[char + studentCode[i+1]];
+        i++;
+      } else if (arabicMap[char]) {
+        translated += arabicMap[char];
+      } else {
+        translated += char;
+      }
+    }
+    if (translated !== studentCode) {
+      searchCodes.push(translated);
+      searchCodes.push(translated.toUpperCase());
+    }
+
+    // 2. Extract digits as a fallback and check standard code formats
+    const digitMatch = studentCode.match(/\d+/);
+    if (digitMatch) {
+      const digits = digitMatch[0];
+      searchCodes.push(`STU-${digits}`);
+      searchCodes.push(`QR-STU-${digits}`);
+      searchCodes.push(digits);
+    }
+
+    searchCodes = Array.from(new Set(searchCodes.filter(Boolean)));
+
     const student = await prisma.student.findFirst({
       where: {
         OR: [
-          { code: studentCode },
-          { qrCode: studentCode },
+          { code: { in: searchCodes } },
+          { qrCode: { in: searchCodes } },
           { name: studentCode }
         ],
       },
@@ -173,11 +212,13 @@ export async function POST(req: Request) {
         
         const settings = await prisma.systemSettings.findFirst();
         if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
-          await fetch(settings.waGatewayUrl, {
+          fetch(settings.waGatewayUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
             body: JSON.stringify({ token: settings.waApiToken, to: parentPhone, body: messageBody }),
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Failed to dispatch auto-pay WhatsApp gateway notification:', err);
+          });
         }
 
         return NextResponse.json({
@@ -440,11 +481,13 @@ export async function POST(req: Request) {
         
         const settings = await prisma.systemSettings.findFirst();
         if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
-          await fetch(settings.waGatewayUrl, {
+          fetch(settings.waGatewayUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
             body: JSON.stringify({ token: settings.waApiToken, to: parentPhone, body: messageBody }),
-          }).catch(() => {});
+          }).catch((err) => {
+            console.error('Failed to dispatch auto-pay WhatsApp gateway notification:', err);
+          });
         }
         paidMessageSuffix = ' وتم سداد اشتراك الشهر وتنبيه ولي الأمر 💵';
       } catch (err) {

@@ -91,19 +91,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 4. Send WhatsApp message to parent
+    // 4. Send WhatsApp message to parent (fire-and-forget)
     const parentPhone = student.parent?.phone || student.phone || '';
     const parentName = student.parent?.name || 'ولي الأمر';
     const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
 
-    let waSuccess = false;
+    let waSuccess = true;
     if (parentPhone) {
-      try {
-        await sendWhatsAppMessage(parentPhone, messageBody);
-        waSuccess = true;
-      } catch (waErr) {
+      sendWhatsAppMessage(parentPhone, messageBody).catch((waErr) => {
         console.warn('Failed to send payment WhatsApp message:', waErr);
-      }
+      });
     }
 
     return NextResponse.json({

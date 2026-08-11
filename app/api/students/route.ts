@@ -94,27 +94,6 @@ export async function GET(req: Request) {
       },
       orderBy: { createdAt: 'desc' },
     });
-    // Auto-generate plain passwords for legacy students and parents who don't have passwordPlain
-    for (const student of students) {
-      if (!student.passwordPlain) {
-        const studentPass = Math.floor(100000 + Math.random() * 900000).toString();
-        const hashed = await bcrypt.hash(studentPass, 10);
-        student.passwordPlain = studentPass;
-        await prisma.student.update({
-          where: { id: student.id },
-          data: { password: hashed, passwordPlain: studentPass },
-        }).catch(() => {});
-      }
-      if (student.parent && !student.parent.passwordPlain) {
-        const parentPass = Math.floor(100000 + Math.random() * 900000).toString();
-        const hashed = await bcrypt.hash(parentPass, 10);
-        student.parent.passwordPlain = parentPass;
-        await prisma.parent.update({
-          where: { id: student.parent.id },
-          data: { password: hashed, passwordPlain: parentPass },
-        }).catch(() => {});
-      }
-    }
 
     return NextResponse.json({ success: true, students });
   } catch (e: any) {
@@ -282,7 +261,9 @@ export async function POST(req: Request) {
         password: studentPasswordPlain,
       });
       if (phone) {
-        await tryDispatchWhatsApp(phone, studentMsg);
+        tryDispatchWhatsApp(phone, studentMsg).catch((err) =>
+          console.error('Error sending student welcome WhatsApp message:', err)
+        );
       }
 
       // Parent message
@@ -296,7 +277,9 @@ export async function POST(req: Request) {
       });
       const parentWhatsappTarget = parentWhatsapp || actualParentPhone;
       if (parentWhatsappTarget) {
-        await tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+        tryDispatchWhatsApp(parentWhatsappTarget, parentMsg).catch((err) =>
+          console.error('Error sending parent welcome WhatsApp message:', err)
+        );
       }
     }
 

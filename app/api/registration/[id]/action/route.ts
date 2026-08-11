@@ -221,7 +221,9 @@ export async function POST(
           password: studentPassword,
         });
         if (reqData.studentPhone) {
-          await tryDispatchWhatsApp(reqData.studentPhone, studentMsg);
+          tryDispatchWhatsApp(reqData.studentPhone, studentMsg).catch((err) =>
+            console.error('Error sending student welcome WhatsApp message:', err)
+          );
         }
 
         // Parent message (use whatsapp number if available, fallback to main phone)
@@ -235,7 +237,9 @@ export async function POST(
         });
         const parentWhatsappTarget = reqData.parentWhatsapp || reqData.parentPhone;
         if (parentWhatsappTarget) {
-          await tryDispatchWhatsApp(parentWhatsappTarget, parentMsg);
+          tryDispatchWhatsApp(parentWhatsappTarget, parentMsg).catch((err) =>
+            console.error('Error sending parent welcome WhatsApp message:', err)
+          );
         }
       }
 

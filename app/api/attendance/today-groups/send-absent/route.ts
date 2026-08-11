@@ -101,33 +101,42 @@ export async function POST(req: NextRequest) {
     }
 
     const tpl = settings.waTplAbsent || '📅 تنبيه غياب\nالطالب: [student_name]\nتغيب عن حضور حصة اليوم بالمجموعة.\nمنصة المايسترو 🏫';
-    let sentCount = 0;
-
-    for (const student of absentStudents) {
-      // 1. Ensure ABSENT attendance record exists in DB
-      const existing = attendanceRecords.find(r => r.studentId === student.id);
-      if (!existing) {
-        await prisma.attendance.create({
-          data: {
-            studentId: student.id,
-            sessionId: session.id,
-            status: 'ABSENT',
-            notes: 'غياب مسجل تلقائياً عند إرسال تنبيه الغياب الجماعي'
-          }
-        });
-      }
-
-      // 2. Dispatch WhatsApp message to parent
-      const parentTarget = student.parent?.whatsapp || student.parent?.phone;
-      if (parentTarget) {
-        const msg = fillTemplate(tpl, {
-          student_name: student.name,
-          time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        });
-        const success = await tryDispatchWA(settings.waGatewayUrl, settings.waApiToken, parentTarget, msg);
-        if (success) {
-          sentCount++;
+    const sendPromises = absentStudents.map(async (student) => {
+      try {
+        // 1. Ensure ABSENT attendance record exists in DB
+        const existing = attendanceRecords.find(r => r.studentId === student.id);
+        if (!existing) {
+          await prisma.attendance.create({
+            data: {
+              studentId: student.id,
+              sessionId: session.id,
+              status: 'ABSENT',
+              notes: 'غياب مسجل تلقائياً عند إرسال تنبيه الغياب الجماعي'
+            }
+          });
         }
+
+        // 2. Dispatch WhatsApp message to parent
+        const parentTarget = student.parent?.whatsapp || student.parent?.phone;
+        if (parentTarget) {
+          const msg = fillTemplate(tpl, {
+            student_name: student.name,
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          });
+          const success = await tryDispatchWA(settings.waGatewayUrl, settings.waApiToken, parentTarget, msg);
+          return success;
+        }
+      } catch (err) {
+        console.error(`Failed to handle absent status/alert for student ${student.name}:`, err);
+      }
+      return false;
+    });
+
+    const results = await Promise.allSettled(sendPromises);
+    let sentCount = 0;
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value === true) {
+        sentCount++;
       }
     }
 

@@ -276,13 +276,16 @@ export default function CardsPage() {
                 </div>
 
                 {/* Card Body */}
-                <div className="flex items-center gap-3 my-3 print:my-0.5 print:gap-0.5">
-                  <div className="w-28 h-12 bg-white p-1 rounded-lg flex items-center justify-center overflow-hidden print:border print:border-slate-200 print:w-[95px] print:h-[23px] print:p-0.5 flex-shrink-0">
-                    <Barcode value={stu.qrCode || stu.code} width={1.0} height={20} />
+                <div className="flex items-center gap-3 my-3 print:my-0.5 print:flex-col print:gap-0.5 print:items-center w-full">
+                  {/* Name and Stage */}
+                  <div className="flex-1 min-w-0 print:text-center print:w-full">
+                    <h4 className="font-bold text-slate-100 print:text-black print:text-[8.5px] print:leading-tight truncate">{stu.name}</h4>
+                    <p className="text-[10px] text-slate-400 print:text-slate-600 print:text-[7px] print:leading-tight truncate">{stu.academicStage?.name || '—'}</p>
                   </div>
-                  <div className="flex-1 min-w-0 print:text-left print:pl-1">
-                    <h4 className="font-bold text-slate-100 print:text-black print:text-[8px] print:leading-[1.1] truncate">{stu.name}</h4>
-                    <p className="text-[10px] text-slate-400 print:text-slate-600 print:text-[6.5px] print:leading-[1.1] truncate">{stu.academicStage?.name || '—'}</p>
+                  
+                  {/* Barcode */}
+                  <div className="w-28 h-12 bg-white p-1 rounded-lg flex items-center justify-center overflow-hidden print:border print:border-slate-200 print:w-[130px] print:h-[28px] print:p-0.5 flex-shrink-0">
+                    <Barcode value={stu.qrCode || stu.code} width={0.8} height={22} />
                   </div>
                 </div>
 
