@@ -57,6 +57,10 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "portraitBase64" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "logoBase64" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "autoSendCredentials" BOOLEAN DEFAULT true;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "autoSendEnabled" BOOLEAN DEFAULT false;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "sendMode" TEXT DEFAULT 'MANUAL';`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "scheduledDay" INTEGER DEFAULT 28;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "scheduledTime" TEXT DEFAULT '20:00';`);
 
   // New columns
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "contactPhone" TEXT;`);
