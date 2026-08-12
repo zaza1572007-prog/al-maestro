@@ -555,6 +555,7 @@ model SystemSettings {
   waTplParent         String?  @db.Text
   waTplAttendance     String?  @db.Text
   waTplAbsent         String?  @db.Text
+  waTplMonthlyReport  String?  @db.Text
   // Branding images (base64) – stored in DB to avoid filesystem writes on Vercel
   portraitBase64        String?  @db.Text
   portraitTabletBase64  String?  @db.Text

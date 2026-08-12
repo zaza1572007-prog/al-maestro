@@ -75,6 +75,7 @@ export default function AttendancePage() {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const [whatsappTemplates, setWhatsappTemplates] = useState<any>(null);
 
   const fetchAbsentees = async (groupId: string) => {
     if (!groupId) {
@@ -102,6 +103,17 @@ export default function AttendancePage() {
       fetchAbsentees(absenteesGroup);
     }
   }, [rightPanelTab, absenteesGroup]);
+
+  useEffect(() => {
+    fetch('/api/settings/whatsapp')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setWhatsappTemplates(data.settings.templates);
+        }
+      })
+      .catch((err) => console.error('Failed to load WhatsApp settings:', err));
+  }, []);
 
   // Debounced search for student names
   useEffect(() => {
@@ -751,38 +763,61 @@ export default function AttendancePage() {
                             <p className="font-bold text-white text-sm">{s.name}</p>
                             <p className="text-slate-500 text-[10px] mt-0.5">الكود: {s.code}</p>
                           </div>
-                          <button
-                            onClick={async () => {
-                              if (confirm(`هل أنت متأكد من تسجيل حضور الطالب "${s.name}" يدوياً الآن؟ سيتم إرسال إشعار فوري لولي أمره بالواتساب.`)) {
-                                try {
-                                  const res = await fetch('/api/attendance/scan', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      studentCode: s.code,
-                                      status: 'PRESENT',
-                                      homeworkStatus,
-                                      scanMode,
-                                    }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.success) {
-                                    toast.success(`تم تسجيل حضور ${s.name} بنجاح 🟢`);
-                                    await fetchAbsentees(absenteesGroup);
-                                    await fetchHistory();
-                                    await fetchTodayGroups();
-                                  } else {
-                                    toast.error(data.error || 'فشل تسجيل الحضور اليدوي');
+                          <div className="flex gap-1.5 items-center">
+                            <button
+                              onClick={async () => {
+                                if (confirm(`هل أنت متأكد من تسجيل حضور الطالب "${s.name}" يدوياً الآن؟ سيتم إرسال إشعار فوري لولي أمره بالواتساب.`)) {
+                                  try {
+                                    const res = await fetch('/api/attendance/scan', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        studentCode: s.code,
+                                        status: 'PRESENT',
+                                        homeworkStatus,
+                                        scanMode,
+                                      }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      toast.success(`تم تسجيل حضور ${s.name} بنجاح 🟢`);
+                                      await fetchAbsentees(absenteesGroup);
+                                      await fetchHistory();
+                                      await fetchTodayGroups();
+                                    } else {
+                                      toast.error(data.error || 'فشل تسجيل الحضور اليدوي');
+                                    }
+                                  } catch {
+                                    toast.error('خطأ في الاتصال بالخادم');
                                   }
-                                } catch {
-                                  toast.error('خطأ في الاتصال بالخادم');
                                 }
-                              }
-                            }}
-                            className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer"
-                          >
-                            🙋‍♂️ حضور
-                          </button>
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                            >
+                              🙋‍♂️ حضور
+                            </button>
+                            <button
+                              onClick={() => {
+                                const tpl = whatsappTemplates?.absent || '📅 تنبيه غياب\nالطالب: [student_name]\nتغيب عن حضور حصة اليوم بالمجموعة.\nمنصة المايسترو 🏫';
+                                const msg = tpl.replace('[student_name]', s.name).replace('[time]', new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
+                                
+                                const phone = s.parent?.whatsapp || s.parent?.phone || s.phone || '';
+                                let cleanPhone = phone.replace(/[^\d]/g, '').trim();
+                                if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+                                  cleanPhone = '20' + cleanPhone.slice(1);
+                                } else if (cleanPhone.startsWith('1') && cleanPhone.length === 10) {
+                                  cleanPhone = '20' + cleanPhone;
+                                }
+                                
+                                const text = encodeURIComponent(msg);
+                                window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+                              }}
+                              className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                              title="إرسال إنذار غياب يدوي عبر واتساب"
+                            >
+                              ✉️ غياب يدوي
+                            </button>
+                          </div>
                         </div>
                       ))}
                       {absentees.length === 0 && (

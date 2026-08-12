@@ -1043,9 +1043,26 @@ export default function ReportsPage() {
                                             onClick={() => sendIndividualWhatsApp(preview)}
                                             disabled={sendState === 'sending'}
                                             className="p-1.5 text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-600 rounded-lg transition disabled:opacity-50"
-                                            title="إرسال الآن عبر الواتساب"
+                                            title="إرسال عبر البوابة التلقائية"
                                           >
                                             <Send className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              const phone = preview.whatsappNum || preview.parentPhone || preview.phone || '';
+                                              let cleanPhone = phone.replace(/[^\d]/g, '').trim();
+                                              if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+                                                cleanPhone = '20' + cleanPhone.slice(1);
+                                              } else if (cleanPhone.startsWith('1') && cleanPhone.length === 10) {
+                                                cleanPhone = '20' + cleanPhone;
+                                              }
+                                              const text = encodeURIComponent(preview.messageText);
+                                              window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+                                            }}
+                                            className="p-1.5 text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-600 rounded-lg transition"
+                                            title="إرسال يدوي (تطبيق الهاتف/الويب)"
+                                          >
+                                            <MessageSquare className="w-3.5 h-3.5" />
                                           </button>
                                         </div>
                                       </td>

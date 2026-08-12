@@ -188,8 +188,45 @@ const arabicMonths = [
   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
 ];
 
-function buildWhatsAppMessage(student: any, month: number, year: number, stats: any, magicLink: string) {
+function buildWhatsAppMessage(student: any, month: number, year: number, stats: any, magicLink: string, settings?: any) {
   const monthName = arabicMonths[month - 1];
+
+  if (settings?.waTplMonthlyReport) {
+    let tpl = settings.waTplMonthlyReport;
+
+    let absentDetails = '';
+    if (stats.absentDays.length > 0) {
+      stats.absentDays.forEach((day: any) => {
+        absentDetails += `  - ${day.day} (${day.date})\n`;
+      });
+    }
+
+    let examsList = '';
+    if (stats.exams.length > 0) {
+      stats.exams.forEach((exam: any) => {
+        const typeStr = exam.type === 'QUIZ' ? 'اختبار قصير' : exam.type === 'MONTHLY' ? 'امتحان شهري' : 'امتحان';
+        examsList += `  - ${exam.title} (${typeStr}): ${exam.score} / ${exam.maxScore} (${exam.percentage}%)\n`;
+      });
+    } else {
+      examsList = `  - لا توجد امتحانات مسجلة هذا الشهر.\n`;
+    }
+
+    tpl = tpl.replace(/\[student_name\]/g, student.name || '')
+             .replace(/\[stage_name\]/g, student.academicStage?.name || '—')
+             .replace(/\[group_name\]/g, student.group?.name || '—')
+             .replace(/\[month_name\]/g, monthName)
+             .replace(/\[year\]/g, year.toString())
+             .replace(/\[total_sessions\]/g, stats.totalSessions.toString())
+             .replace(/\[present_count\]/g, stats.presentCount.toString())
+             .replace(/\[absent_count\]/g, stats.absentCount.toString())
+             .replace(/\[absent_details\]/g, absentDetails)
+             .replace(/\[exams_list\]/g, examsList)
+             .replace(/\[payment_status\]/g, stats.paymentStatus)
+             .replace(/\[magic_link\]/g, magicLink);
+
+    return tpl;
+  }
+
   let msg = `📊 *تقرير المتابعة الشهري لولي الأمر* 📊\n\n`;
   msg += `*اسم الطالب:* ${student.name}\n`;
   msg += `*الصف الدراسي:* ${student.academicStage?.name || '—'}\n`;
@@ -274,12 +311,14 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    const settings = await prisma.systemSettings.findFirst();
+
     const reportPreviews = await Promise.all(
       students.map(async (student) => {
         const stats = await calculateMonthlyReportForStudent(student.id, student.groupId, month, year);
         const token = generateMagicToken(student.id, month, year);
         const magicLink = `${baseUrl}/parent-report/${token}`;
-        const messageText = buildWhatsAppMessage(student, month, year, stats, magicLink);
+        const messageText = buildWhatsAppMessage(student, month, year, stats, magicLink, settings);
 
         return {
           studentId: student.id,
@@ -344,6 +383,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const settings = await prisma.systemSettings.findFirst();
     const results = [];
 
     // Dispatch messages sequentially to avoid clogging the gateway
@@ -351,7 +391,7 @@ export async function POST(req: NextRequest) {
       const stats = await calculateMonthlyReportForStudent(student.id, student.groupId, month, year);
       const token = generateMagicToken(student.id, month, year);
       const magicLink = `${baseUrl}/parent-report/${token}`;
-      const messageText = buildWhatsAppMessage(student, month, year, stats, magicLink);
+      const messageText = buildWhatsAppMessage(student, month, year, stats, magicLink, settings);
 
       // Parent target phone
       const phoneTarget = student.parent?.whatsapp || student.parent?.phone || student.phone;

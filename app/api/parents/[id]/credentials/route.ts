@@ -59,15 +59,27 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const host = req.headers.get('host') || 'localhost:3000';
     const protocol = req.headers.get('x-forwarded-proto') || 'http';
     const baseUrl = `${protocol}://${host}`;
+    const settings = await prisma.systemSettings.findFirst();
+    const parentTpl = settings?.waTplParent || `👨‍👩‍👦 *بيانات تسجيل الدخول لولي الأمر (منصة المايسترو)* 👨‍👩‍👦\n\n*الاسم:* أ. [parent_name]\n*اسم المستخدم (رقم الهاتف):* [username]\n*كلمة المرور:* [password]\n\nيمكنكم تسجيل الدخول ومتابعة الحضور، الدرجات، والاشتراكات عبر الرابط:\n${baseUrl}/login\n\nنتمنى لأبنائكم دوام التوفيق! 🌸\n*منصة المايسترو — الأستاذ أحمد راضي كحلة*`;
 
-    let msg = `👨‍👩‍👦 *بيانات تسجيل الدخول لولي الأمر (منصة المايسترو)* 👨‍👩‍👦\n\n`;
-    msg += `*الاسم:* أ. ${parent.name}\n`;
-    msg += `*اسم المستخدم (رقم الهاتف):* ${parent.phone}\n`;
-    msg += `*كلمة المرور:* ${parent.passwordPlain || '123456'}\n\n`;
-    msg += `يمكنكم تسجيل الدخول ومتابعة الحضور، الغياب، النتائج، والاشتراكات لأبنائكم عبر بوابة أولياء الأمور:\n`;
-    msg += `${baseUrl}/login\n\n`;
-    msg += `نتمنى لأبنائكم دوام التوفيق والتميز! 🌸\n`;
-    msg += `*منصة المايسترو — الأستاذ أحمد راضي كحلة*`;
+    function fillTemplate(template: string, vars: Record<string, string>): string {
+      let result = template;
+      for (const [key, value] of Object.entries(vars)) {
+        result = result.replace(new RegExp(`\\[${key}\\]`, 'g'), value);
+      }
+      return result;
+    }
+
+    const studentNames = parent.students.map(s => s.name).join(', ');
+    const studentCodes = parent.students.map(s => s.code).join(', ');
+
+    const msg = fillTemplate(parentTpl, {
+      parent_name: parent.name,
+      student_name: studentNames,
+      student_code: studentCodes,
+      username: parent.phone,
+      password: parent.passwordPlain || '123456',
+    });
 
     const dispatch = await tryDispatchWhatsApp(targetPhone, msg);
 

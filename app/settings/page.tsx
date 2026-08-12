@@ -62,6 +62,7 @@ export default function SettingsPage() {
   const [tplParent, setTplParent] = useState('👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل ابنك/بنتك [student_name] بمنصة المايسترو.\nبيانات دخولك كولي أمر:\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
   const [tplAttendance, setTplAttendance] = useState('📅 تنبيه حضور\nالطالب: [student_name]\nالحالة: [status]\nالوقت: [time]\nمنصة المايسترو 🏫');
   const [tplAbsent, setTplAbsent] = useState('📅 تنبيه غياب\nالطالب: [student_name]\nتغيب عن حضور حصة اليوم بالمجموعة.\nيرجى المتابعة 🏫');
+  const [tplMonthlyReport, setTplMonthlyReport] = useState('📊 *تقرير المتابعة الشهري لولي الأمر* 📊\n\n*اسم الطالب:* [student_name]\n*الصف الدراسي:* [stage_name]\n*المجموعة:* [group_name]\n*التقرير الخاص بشهر:* [month_name] [year]\n\n*1. الحضور والغياب:* 📅\n- إجمالي عدد الحصص: [total_sessions]\n- حضور: [present_count] حصص\n- غياب: [absent_count] حصص\n[absent_details]\n\n*2. الاختبارات والتقييمات:* 📝\n[exams_list]\n\n*3. المصروفات والاشتراك:* 💰\n- حالة السداد للشهر: *[payment_status]*\n\n🔗 *رابط التقرير التفاعلي السريع (رابط سحري):*\nيمكنكم الاطلاع على تقرير الحضور والدرجات التفاعلي والرسوم البيانية عبر هذا الرابط:\n[magic_link]\n\nنتمنى للطالب دوام التوفيق والتميز! 🌸\n*منصة المايسترو - الأستاذ أحمد راضي كحلة*');
 
   // Account settings
   const [accountName, setAccountName] = useState('');
@@ -271,6 +272,7 @@ export default function SettingsPage() {
             if (waData.settings.templates.parent) setTplParent(waData.settings.templates.parent);
             if (waData.settings.templates.attendance) setTplAttendance(waData.settings.templates.attendance);
             if (waData.settings.templates.absent) setTplAbsent(waData.settings.templates.absent);
+            if (waData.settings.templates.monthlyReport) setTplMonthlyReport(waData.settings.templates.monthlyReport);
           }
         }
 
@@ -1525,7 +1527,7 @@ export default function SettingsPage() {
                           apiToken: waApiToken,
                           senderNumber: waSenderNumber,
                           autoSendCredentials,
-                          templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent },
+                          templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent, monthlyReport: tplMonthlyReport },
                         }),
                       });
                       const data = await res.json();
@@ -1793,6 +1795,24 @@ export default function SettingsPage() {
               />
             </div>
 
+            {/* Monthly Report Template */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-blue-300">📊 قالب تقرير المتابعة الشهري</label>
+                <div className="flex gap-1 flex-wrap">
+                  {['[student_name]', '[stage_name]', '[group_name]', '[month_name]', '[year]', '[total_sessions]', '[present_count]', '[absent_count]', '[absent_details]', '[exams_list]', '[payment_status]', '[magic_link]'].map(v => (
+                    <span key={v} className="text-[9px] px-1.5 py-0.5 bg-blue-500/15 text-blue-400 border border-blue-500/20 rounded font-mono cursor-pointer" onClick={() => setTplMonthlyReport(p => p + v)}>{v}</span>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={6}
+                value={tplMonthlyReport}
+                onChange={(e) => setTplMonthlyReport(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3 text-white text-xs font-mono resize-y focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
             {saveMsg && <p className="text-xs font-bold text-emerald-400">{saveMsg}</p>}
             <button
               onClick={async () => {
@@ -1805,7 +1825,7 @@ export default function SettingsPage() {
                       gatewayUrl: waGatewayUrl,
                       apiToken: waApiToken,
                       senderNumber: waSenderNumber,
-                      templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance },
+                      templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent, monthlyReport: tplMonthlyReport },
                     }),
                   });
                   const data = await res.json();

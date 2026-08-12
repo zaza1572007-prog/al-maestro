@@ -21,6 +21,7 @@ export default function ParentCommPage() {
   const [parentsLoading, setParentsLoading] = useState(false);
   const [parentsSearch, setParentsSearch] = useState('');
   const [sendingCredentialsId, setSendingCredentialsId] = useState<string | null>(null);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<any>(null);
   
   // Notification Toast state
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -33,12 +34,14 @@ export default function ParentCommPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [commsRes, studentsRes] = await Promise.all([
+      const [commsRes, studentsRes, waRes] = await Promise.all([
         fetch('/api/parent-comm'),
-        fetch('/api/students')
+        fetch('/api/students'),
+        fetch('/api/settings/whatsapp')
       ]);
       const commsData = await commsRes.json();
       const studentsData = await studentsRes.json();
+      const waData = await waRes.json();
 
       if (commsData.success) setComms(commsData.comms);
       if (studentsData.success) {
@@ -46,6 +49,9 @@ export default function ParentCommPage() {
         if (studentsData.students.length > 0) {
           setStudentId(studentsData.students[0].id);
         }
+      }
+      if (waData.success && waData.settings) {
+        setWhatsappTemplates(waData.settings.templates);
       }
     } catch (e) {
       console.error(e);
@@ -257,23 +263,54 @@ export default function ParentCommPage() {
                           {parent.passwordPlain || '—'}
                         </td>
                         <td className="p-4 text-left">
-                          <button
-                            onClick={() => handleSendCredentials(parent.id)}
-                            disabled={sendingCredentialsId === parent.id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition disabled:opacity-50 text-[11px]"
-                          >
-                            {sendingCredentialsId === parent.id ? (
-                              <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                جاري الإرسال...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="w-3 h-3" />
-                                إرسال الحساب (WhatsApp)
-                              </>
-                            )}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSendCredentials(parent.id)}
+                              disabled={sendingCredentialsId === parent.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition disabled:opacity-50 text-[11px]"
+                            >
+                              {sendingCredentialsId === parent.id ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  جاري الإرسال...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3 h-3" />
+                                  إرسال تلقائي
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => {
+                                const tpl = whatsappTemplates?.parent || '👨‍👩‍👦 أهلاً بك يا أ. [parent_name]\nتم تسجيل الطالب: [student_name] بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم (رقم الهاتف): [username]\nكلمة المرور: [password]\nتمنياتنا لأبنائك بدوام التميز والتفوق 🌟';
+                                const studentNames = parent.students?.map((s: any) => s.name).join(', ') || 'أبنائكم';
+                                const studentCodes = parent.students?.map((s: any) => s.code).join(', ') || '';
+                                
+                                const msg = tpl
+                                  .replace(/\[parent_name\]/g, parent.name)
+                                  .replace(/\[student_name\]/g, studentNames)
+                                  .replace(/\[student_code\]/g, studentCodes)
+                                  .replace(/\[username\]/g, parent.phone)
+                                  .replace(/\[password\]/g, parent.passwordPlain || '123456');
+
+                                const phone = parent.whatsapp || parent.phone || '';
+                                let cleanPhone = phone.replace(/[^\d]/g, '').trim();
+                                if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+                                  cleanPhone = '20' + cleanPhone.slice(1);
+                                } else if (cleanPhone.startsWith('1') && cleanPhone.length === 10) {
+                                  cleanPhone = '20' + cleanPhone;
+                                }
+                                
+                                const text = encodeURIComponent(msg);
+                                window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition text-[11px]"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              إرسال يدوي
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
