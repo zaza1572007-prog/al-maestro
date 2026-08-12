@@ -627,7 +627,7 @@ export default function SettingsPage() {
 
       {/* Tab: Registration Gate */}
       {activeTab === 'registration' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-5xl">
           <div>
             <h3 className="font-bold text-lg text-white mb-1">التحكم في فتح وإغلاق باب الحجز المباشر</h3>
             <p className="text-slate-400 text-xs">عند إغلاق التسجيل، تظهر للزوار رسالة توضح أن الحجز مغلق حالياً.</p>
@@ -661,7 +661,7 @@ export default function SettingsPage() {
 
       {/* Tab: Identity */}
       {activeTab === 'identity' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-5xl">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">اسم المنصة</label>
             <input
@@ -724,7 +724,7 @@ export default function SettingsPage() {
 
       {/* Tab: Branding – Smart Colour System */}
       {activeTab === 'branding' && (
-        <div className="space-y-8 max-w-2xl">
+        <div className="space-y-8 max-w-5xl">
 
           {/* ── Multi-Device Customizer & Live Frame Studio ── */}
           <div className="glass-panel p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-6">
@@ -1345,7 +1345,7 @@ export default function SettingsPage() {
 
       {/* Tab: Account Settings */}
       {activeTab === 'account' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-5xl">
           <div>
             <h3 className="font-bold text-lg text-white">إعدادات الحساب الشخصي</h3>
             <p className="text-slate-400 text-xs">يمكنك هنا تعديل اسم المستخدم الخاص بك أو رقم الهاتف وتعيين كلمة مرور جديدة لحسابك.</p>
@@ -1429,254 +1429,289 @@ export default function SettingsPage() {
 
       {/* Tab: WhatsApp */}
       {activeTab === 'whatsapp' && (
-        <div className="space-y-6 max-w-2xl">
-
-          {/* Gateway Connection */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-lg text-white">📞 إعداد HTTP Gateway للواتساب</h3>
-                <p className="text-xs text-slate-400 mt-1">يعمل مع أي مزود خدمة (مثل: UltraMsg, Twilio, WApi, أي Gateway HTTP)</p>
-              </div>
-              <div className={`w-3 h-3 rounded-full ${ waTestStatus === 'success' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : waTestStatus === 'error' ? 'bg-rose-400' : 'bg-slate-600'}`} />
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Gateway URL</label>
-                <input
-                  type="url"
-                  value={waGatewayUrl}
-                  onChange={(e) => setWaGatewayUrl(e.target.value)}
-                  placeholder="https://api.ultramsg.com/instance12345/messages/chat"
-                  className="w-full glass-input p-3 font-mono text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">API Token / Secret Key</label>
-                <input
-                  type="text"
-                  value={waApiToken}
-                  onChange={(e) => setWaApiToken(e.target.value)}
-                  placeholder="your_api_token_here"
-                  className="w-full glass-input p-3 font-mono text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">رقم المرسل (Sender Number)</label>
-                <input
-                  type="text"
-                  value={waSenderNumber}
-                  onChange={(e) => setWaSenderNumber(e.target.value)}
-                  placeholder="201000000000"
-                  className="w-full glass-input p-3 font-mono text-xs"
-                />
-              </div>
-              
-              <div className="flex items-start gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mt-3">
-                <input
-                  type="checkbox"
-                  id="autoSendCredentials"
-                  checked={autoSendCredentials}
-                  onChange={(e) => setAutoSendCredentials(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded bg-slate-950 border-slate-800 focus:ring-blue-500 focus:ring-2 focus:ring-offset-slate-900 mt-0.5 cursor-pointer"
-                />
-                <div className="cursor-pointer" onClick={() => setAutoSendCredentials(!autoSendCredentials)}>
-                  <label htmlFor="autoSendCredentials" className="block text-xs font-bold text-white cursor-pointer">
-                    إرسال بيانات الدخول تلقائياً عند إضافة طالب جديد 🔑
-                  </label>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    عند تفعيل هذا الخيار، سيقوم النظام تلقائياً بإرسال رسالة ترحيبية على الواتساب تحتوي على اسم المستخدم وكلمة المرور فور إضافة طالب جديد. عند تعطيله، يمكنك التحكم في الإرسال يدوياً.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {waTestMsg && (
-              <p className={`text-xs font-semibold p-3 rounded-xl ${ waTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                {waTestMsg}
-              </p>
-            )}
-
-            <div className="flex gap-3 flex-wrap">
-              <button
-                onClick={async () => {
-                  setWaTestStatus('testing');
-                  setWaTestMsg('جارٍ الاختبار...');
-                  try {
-                    const res = await fetch('/api/settings/whatsapp', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'test', to: waSenderNumber }),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setWaTestStatus('success');
-                      setWaTestMsg('✅ تم إرسال رسالة اختبارية بنجاح!');
-                    } else {
-                      setWaTestStatus('error');
-                      setWaTestMsg('❌ ' + (data.error || 'فشل الاتصال'));
-                    }
-                  } catch {
-                    setWaTestStatus('error');
-                    setWaTestMsg('❌ خطأ في الاتصال بالخادم');
-                  }
-                }}
-                disabled={waTestStatus === 'testing' || !waGatewayUrl || !waApiToken}
-                className="px-5 py-2.5 bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
-              >
-                {waTestStatus === 'testing' ? 'جارٍ الاختبار...' : '📡 اختبار الاتصال'}
-              </button>
-              <button
-                onClick={async () => {
-                  setWaSaving(true);
-                  try {
-                    const res = await fetch('/api/settings/whatsapp', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        gatewayUrl: waGatewayUrl,
-                        apiToken: waApiToken,
-                        senderNumber: waSenderNumber,
-                        autoSendCredentials,
-                        templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent },
-                      }),
-                    });
-                    const data = await res.json();
-                    if (data.success) setSaveMsg('تم حفظ إعدادات الواتساب بنجاح ✅');
-                    else setSaveMsg('فشل الحفظ ❌');
-                    setTimeout(() => setSaveMsg(''), 3000);
-                  } catch { setSaveMsg('خطأ في الاتصال'); }
-                  finally { setWaSaving(false); }
-                }}
-                disabled={waSaving}
-                className="glass-button-primary px-6 py-2.5 font-bold text-xs rounded-xl disabled:opacity-50"
-              >
-                {waSaving ? 'جارٍ الحفظ...' : '💾 حفظ إعدادات البوابة'}
-              </button>
-            </div>
-          </div>
-
-          {/* Cron Job Configuration */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-5">
-            <div>
-              <h3 className="font-bold text-lg text-white">⚙️ جدولة التقارير الشهرية التلقائية (Cron Job)</h3>
-              <p className="text-xs text-slate-400 mt-1">جدولة إرسال التقارير الشهرية لأولياء الأمور تلقائياً عبر الواتساب في يوم ووقت محددين.</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/5">
-                <div>
-                  <p className="text-xs font-bold text-white">تفعيل الإرسال التلقائي للتقارير</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">عند التفعيل، سيقوم النظام بالتشغيل التلقائي وإرسال الرسائل.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={autoSendEnabled}
-                  onChange={(e) => {
-                    setAutoSendEnabled(e.target.checked);
-                    setSendMode(e.target.checked ? 'AUTOMATIC' : 'MANUAL');
-                  }}
-                  className="w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 focus:ring-blue-500"
-                />
-              </div>
-
-              {autoSendEnabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-6 w-full max-w-6xl">
+          {/* Top row cards (Gateway, Auto credentials, Cron Job) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            
+            {/* Card 1: Gateway Connection */}
+            <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">يوم الإرسال المحدد شهرياً</label>
-                    <select
-                      value={scheduledDay}
-                      onChange={(e) => setScheduledDay(parseInt(e.target.value))}
-                      className="w-full glass-input p-3 text-xs text-white bg-slate-950"
-                    >
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                        <option key={day} value={day} className="bg-slate-950 text-white">
-                          يوم {day} في الشهر
-                        </option>
-                      ))}
-                    </select>
+                    <h3 className="font-bold text-base text-white">📞 إعداد HTTP Gateway</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">يعمل مع أي بوابة HTTP خارجية</p>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${ waTestStatus === 'success' ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : waTestStatus === 'error' ? 'bg-rose-400' : 'bg-slate-600'}`} />
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-300 mb-1">Gateway URL</label>
+                    <input
+                      type="url"
+                      value={waGatewayUrl}
+                      onChange={(e) => setWaGatewayUrl(e.target.value)}
+                      placeholder="https://api.ultramsg.com/.../chat"
+                      className="w-full glass-input p-2.5 font-mono text-xs"
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">وقت الإرسال (توقيت الخادم)</label>
+                    <label className="block text-[10px] font-semibold text-slate-300 mb-1">API Token / Secret</label>
                     <input
-                      type="time"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="w-full glass-input p-3 text-xs text-white bg-slate-950"
+                      type="text"
+                      value={waApiToken}
+                      onChange={(e) => setWaApiToken(e.target.value)}
+                      placeholder="your_api_token_here"
+                      className="w-full glass-input p-2.5 font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-300 mb-1">رقم المرسل (Sender Number)</label>
+                    <input
+                      type="text"
+                      value={waSenderNumber}
+                      onChange={(e) => setWaSenderNumber(e.target.value)}
+                      placeholder="201000000000"
+                      className="w-full glass-input p-2.5 font-mono text-xs"
                     />
                   </div>
                 </div>
-              )}
+
+                {waTestMsg && (
+                  <p className={`text-[10px] font-semibold p-2.5 rounded-xl ${ waTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                    {waTestMsg}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-white/5">
+                <button
+                  onClick={async () => {
+                    setWaTestStatus('testing');
+                    setWaTestMsg('جارٍ الاختبار...');
+                    try {
+                      const res = await fetch('/api/settings/whatsapp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'test', to: waSenderNumber }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        setWaTestStatus('success');
+                        setWaTestMsg('✅ تم إرسال رسالة اختبارية بنجاح!');
+                      } else {
+                        setWaTestStatus('error');
+                        setWaTestMsg('❌ ' + (data.error || 'فشل الاتصال'));
+                      }
+                    } catch {
+                      setWaTestStatus('error');
+                      setWaTestMsg('❌ خطأ في الاتصال بالخادم');
+                    }
+                  }}
+                  disabled={waTestStatus === 'testing' || !waGatewayUrl || !waApiToken}
+                  className="flex-1 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-300 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-bold transition disabled:opacity-50"
+                >
+                  📡 اختبار
+                </button>
+                <button
+                  onClick={async () => {
+                    setWaSaving(true);
+                    try {
+                      const res = await fetch('/api/settings/whatsapp', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          gatewayUrl: waGatewayUrl,
+                          apiToken: waApiToken,
+                          senderNumber: waSenderNumber,
+                          autoSendCredentials,
+                          templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent },
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) setSaveMsg('تم حفظ إعدادات البوابة بنجاح ✅');
+                      else setSaveMsg('فشل الحفظ ❌');
+                      setTimeout(() => setSaveMsg(''), 3000);
+                    } catch { setSaveMsg('خطأ في الاتصال'); }
+                    finally { setWaSaving(false); }
+                  }}
+                  disabled={waSaving}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 font-bold text-[10px] rounded-xl disabled:opacity-50"
+                >
+                  💾 حفظ
+                </button>
+              </div>
             </div>
 
-            {cronTestMsg && (
-              <p className={`text-xs font-semibold p-3 rounded-xl ${ cronTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                {cronTestMsg}
-              </p>
-            )}
+            {/* Card 2: Auto-send Credentials Toggle (Standalone Card!) */}
+            <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-base text-white">🔑 إرسال بيانات الدخول</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">التحكم في إرسال اسم المستخدم وكلمة المرور للطلاب</p>
+                </div>
 
-            <div className="flex gap-3 flex-wrap">
-              <button
-                onClick={async () => {
-                  setWaSaving(true);
-                  try {
-                    const res = await fetch('/api/settings/whatsapp', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        autoSendEnabled,
-                        sendMode: autoSendEnabled ? 'AUTOMATIC' : 'MANUAL',
-                        scheduledDay,
-                        scheduledTime,
-                      }),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setSaveMsg('تم حفظ إعدادات الجدولة التلقائية بنجاح ✅');
-                    } else {
-                      setSaveMsg('فشل حفظ الإعدادات ❌');
-                    }
-                    setTimeout(() => setSaveMsg(''), 3000);
-                  } catch {
-                    setSaveMsg('خطأ في الاتصال بالخادم');
-                  } finally {
-                    setWaSaving(false);
-                  }
-                }}
-                disabled={waSaving}
-                className="glass-button-primary px-6 py-2.5 font-bold text-xs rounded-xl disabled:opacity-50"
-              >
-                {waSaving ? 'جاري الحفظ...' : '💾 حفظ إعدادات الجدولة'}
-              </button>
+                <div className="flex items-start gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mt-3">
+                  <input
+                    type="checkbox"
+                    id="autoSendCredentialsCard"
+                    checked={autoSendCredentials}
+                    onChange={(e) => setAutoSendCredentials(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded bg-slate-950 border-slate-800 focus:ring-blue-500 focus:ring-2 focus:ring-offset-slate-900 mt-0.5 cursor-pointer"
+                  />
+                  <div className="cursor-pointer" onClick={() => setAutoSendCredentials(!autoSendCredentials)}>
+                    <label htmlFor="autoSendCredentialsCard" className="block text-xs font-bold text-white cursor-pointer">
+                      تفعيل الإرسال التلقائي
+                    </label>
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                      عند تفعيل هذا الخيار، سيقوم النظام تلقائياً بإرسال رسالة ترحيبية على الواتساب تحتوي على اسم المستخدم وكلمة المرور فور إضافة طالب جديد.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-              <button
-                onClick={async () => {
-                  setCronTestStatus('testing');
-                  setCronTestMsg('جاري تشغيل الإرسال الآلي للاختبار وإرسال الرسائل لجميع أولياء الأمور...');
-                  try {
-                    const res = await fetch('/api/cron/monthly-reports', {
-                      method: 'POST',
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setCronTestStatus('success');
-                      setCronTestMsg(`✅ تم التشغيل بنجاح! تم إرسال ${data.successCount} رسالة بنجاح، وفشل ${data.failCount} رسالة.`);
-                    } else {
+              <div className="pt-2 border-t border-white/5">
+                <button
+                  onClick={async () => {
+                    setWaSaving(true);
+                    try {
+                      const res = await fetch('/api/settings/whatsapp', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ autoSendCredentials }),
+                      });
+                      const data = await res.json();
+                      if (data.success) setSaveMsg('تم حفظ خيار إرسال الحسابات بنجاح ✅');
+                      else setSaveMsg('فشل الحفظ ❌');
+                      setTimeout(() => setSaveMsg(''), 3000);
+                    } catch { setSaveMsg('خطأ في الاتصال'); }
+                    finally { setWaSaving(false); }
+                  }}
+                  disabled={waSaving}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-bold text-[10px] rounded-xl disabled:opacity-50"
+                >
+                  {waSaving ? 'جاري الحفظ...' : '💾 حفظ خيار الإرسال'}
+                </button>
+              </div>
+            </div>
+
+            {/* Card 3: Cron Job Configuration */}
+            <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-base text-white">⚙️ جدولة التقارير الشهرية</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">جدولة إرسال التقارير الشهرية لأولياء الأمور تلقائياً</p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-2.5 bg-white/5 rounded-2xl border border-white/5">
+                    <div>
+                      <p className="text-[10px] font-bold text-white">تفعيل الجدولة</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">التشغيل التلقائي للتقارير</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={autoSendEnabled}
+                      onChange={(e) => {
+                        setAutoSendEnabled(e.target.checked);
+                        setSendMode(e.target.checked ? 'AUTOMATIC' : 'MANUAL');
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded bg-slate-950 border-slate-800 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {autoSendEnabled && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-semibold text-slate-300 mb-1">اليوم المحدد</label>
+                        <select
+                          value={scheduledDay}
+                          onChange={(e) => setScheduledDay(parseInt(e.target.value))}
+                          className="w-full glass-input p-2 text-[10px] text-white bg-slate-950"
+                        >
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <option key={day} value={day} className="bg-slate-950 text-white">
+                              يوم {day}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-semibold text-slate-300 mb-1">الوقت المحدد</label>
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="w-full glass-input p-2 text-[10px] text-white bg-slate-950 font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {cronTestMsg && (
+                    <p className={`text-[9px] font-semibold p-2 rounded-xl ${ cronTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                      {cronTestMsg}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-white/5">
+                <button
+                  onClick={async () => {
+                    setCronTestStatus('testing');
+                    setCronTestMsg('جاري تشغيل الإرسال التجريبي لجميع أولياء الأمور...');
+                    try {
+                      const res = await fetch('/api/cron/monthly-reports', {
+                        method: 'POST',
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        setCronTestStatus('success');
+                        setCronTestMsg(`✅ تم بنجاح! إرسال: ${data.successCount}، فشل: ${data.failCount}`);
+                      } else {
+                        setCronTestStatus('error');
+                        setCronTestMsg('❌ فشل: ' + (data.error || 'خطأ غير معروف'));
+                      }
+                    } catch (e: any) {
                       setCronTestStatus('error');
-                      setCronTestMsg('❌ فشل التشغيل التجريبي: ' + (data.error || 'خطأ غير معروف'));
+                      setCronTestMsg('❌ خطأ في الاتصال بالخادم');
                     }
-                  } catch (e: any) {
-                    setCronTestStatus('error');
-                    setCronTestMsg('❌ خطأ في الاتصال بالخادم أثناء التشغيل التجريبي.');
-                  }
-                }}
-                disabled={cronTestStatus === 'testing'}
-                className="px-5 py-2.5 bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
-              >
-                {cronTestStatus === 'testing' ? 'جاري التشغيل...' : '⚡ إرسال آلي الآن اختبارياً'}
-              </button>
+                  }}
+                  disabled={cronTestStatus === 'testing'}
+                  className="flex-1 py-2 bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white rounded-xl text-[10px] font-bold transition disabled:opacity-50"
+                >
+                  ⚡ اختبار
+                </button>
+                <button
+                  onClick={async () => {
+                    setWaSaving(true);
+                    try {
+                      const res = await fetch('/api/settings/whatsapp', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          autoSendEnabled,
+                          sendMode: autoSendEnabled ? 'AUTOMATIC' : 'MANUAL',
+                          scheduledDay,
+                          scheduledTime,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) setSaveMsg('تم حفظ الجدولة بنجاح ✅');
+                      else setSaveMsg('فشل الحفظ ❌');
+                      setTimeout(() => setSaveMsg(''), 3000);
+                    } catch { setSaveMsg('خطأ في الاتصال'); }
+                    finally { setWaSaving(false); }
+                  }}
+                  disabled={waSaving}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 font-bold text-[10px] rounded-xl disabled:opacity-50"
+                >
+                  💾 حفظ
+                </button>
+              </div>
             </div>
+
           </div>
 
           {/* Templates Manager */}
@@ -1790,7 +1825,7 @@ export default function SettingsPage() {
 
       {/* Tab: Backup */}
       {activeTab === 'backup' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-2xl">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-5xl">
           <div>
             <h3 className="font-bold text-lg text-white">تصدير واستعادة نسخة احتياطية</h3>
             <p className="text-xs text-slate-400 mt-1">تصدير كافة البيانات في ملف JSON واستعادتها في أي وقت</p>
@@ -1823,7 +1858,7 @@ export default function SettingsPage() {
 
       {/* Tab: Data Cleanup */}
       {activeTab === 'cleanup' && (
-        <div className="space-y-6 max-w-2xl">
+        <div className="space-y-6 max-w-5xl">
           {/* Section 1: Absence Cleanup */}
           <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 space-y-6 bg-red-950/5">
             <div className="flex items-center justify-between">

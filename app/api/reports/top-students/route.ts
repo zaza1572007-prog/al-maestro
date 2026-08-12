@@ -70,6 +70,7 @@ export async function GET(req: Request) {
         totalSessions: totalAtt,
         presentSessions: presentCount,
         absentSessions: totalAtt - presentCount,
+        totalExams,
       };
     });
 
@@ -85,10 +86,24 @@ export async function GET(req: Request) {
       .sort((a, b) => b.avgExamPercentage - a.avgExamPercentage)
       .slice(0, 10);
 
+    // 3. Bottom performing (lowest scores): Sort by avgExamPercentage ascending
+    const bottomPerforming = [...mappedStudents]
+      .filter((s) => s.totalExams > 0)
+      .sort((a, b) => a.avgExamPercentage - b.avgExamPercentage)
+      .slice(0, 10);
+
+    // 4. Most absent: Sort by absentSessions descending
+    const mostAbsent = [...mappedStudents]
+      .filter((s) => s.absentSessions > 0)
+      .sort((a, b) => b.absentSessions - a.absentSessions)
+      .slice(0, 10);
+
     return NextResponse.json({
       success: true,
       topCommitted,
       topPerforming,
+      bottomPerforming,
+      mostAbsent,
     });
   } catch (error: any) {
     console.error('Error fetching top students:', error);

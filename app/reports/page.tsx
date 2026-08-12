@@ -74,6 +74,8 @@ export default function ReportsPage() {
   // Tab 2: Top Students states & filters
   const [topCommitted, setTopCommitted] = useState<any[]>([]);
   const [topPerforming, setTopPerforming] = useState<any[]>([]);
+  const [bottomPerforming, setBottomPerforming] = useState<any[]>([]);
+  const [mostAbsent, setMostAbsent] = useState<any[]>([]);
   const [topLoading, setTopLoading] = useState(false);
   const [topStageId, setTopStageId] = useState('');
   const [topGroupId, setTopGroupId] = useState('');
@@ -154,6 +156,8 @@ export default function ReportsPage() {
       if (data.success) {
         setTopCommitted(data.topCommitted || []);
         setTopPerforming(data.topPerforming || []);
+        setBottomPerforming(data.bottomPerforming || []);
+        setMostAbsent(data.mostAbsent || []);
       }
     } catch (e) {
       console.error('Failed to fetch top students:', e);
@@ -549,8 +553,8 @@ export default function ReportsPage() {
             >
               {/* Filters Board */}
               <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/30">
-                <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2">⚙️ فلاتر لوحات الأوائل</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2">⚙️ فلاتر لوحات المتابعة</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 mb-1.5">المرحلة الدراسية</label>
                     <select
@@ -580,22 +584,6 @@ export default function ReportsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 mb-1.5">الصف الدراسي</label>
-                    <select
-                      value={topGrade}
-                      onChange={(e) => setTopGrade(e.target.value)}
-                      className="w-full glass-input p-2.5 text-xs text-white bg-slate-950"
-                    >
-                      <option value="">جميع الصفوف</option>
-                      <option value="4th">الرابع</option>
-                      <option value="5th">الخامس</option>
-                      <option value="6th">السادس</option>
-                      <option value="1st">الأول (الإعدادي/الثانوي)</option>
-                      <option value="2nd">الثاني</option>
-                      <option value="3rd">الثالث</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-[10px] font-bold text-slate-400 mb-1.5">المستوى التعليمي</label>
                     <select
                       value={topLevel}
@@ -614,70 +602,138 @@ export default function ReportsPage() {
               {topLoading ? (
                 <div className="text-center py-20 flex flex-col items-center gap-3 text-slate-400">
                   <Loader2 className="w-6 h-6 animate-spin" />
-                  <p className="text-xs">جاري تصفية الطلاب الأوائل...</p>
+                  <p className="text-xs">جاري تصفية الطلاب ولوحات المتابعة...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Top Committed Board */}
-                  <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
-                    <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                      أكثر الطلاب التزاماً بالحضور 📅
-                    </h3>
-                    {topCommitted.length > 0 ? (
-                      <div className="space-y-4">
-                        {topCommitted.map((student, idx) => (
-                          <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-[11px]">
-                                {idx + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <p className="font-bold text-white truncate text-sm">{student.name}</p>
-                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName} • {student.stageName}</p>
+                <div className="space-y-6">
+                  {/* Row 1: Top Performing / Committed */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Committed Board */}
+                    <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
+                      <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        أكثر الطلاب التزاماً بالحضور 📅
+                      </h3>
+                      {topCommitted.length > 0 ? (
+                        <div className="space-y-4">
+                          {topCommitted.map((student, idx) => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-[11px]">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-white truncate text-sm">{student.name}</p>
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName}</p>
+                                </div>
+                              </div>
+                              <div className="text-left flex-shrink-0">
+                                <p className="text-emerald-400 font-black text-sm">{student.attendanceRate}%</p>
+                                <p className="text-[9px] text-slate-500 mt-0.5">{student.presentSessions} حضور / {student.totalSessions} حصص</p>
                               </div>
                             </div>
-                            <div className="text-left flex-shrink-0">
-                              <p className="text-emerald-400 font-black text-sm">{student.attendanceRate}%</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">{student.presentSessions} حضور / {student.totalSessions} حصص</p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 text-xs py-10 text-center">لا توجد بيانات حضور مسجلة للفلتر المختار.</p>
+                      )}
+                    </div>
+
+                    {/* Top Performing Board */}
+                    <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
+                      <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
+                        <Award className="w-5 h-5 text-amber-400" />
+                        أكثر الطلاب تحصيلاً لأعلى درجات الاختبارات 🏆
+                      </h3>
+                      {topPerforming.length > 0 ? (
+                        <div className="space-y-4">
+                          {topPerforming.map((student, idx) => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-6 h-6 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold text-[11px]">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-white truncate text-sm">{student.name}</p>
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName}</p>
+                                </div>
+                              </div>
+                              <div className="text-left flex-shrink-0">
+                                <p className="text-amber-400 font-black text-sm">{student.avgExamPercentage}%</p>
+                                <p className="text-[9px] text-slate-500 mt-0.5">متوسط درجات الاختبارات</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-xs py-10 text-center">لا توجد بيانات حضور مسجلة للفلتر المختار.</p>
-                    )}
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 text-xs py-10 text-center">لا توجد درجات امتحانات مسجلة للفلتر المختار.</p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Top Performing Board */}
-                  <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
-                    <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
-                      <Award className="w-5 h-5 text-amber-400" />
-                      أكثر الطلاب تحصيلاً لأعلى درجات الاختبارات 🏆
-                    </h3>
-                    {topPerforming.length > 0 ? (
-                      <div className="space-y-4">
-                        {topPerforming.map((student, idx) => (
-                          <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="w-6 h-6 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold text-[11px]">
-                                {idx + 1}
-                              </span>
-                              <div className="min-w-0">
-                                <p className="font-bold text-white truncate text-sm">{student.name}</p>
-                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName} • {student.stageName}</p>
+                  {/* Row 2: Least Performing / Most Absent */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Most Absent Board */}
+                    <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
+                      <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
+                        <XCircle className="w-5 h-5 text-rose-400" />
+                        أكثر الطلاب غياباً 📅
+                      </h3>
+                      {mostAbsent.length > 0 ? (
+                        <div className="space-y-4">
+                          {mostAbsent.map((student, idx) => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-6 h-6 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center font-bold text-[11px]">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-white truncate text-sm">{student.name}</p>
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName}</p>
+                                </div>
+                              </div>
+                              <div className="text-left flex-shrink-0">
+                                <p className="text-rose-400 font-black text-sm">{student.absentSessions} حصص غياب</p>
+                                <p className="text-[9px] text-slate-500 mt-0.5">من أصل {student.totalSessions} حصص</p>
                               </div>
                             </div>
-                            <div className="text-left flex-shrink-0">
-                              <p className="text-amber-400 font-black text-sm">{student.avgExamPercentage}%</p>
-                              <p className="text-[9px] text-slate-500 mt-0.5">متوسط درجات الاختبارات</p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 text-xs py-10 text-center">لا توجد حالات غياب مسجلة للفلتر المختار.</p>
+                      )}
+                    </div>
+
+                    {/* Bottom Performing Board */}
+                    <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/40">
+                      <h3 className="font-bold text-white text-md mb-5 flex items-center gap-2 border-b border-white/5 pb-3">
+                        <TrendingDown className="w-5 h-5 text-rose-400" />
+                        الطلاب الأقل درجات في الاختبارات 📉
+                      </h3>
+                      {bottomPerforming.length > 0 ? (
+                        <div className="space-y-4">
+                          {bottomPerforming.map((student, idx) => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 p-3 bg-white/3 border border-white/5 rounded-2xl text-xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="w-6 h-6 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center font-bold text-[11px]">
+                                  {idx + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-white truncate text-sm">{student.name}</p>
+                                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{student.groupName}</p>
+                                </div>
+                              </div>
+                              <div className="text-left flex-shrink-0">
+                                <p className="text-rose-400 font-black text-sm">{student.avgExamPercentage}%</p>
+                                <p className="text-[9px] text-slate-500 mt-0.5">متوسط درجات الاختبارات</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-xs py-10 text-center">لا توجد درجات امتحانات مسجلة للفلتر المختار.</p>
-                    )}
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 text-xs py-10 text-center">لا توجد درجات اختبارات مسجلة للفلتر المختار.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
