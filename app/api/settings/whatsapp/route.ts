@@ -64,6 +64,10 @@ export async function GET(req: NextRequest) {
         gatewayUrl: settings?.waGatewayUrl || '',
         apiToken: settings?.waApiToken || '',
         senderNumber: settings?.waSenderNumber || '',
+        autoSendEnabled: settings?.autoSendEnabled ?? false,
+        sendMode: settings?.sendMode || 'MANUAL',
+        scheduledDay: settings?.scheduledDay ?? 28,
+        scheduledTime: settings?.scheduledTime || '20:00',
         templates: {
           student: settings?.waTplStudent || '',
           parent: settings?.waTplParent || '',
@@ -86,7 +90,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { gatewayUrl, apiToken, senderNumber, templates } = body;
+    const { gatewayUrl, apiToken, senderNumber, templates, autoSendEnabled, sendMode, scheduledDay, scheduledTime } = body;
 
     let settings = await prisma.systemSettings.findFirst();
     const data: Record<string, any> = {};
@@ -97,6 +101,11 @@ export async function PUT(req: NextRequest) {
     if (templates?.parent !== undefined) data.waTplParent = templates.parent;
     if (templates?.attendance !== undefined) data.waTplAttendance = templates.attendance;
     if (templates?.absent !== undefined) data.waTplAbsent = templates.absent;
+
+    if (autoSendEnabled !== undefined) data.autoSendEnabled = !!autoSendEnabled;
+    if (sendMode !== undefined) data.sendMode = sendMode;
+    if (scheduledDay !== undefined) data.scheduledDay = parseInt(scheduledDay) || 28;
+    if (scheduledTime !== undefined) data.scheduledTime = scheduledTime;
 
     if (settings) {
       await prisma.systemSettings.update({ where: { id: settings.id }, data });

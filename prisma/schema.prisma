@@ -571,6 +571,11 @@ model SystemSettings {
   portraitConfig        String?  @db.Text
   // Logo settings
   logoScale             Float?   @default(1.0)
+  // Cron Job / Monthly Report settings
+  autoSendEnabled     Boolean  @default(false)
+  sendMode            String   @default("MANUAL") // MANUAL | AUTOMATIC
+  scheduledDay        Int      @default(28)
+  scheduledTime       String   @default("20:00")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

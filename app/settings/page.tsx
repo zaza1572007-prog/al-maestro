@@ -48,6 +48,14 @@ export default function SettingsPage() {
   const [waTestStatus, setWaTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [waTestMsg, setWaTestMsg] = useState('');
 
+  // WhatsApp Monthly Reports / Cron Job settings
+  const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  const [sendMode, setSendMode] = useState<'MANUAL' | 'AUTOMATIC'>('MANUAL');
+  const [scheduledDay, setScheduledDay] = useState(28);
+  const [scheduledTime, setScheduledTime] = useState('20:00');
+  const [cronTestStatus, setCronTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [cronTestMsg, setCronTestMsg] = useState('');
+
   // WhatsApp Templates
   const [tplStudent, setTplStudent] = useState('🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو.\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
   const [tplParent, setTplParent] = useState('👨‍👩‍👦 أهلاً [parent_name]\nتم تسجيل ابنك/بنتك [student_name] بمنصة المايسترو.\nبيانات دخولك كولي أمر:\nاسم المستخدم: [username]\nكلمة المرور: [password]\nبتوفيق 🌟');
@@ -252,6 +260,10 @@ export default function SettingsPage() {
           setWaGatewayUrl(waData.settings.gatewayUrl || '');
           setWaApiToken(waData.settings.apiToken || '');
           setWaSenderNumber(waData.settings.senderNumber || '');
+          setAutoSendEnabled(waData.settings.autoSendEnabled ?? false);
+          setSendMode(waData.settings.sendMode || 'MANUAL');
+          setScheduledDay(waData.settings.scheduledDay ?? 28);
+          setScheduledTime(waData.settings.scheduledTime || '20:00');
           if (waData.settings.templates) {
             if (waData.settings.templates.student) setTplStudent(waData.settings.templates.student);
             if (waData.settings.templates.parent) setTplParent(waData.settings.templates.parent);
@@ -1520,6 +1532,128 @@ export default function SettingsPage() {
                 className="glass-button-primary px-6 py-2.5 font-bold text-xs rounded-xl disabled:opacity-50"
               >
                 {waSaving ? 'جارٍ الحفظ...' : '💾 حفظ إعدادات البوابة'}
+              </button>
+            </div>
+          </div>
+
+          {/* Cron Job Configuration */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 space-y-5">
+            <div>
+              <h3 className="font-bold text-lg text-white">⚙️ جدولة التقارير الشهرية التلقائية (Cron Job)</h3>
+              <p className="text-xs text-slate-400 mt-1">جدولة إرسال التقارير الشهرية لأولياء الأمور تلقائياً عبر الواتساب في يوم ووقت محددين.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/5">
+                <div>
+                  <p className="text-xs font-bold text-white">تفعيل الإرسال التلقائي للتقارير</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">عند التفعيل، سيقوم النظام بالتشغيل التلقائي وإرسال الرسائل.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={autoSendEnabled}
+                  onChange={(e) => {
+                    setAutoSendEnabled(e.target.checked);
+                    setSendMode(e.target.checked ? 'AUTOMATIC' : 'MANUAL');
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded bg-slate-900 border-slate-700 focus:ring-blue-500"
+                />
+              </div>
+
+              {autoSendEnabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">يوم الإرسال المحدد شهرياً</label>
+                    <select
+                      value={scheduledDay}
+                      onChange={(e) => setScheduledDay(parseInt(e.target.value))}
+                      className="w-full glass-input p-3 text-xs text-white bg-slate-950"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <option key={day} value={day} className="bg-slate-950 text-white">
+                          يوم {day} في الشهر
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">وقت الإرسال (توقيت الخادم)</label>
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="w-full glass-input p-3 text-xs text-white bg-slate-950"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {cronTestMsg && (
+              <p className={`text-xs font-semibold p-3 rounded-xl ${ cronTestStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                {cronTestMsg}
+              </p>
+            )}
+
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={async () => {
+                  setWaSaving(true);
+                  try {
+                    const res = await fetch('/api/settings/whatsapp', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        autoSendEnabled,
+                        sendMode: autoSendEnabled ? 'AUTOMATIC' : 'MANUAL',
+                        scheduledDay,
+                        scheduledTime,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setSaveMsg('تم حفظ إعدادات الجدولة التلقائية بنجاح ✅');
+                    } else {
+                      setSaveMsg('فشل حفظ الإعدادات ❌');
+                    }
+                    setTimeout(() => setSaveMsg(''), 3000);
+                  } catch {
+                    setSaveMsg('خطأ في الاتصال بالخادم');
+                  } finally {
+                    setWaSaving(false);
+                  }
+                }}
+                disabled={waSaving}
+                className="glass-button-primary px-6 py-2.5 font-bold text-xs rounded-xl disabled:opacity-50"
+              >
+                {waSaving ? 'جاري الحفظ...' : '💾 حفظ إعدادات الجدولة'}
+              </button>
+
+              <button
+                onClick={async () => {
+                  setCronTestStatus('testing');
+                  setCronTestMsg('جاري تشغيل الإرسال الآلي للاختبار وإرسال الرسائل لجميع أولياء الأمور...');
+                  try {
+                    const res = await fetch('/api/cron/monthly-reports', {
+                      method: 'POST',
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setCronTestStatus('success');
+                      setCronTestMsg(`✅ تم التشغيل بنجاح! تم إرسال ${data.successCount} رسالة بنجاح، وفشل ${data.failCount} رسالة.`);
+                    } else {
+                      setCronTestStatus('error');
+                      setCronTestMsg('❌ فشل التشغيل التجريبي: ' + (data.error || 'خطأ غير معروف'));
+                    }
+                  } catch (e: any) {
+                    setCronTestStatus('error');
+                    setCronTestMsg('❌ خطأ في الاتصال بالخادم أثناء التشغيل التجريبي.');
+                  }
+                }}
+                disabled={cronTestStatus === 'testing'}
+                className="px-5 py-2.5 bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
+              >
+                {cronTestStatus === 'testing' ? 'جاري التشغيل...' : '⚡ إرسال آلي الآن اختبارياً'}
               </button>
             </div>
           </div>
