@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [waGatewayUrl, setWaGatewayUrl] = useState('');
   const [waApiToken, setWaApiToken] = useState('');
   const [waSenderNumber, setWaSenderNumber] = useState('');
+  const [autoSendCredentials, setAutoSendCredentials] = useState(true);
   const [waSaving, setWaSaving] = useState(false);
   const [waTestStatus, setWaTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [waTestMsg, setWaTestMsg] = useState('');
@@ -260,6 +261,7 @@ export default function SettingsPage() {
           setWaGatewayUrl(waData.settings.gatewayUrl || '');
           setWaApiToken(waData.settings.apiToken || '');
           setWaSenderNumber(waData.settings.senderNumber || '');
+          setAutoSendCredentials(waData.settings.autoSendCredentials ?? true);
           setAutoSendEnabled(waData.settings.autoSendEnabled ?? false);
           setSendMode(waData.settings.sendMode || 'MANUAL');
           setScheduledDay(waData.settings.scheduledDay ?? 28);
@@ -1470,6 +1472,24 @@ export default function SettingsPage() {
                   className="w-full glass-input p-3 font-mono text-xs"
                 />
               </div>
+              
+              <div className="flex items-start gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mt-3">
+                <input
+                  type="checkbox"
+                  id="autoSendCredentials"
+                  checked={autoSendCredentials}
+                  onChange={(e) => setAutoSendCredentials(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded bg-slate-950 border-slate-800 focus:ring-blue-500 focus:ring-2 focus:ring-offset-slate-900 mt-0.5 cursor-pointer"
+                />
+                <div className="cursor-pointer" onClick={() => setAutoSendCredentials(!autoSendCredentials)}>
+                  <label htmlFor="autoSendCredentials" className="block text-xs font-bold text-white cursor-pointer">
+                    إرسال بيانات الدخول تلقائياً عند إضافة طالب جديد 🔑
+                  </label>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    عند تفعيل هذا الخيار، سيقوم النظام تلقائياً بإرسال رسالة ترحيبية على الواتساب تحتوي على اسم المستخدم وكلمة المرور فور إضافة طالب جديد. عند تعطيله، يمكنك التحكم في الإرسال يدوياً.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {waTestMsg && (
@@ -1518,6 +1538,7 @@ export default function SettingsPage() {
                         gatewayUrl: waGatewayUrl,
                         apiToken: waApiToken,
                         senderNumber: waSenderNumber,
+                        autoSendCredentials,
                         templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent },
                       }),
                     });

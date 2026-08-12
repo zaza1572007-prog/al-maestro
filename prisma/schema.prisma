@@ -543,6 +543,7 @@ model SystemSettings {
   welcomeMessage      String?  @db.Text
   loginBackground     String?
   enableWhatsApp      Boolean  @default(true)
+  autoSendCredentials Boolean  @default(true)
   lateThreshold       Int      @default(15) // minutes
   enableDarkMode      Boolean  @default(true)
   // WhatsApp HTTP Gateway

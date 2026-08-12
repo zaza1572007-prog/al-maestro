@@ -90,6 +90,11 @@ export default function ReportsPage() {
   const [bulkSending, setBulkSending] = useState(false);
   const [sendStatuses, setSendStatuses] = useState<Record<string, { status: 'idle' | 'sending' | 'success' | 'error'; error?: string }>>({});
   const [msgPreviewContent, setMsgPreviewContent] = useState<string | null>(null);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentSearchResults, setStudentSearchResults] = useState<any[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  const [tableSearch, setTableSearch] = useState('');
 
   // Tab 4: All-time History states & filters
   const [historyStudents, setHistoryStudents] = useState<any[]>([]);
@@ -726,7 +731,16 @@ export default function ReportsPage() {
                     <label className="block text-[10px] font-bold text-slate-400 mb-1.5">مستوى الإرسال</label>
                     <select
                       value={monthlyTargetType}
-                      onChange={(e) => { setMonthlyTargetType(e.target.value as any); setMonthlyTargetId(''); setMonthlyPreviews([]); }}
+                      onChange={(e) => {
+                        setMonthlyTargetType(e.target.value as any);
+                        setMonthlyTargetId('');
+                        setMonthlyPreviews([]);
+                        setStudentSearchQuery('');
+                        setStudentSearchResults([]);
+                        setSelectedStudent(null);
+                        setShowStudentDropdown(false);
+                        setTableSearch('');
+                      }}
                       className="w-full glass-input p-2.5 text-xs text-white bg-slate-950"
                     >
                       <option value="STAGE">مرحلة كاملة</option>
@@ -762,24 +776,61 @@ export default function ReportsPage() {
                         <input
                           type="text"
                           placeholder="ابحث بكود أو اسم الطالب، ثم حدده..."
-                          onChange={async (e) => {
-                            const val = e.target.value;
-                            if (val.length >= 2) {
-                              try {
-                                const res = await fetch(`/api/students?search=${val}`);
-                                const d = await res.json();
-                                if (d.success && d.students?.[0]) {
-                                  setMonthlyTargetId(d.students[0].id);
-                                }
-                              } catch {}
+                          value={studentSearchQuery}
+                          onFocus={() => {
+                            if (studentSearchResults.length > 0) {
+                              setShowStudentDropdown(true);
                             }
                           }}
-                          className="w-full glass-input p-2.5 text-xs text-white"
+                          onBlur={() => {
+                            // Delay hiding the dropdown to allow click events to register
+                            setTimeout(() => setShowStudentDropdown(false), 200);
+                          }}
+                          onChange={async (e) => {
+                            const val = e.target.value;
+                            setStudentSearchQuery(val);
+                            if (val.length >= 2) {
+                              try {
+                                const res = await fetch(`/api/students?search=${encodeURIComponent(val)}`);
+                                const d = await res.json();
+                                if (d.success) {
+                                  setStudentSearchResults(d.students || []);
+                                  setShowStudentDropdown(true);
+                                }
+                              } catch {}
+                            } else {
+                              setStudentSearchResults([]);
+                              setShowStudentDropdown(false);
+                            }
+                          }}
+                          className="w-full glass-input p-2.5 text-xs text-white bg-slate-950"
                         />
-                        {monthlyTargetId && (
-                          <span className="absolute left-2.5 top-2.5 text-[9px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
-                            تم التحديد ✅
-                          </span>
+                        {showStudentDropdown && studentSearchResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-800 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                            {studentSearchResults.map((student) => (
+                              <button
+                                key={student.id}
+                                type="button"
+                                onClick={() => {
+                                  setMonthlyTargetId(student.id);
+                                  setSelectedStudent(student);
+                                  setStudentSearchQuery(student.name);
+                                  setStudentSearchResults([]);
+                                  setShowStudentDropdown(false);
+                                }}
+                                className="w-full text-right px-4 py-2.5 hover:bg-slate-800 hover:text-white transition flex justify-between items-center text-xs border-b border-white/5 last:border-b-0"
+                              >
+                                <span className="text-white font-bold">{student.name}</span>
+                                <span className="text-slate-400 font-mono text-[10px]">{student.code}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {selectedStudent && (
+                          <div className="text-[10px] text-blue-400 mt-1 flex items-center gap-1 font-bold">
+                            <span>تم تحديد الطالب:</span>
+                            <span className="text-white">{selectedStudent.name} ({selectedStudent.code})</span>
+                          </div>
                         )}
                       </div>
                     )}
@@ -794,133 +845,170 @@ export default function ReportsPage() {
                   <p className="text-xs">جاري حساب التقارير الشهرية وتوليد المعاينات...</p>
                 </div>
               ) : monthlyPreviews.length > 0 ? (
-                <div className="space-y-6">
-                  {/* Bulk sending control panel */}
-                  <div className="glass-panel p-5 rounded-3xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="text-xs space-y-1">
-                      <h4 className="font-bold text-white text-sm">متابعة حالة الإرسال الجماعي 📡</h4>
-                      <p className="text-slate-400">عدد الطلاب في القائمة: {monthlyPreviews.length}</p>
-                      <div className="flex gap-4 flex-wrap mt-2">
-                        <span className="text-emerald-400 font-bold">تم الإرسال: {sentCount}</span>
-                        <span className="text-rose-400 font-bold">فشل الإرسال: {failedCount}</span>
-                        <span className="text-slate-400 font-bold">المتبقي: {pendingCount}</span>
+                (() => {
+                  const filteredPreviews = monthlyPreviews.filter(preview => {
+                    const searchLower = tableSearch.toLowerCase().trim();
+                    if (!searchLower) return true;
+                    return (
+                      preview.studentName.toLowerCase().includes(searchLower) ||
+                      preview.studentCode.toLowerCase().includes(searchLower)
+                    );
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Bulk sending control panel */}
+                      <div className="glass-panel p-5 rounded-3xl border border-white/10 bg-slate-900/60 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="text-xs space-y-1">
+                          <h4 className="font-bold text-white text-sm">متابعة حالة الإرسال الجماعي 📡</h4>
+                          <p className="text-slate-400">
+                            عدد الطلاب في القائمة: {monthlyPreviews.length}
+                            {tableSearch && ` (المطابق للبحث: ${filteredPreviews.length})`}
+                          </p>
+                          <div className="flex gap-4 flex-wrap mt-2">
+                            <span className="text-emerald-400 font-bold">تم الإرسال: {sentCount}</span>
+                            <span className="text-rose-400 font-bold">فشل الإرسال: {failedCount}</span>
+                            <span className="text-slate-400 font-bold">المتبقي: {pendingCount}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 flex-wrap">
+                          {failedCount > 0 && (
+                            <button
+                              onClick={() => sendBulkWhatsApp(true)}
+                              disabled={bulkSending}
+                              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2"
+                            >
+                              {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                              إعادة إرسال للفاشلة فقط ({failedCount})
+                            </button>
+                          )}
+                          <button
+                            onClick={() => sendBulkWhatsApp(false)}
+                            disabled={bulkSending || pendingCount === 0}
+                            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2"
+                          >
+                            {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                            إرسال لجميع الطلاب ({monthlyPreviews.length})
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search Bar for Previews Table */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="relative flex-1 max-w-md w-full no-print">
+                          <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5" />
+                          <input
+                            type="text"
+                            placeholder="ابحث باسم الطالب أو الكود في هذه القائمة..."
+                            value={tableSearch}
+                            onChange={(e) => setTableSearch(e.target.value)}
+                            className="w-full glass-input pr-10 pl-4 py-2.5 text-xs text-white bg-slate-950"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Previews Table */}
+                      <div className="glass-panel rounded-3xl border border-white/10 overflow-hidden bg-slate-900/40">
+                        {filteredPreviews.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-right text-xs">
+                              <thead>
+                                <tr className="bg-slate-950/60 text-slate-400 border-b border-white/5">
+                                  <th className="p-4 font-bold">الطالب</th>
+                                  <th className="p-4 font-bold">الحضور والغياب</th>
+                                  <th className="p-4 font-bold">أفضل الاختبارات</th>
+                                  <th className="p-4 font-bold">حالة دفع الاشتراك</th>
+                                  <th className="p-4 font-bold text-center">الحالة</th>
+                                  <th className="p-4 font-bold text-left">التحكم</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredPreviews.map((preview) => {
+                                  const sendState = sendStatuses[preview.studentId]?.status || 'idle';
+                                  const errorMsg = sendStatuses[preview.studentId]?.error;
+
+                                  return (
+                                    <tr key={preview.studentId} className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                                      <td className="p-4">
+                                        <p className="font-bold text-white text-sm">{preview.studentName}</p>
+                                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{preview.studentCode} • ولي الأمر: {preview.parentPhone}</p>
+                                      </td>
+                                      <td className="p-4">
+                                        <p className="font-bold text-slate-200">{preview.stats.presentCount} حضور / {preview.stats.totalSessions} حصص</p>
+                                        <p className="text-[10px] text-rose-400 mt-0.5">غائب: {preview.stats.absentCount} حصص</p>
+                                      </td>
+                                      <td className="p-4">
+                                        {preview.stats.exams.length > 0 ? (
+                                          <p className="text-slate-300">
+                                            {preview.stats.exams[0].title}: {preview.stats.exams[0].score}/{preview.stats.exams[0].maxScore}
+                                          </p>
+                                        ) : (
+                                          <p className="text-slate-500">لا يوجد</p>
+                                        )}
+                                      </td>
+                                      <td className="p-4">
+                                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                          preview.stats.isPaid 
+                                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                                        }`}>
+                                          {preview.stats.paymentStatus}
+                                        </span>
+                                      </td>
+                                      <td className="p-4 text-center">
+                                        {sendState === 'sending' ? (
+                                          <span className="inline-flex items-center gap-1.5 text-blue-400 font-semibold">
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري الإرسال
+                                          </span>
+                                        ) : sendState === 'success' ? (
+                                          <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                                            تم الإرسال ✅
+                                          </span>
+                                        ) : sendState === 'error' ? (
+                                          <span className="inline-flex flex-col items-center gap-0.5 text-rose-400 font-bold group relative cursor-pointer">
+                                            فشل الإرسال ❌
+                                            <span className="text-[9px] text-slate-500 mt-0.5 font-normal block max-w-[120px] truncate">{errorMsg}</span>
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-500">لم يرسل بعد</span>
+                                        )}
+                                      </td>
+                                      <td className="p-4 text-left">
+                                        <div className="flex justify-end gap-2">
+                                          <button
+                                            onClick={() => setMsgPreviewContent(preview.messageText)}
+                                            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+                                            title="معاينة محتوى الرسالة"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => sendIndividualWhatsApp(preview)}
+                                            disabled={sendState === 'sending'}
+                                            className="p-1.5 text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-600 rounded-lg transition disabled:opacity-50"
+                                            title="إرسال الآن عبر الواتساب"
+                                          >
+                                            <Send className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-20 text-slate-500">
+                            <HelpCircle className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                            <p className="text-sm">لا يوجد نتائج للبحث باسم الطالب في هذه القائمة.</p>
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex gap-2 flex-wrap">
-                      {failedCount > 0 && (
-                        <button
-                          onClick={() => sendBulkWhatsApp(true)}
-                          disabled={bulkSending}
-                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2"
-                        >
-                          {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                          إعادة إرسال للفاشلة فقط ({failedCount})
-                        </button>
-                      )}
-                      <button
-                        onClick={() => sendBulkWhatsApp(false)}
-                        disabled={bulkSending || pendingCount === 0}
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2"
-                      >
-                        {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                        إرسال لجميع الطلاب ({monthlyPreviews.length})
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Previews Table */}
-                  <div className="glass-panel rounded-3xl border border-white/10 overflow-hidden bg-slate-900/40">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-right text-xs">
-                        <thead>
-                          <tr className="bg-slate-950/60 text-slate-400 border-b border-white/5">
-                            <th className="p-4 font-bold">الطالب</th>
-                            <th className="p-4 font-bold">الحضور والغياب</th>
-                            <th className="p-4 font-bold">أفضل الاختبارات</th>
-                            <th className="p-4 font-bold">حالة دفع الاشتراك</th>
-                            <th className="p-4 font-bold text-center">الحالة</th>
-                            <th className="p-4 font-bold text-left">التحكم</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthlyPreviews.map((preview) => {
-                            const sendState = sendStatuses[preview.studentId]?.status || 'idle';
-                            const errorMsg = sendStatuses[preview.studentId]?.error;
-
-                            return (
-                              <tr key={preview.studentId} className="border-b border-white/5 hover:bg-white/2 transition-colors">
-                                <td className="p-4">
-                                  <p className="font-bold text-white text-sm">{preview.studentName}</p>
-                                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">{preview.studentCode} • ولي الأمر: {preview.parentPhone}</p>
-                                </td>
-                                <td className="p-4">
-                                  <p className="font-bold text-slate-200">{preview.stats.presentCount} حضور / {preview.stats.totalSessions} حصص</p>
-                                  <p className="text-[10px] text-rose-400 mt-0.5">غائب: {preview.stats.absentCount} حصص</p>
-                                </td>
-                                <td className="p-4">
-                                  {preview.stats.exams.length > 0 ? (
-                                    <p className="text-slate-300">
-                                      {preview.stats.exams[0].title}: {preview.stats.exams[0].score}/{preview.stats.exams[0].maxScore}
-                                    </p>
-                                  ) : (
-                                    <p className="text-slate-500">لا يوجد</p>
-                                  )}
-                                </td>
-                                <td className="p-4">
-                                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                    preview.stats.isPaid 
-                                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                                  }`}>
-                                    {preview.stats.paymentStatus}
-                                  </span>
-                                </td>
-                                <td className="p-4 text-center">
-                                  {sendState === 'sending' ? (
-                                    <span className="inline-flex items-center gap-1.5 text-blue-400 font-semibold">
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> جاري الإرسال
-                                    </span>
-                                  ) : sendState === 'success' ? (
-                                    <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
-                                      تم الإرسال ✅
-                                    </span>
-                                  ) : sendState === 'error' ? (
-                                    <span className="inline-flex flex-col items-center gap-0.5 text-rose-400 font-bold group relative cursor-pointer">
-                                      فشل الإرسال ❌
-                                      <span className="text-[9px] text-slate-500 mt-0.5 font-normal block max-w-[120px] truncate">{errorMsg}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-500">لم يرسل بعد</span>
-                                  )}
-                                </td>
-                                <td className="p-4 text-left">
-                                  <div className="flex justify-end gap-2">
-                                    <button
-                                      onClick={() => setMsgPreviewContent(preview.messageText)}
-                                      className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition"
-                                      title="معاينة محتوى الرسالة"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => sendIndividualWhatsApp(preview)}
-                                      disabled={sendState === 'sending'}
-                                      className="p-1.5 text-blue-400 hover:text-white bg-blue-500/10 hover:bg-blue-600 rounded-lg transition disabled:opacity-50"
-                                      title="إرسال الآن عبر الواتساب"
-                                    >
-                                      <Send className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()
               ) : (
                 <div className="text-center py-20 text-slate-500 glass-panel rounded-3xl border border-white/5">
                   <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-40" />

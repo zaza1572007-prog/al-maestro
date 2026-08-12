@@ -67,7 +67,10 @@ export async function GET(req: Request) {
     if (groupId) where.groupId = groupId;
     if (academicStageId) where.academicStageId = academicStageId;
     if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const students = await prisma.student.findMany({
@@ -251,7 +254,7 @@ export async function POST(req: Request) {
 
     // Dispatch WhatsApp welcome messages
     const settings = await prisma.systemSettings.findFirst();
-    if (settings?.enableWhatsApp !== false) {
+    if (settings?.enableWhatsApp !== false && settings?.autoSendCredentials !== false) {
       // Student message
       const studentTpl = settings?.waTplStudent || '🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم: [username]\nكلمة المرور: [password]\nنتمنى لك عاماً دراسياً موفقاً وناجحاً 🌟';
       const studentMsg = fillTemplate(studentTpl, {
