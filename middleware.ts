@@ -22,7 +22,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/registration' || // submit registration (POST)
     pathname.startsWith('/api/registration/options') || // get options
     pathname.startsWith('/api/registration/check-phone') || // check phone
-    pathname.startsWith('/api/auth/forgot-password');
+    pathname.startsWith('/api/auth/forgot-password') ||
+    pathname.startsWith('/parent-report');
 
   if (isPublicPath) {
     return NextResponse.next();

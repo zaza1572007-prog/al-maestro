@@ -105,7 +105,12 @@ export default function Sidebar() {
   }, []);
 
   // Don't render sidebar on public pages
-  if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return null;
+  if (
+    pathname === '/login' ||
+    pathname === '/select-role' ||
+    pathname === '/register' ||
+    pathname.startsWith('/parent-report')
+  ) return null;
 
   // Determine portal type
   const isStudentPortal = pathname.startsWith('/student-portal');

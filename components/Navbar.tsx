@@ -108,7 +108,12 @@ export default function Navbar() {
   };
 
   // Hide Navbar completely on public pages: Login, Role Selection, and Student Registration
-  if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return null;
+  if (
+    pathname === '/login' ||
+    pathname === '/select-role' ||
+    pathname === '/register' ||
+    pathname.startsWith('/parent-report')
+  ) return null;
 
   const markAllRead = async () => {
     try {
