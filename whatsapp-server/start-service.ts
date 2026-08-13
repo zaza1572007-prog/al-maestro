@@ -299,7 +299,42 @@ server.listen(PORT, '0.0.0.0', async () => {
     console.log(`🔑 API Token:            ${API_TOKEN}`);
     console.log(`📲 Connected Phone:       01100775230 (أ. أحمد راضي كحلة)`);
     console.log('=================================================================');
-    console.log('💡 الخطوة التالية:');
+
+    // Auto-update settings in DB (Local & Production Vercel)
+    const targets = [
+      'http://localhost:3000',
+      'https://almaestro-app.vercel.app'
+    ];
+
+    for (const baseUrl of targets) {
+      try {
+        console.log(`🔄 Auto-updating settings at ${baseUrl}...`);
+        const updateRes = await fetch(`${baseUrl}/api/settings/whatsapp/update-tunnel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: API_TOKEN,
+            gatewayUrl: `${tunnel.url}/send`,
+          }),
+        });
+        
+        if (updateRes.ok) {
+          const data = await updateRes.json();
+          if (data.success) {
+            console.log(`✅ Success: Automatically updated settings at ${baseUrl}!`);
+          } else {
+            console.warn(`⚠️ Failed: ${baseUrl} returned ${data.error}`);
+          }
+        } else {
+          console.warn(`⚠️ Failed: ${baseUrl} returned HTTP ${updateRes.status}`);
+        }
+      } catch (err: any) {
+        console.log(`💡 Notice: Could not connect to ${baseUrl} (${err.message})`);
+      }
+    }
+
+    console.log('=================================================================');
+    console.log('💡 الخطوة التالية (في حال فشل التحديث التلقائي):');
     console.log(`1. افتح إعدادات المنصة: https://almaestro-app.vercel.app/settings`);
     console.log(`2. اذهب إلى (إعدادات المنصة -> إعدادات الواتساب)`);
     console.log(`3. ضع رابط البوابة: ${tunnel.url}/send`);

@@ -17,16 +17,27 @@ async function tryDispatchWA(gatewayUrl: string | null | undefined, apiToken: st
 
     // 1. Gateway Priority
     if (gatewayUrl && apiToken) {
-      const res = await fetch(gatewayUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken}`,
-          'bypass-tunnel-reminder': 'true',
-        },
-        body: JSON.stringify({ token: apiToken, to, body }),
-      });
-      if (res.ok) return true;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+        const res = await fetch(gatewayUrl, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiToken}`,
+            'bypass-tunnel-reminder': 'true',
+          },
+          body: JSON.stringify({ token: apiToken, to, body }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (res.ok) return true;
+      } catch (err: any) {
+        console.warn('Gateway fetch failed or timed out in send-absent:', err.message);
+      }
     }
 
     // 2. Direct fallback

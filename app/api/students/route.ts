@@ -248,7 +248,9 @@ export async function POST(req: Request) {
         endDate: endOfMonth,
         totalSessions: 8,
         price: student.academicStage?.monthlyPrice ?? 350,
-        status: 'ACTIVE',
+        status: 'UNPAID',
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
       },
     });
 

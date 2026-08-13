@@ -37,6 +37,24 @@ export function verifyMagicToken(token: string): { studentId: string; month: num
     // invalid token format
   }
   return null;
+}async function limitConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await fn(items[currentIndex]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, worker);
+  await Promise.all(workers);
+  return results;
 }
 
 // WhatsApp Dispatch helper with HTTP gateway check
@@ -49,6 +67,9 @@ async function tryDispatchWhatsApp(to: string, body: string) {
     // 1. Try HTTP gateway if configured
     if (settings?.waGatewayUrl && settings?.waApiToken) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
         const res = await fetch(settings.waGatewayUrl, {
           method: 'POST',
           headers: {
@@ -61,7 +82,11 @@ async function tryDispatchWhatsApp(to: string, body: string) {
             to,
             body,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
+
         if (res.ok) {
           console.log(`✅ [WhatsApp Gateway] Delivered message to ${to}`);
           return { success: true };
@@ -69,8 +94,8 @@ async function tryDispatchWhatsApp(to: string, body: string) {
           const text = await res.text();
           console.warn(`⚠️ Gateway returned error ${res.status}: ${text}`);
         }
-      } catch (err) {
-        console.warn('Gateway fetch failed, falling back to Baileys:', err);
+      } catch (err: any) {
+        console.warn('Gateway fetch failed or timed out, falling back to Baileys:', err.message);
       }
     }
 
@@ -384,10 +409,9 @@ export async function POST(req: NextRequest) {
     });
 
     const settings = await prisma.systemSettings.findFirst();
-    const results = [];
 
-    // Dispatch messages sequentially to avoid clogging the gateway
-    for (const student of students) {
+    // Dispatch messages in parallel batches to avoid clogging the gateway while keeping it fast
+    const dispatchTasks = students.map((student) => async () => {
       const stats = await calculateMonthlyReportForStudent(student.id, student.groupId, month, year);
       const token = generateMagicToken(student.id, month, year);
       const magicLink = `${baseUrl}/parent-report/${token}`;
@@ -397,13 +421,12 @@ export async function POST(req: NextRequest) {
       const phoneTarget = student.parent?.whatsapp || student.parent?.phone || student.phone;
 
       if (!phoneTarget) {
-        results.push({
+        return {
           studentId: student.id,
           studentName: student.name,
           success: false,
           error: 'لا يوجد رقم هاتف مسجل لولي الأمر أو الطالب',
-        });
-        continue;
+        };
       }
 
       const dispatch = await tryDispatchWhatsApp(phoneTarget, messageText);
@@ -422,14 +445,17 @@ export async function POST(req: NextRequest) {
         }).catch((e) => console.error('Failed to log parent communication:', e));
       }
 
-      results.push({
+      return {
         studentId: student.id,
         studentName: student.name,
         success: dispatch.success,
         error: dispatch.error || null,
         phone: phoneTarget,
-      });
-    }
+      };
+    });
+
+    const runTask = (task: () => Promise<any>) => task();
+    const results = await limitConcurrency(dispatchTasks, 5, runTask);
 
     return NextResponse.json({ success: true, results });
   } catch (error: any) {

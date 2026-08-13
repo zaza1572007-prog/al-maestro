@@ -3,34 +3,72 @@ import { prisma } from '@/lib/prisma';
 
 async function syncSubscriptionStatuses() {
   const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Mark expired
+  // 1. Mark unpaid/active subscriptions of past months as OVERDUE
   await prisma.subscription.updateMany({
-    where: { status: { not: 'EXPIRED' }, endDate: { lt: now } },
+    where: {
+      status: { notIn: ['PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] },
+      OR: [
+        { year: { lt: currentYear } },
+        { AND: [{ year: currentYear }, { month: { lt: currentMonth } }] }
+      ]
+    },
+    data: { status: 'OVERDUE' },
+  });
+
+  // 2. Mark remaining non-paid subscriptions that are past their endDate as EXPIRED (e.g. legacy subscriptions without month/year)
+  await prisma.subscription.updateMany({
+    where: {
+      status: { notIn: ['EXPIRED', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'OVERDUE'] },
+      endDate: { lt: now }
+    },
     data: { status: 'EXPIRED' },
   });
 
-  // Mark expiring soon
+  // 3. Mark active subscriptions expiring soon
   await prisma.subscription.updateMany({
-    where: { status: 'ACTIVE', endDate: { gte: now, lte: sevenDaysLater } },
+    where: {
+      status: 'ACTIVE',
+      endDate: { gte: now, lte: sevenDaysLater }
+    },
     data: { status: 'EXPIRING_SOON' },
   });
 
-  // Restore EXPIRING_SOON that were extended past 7 days back to ACTIVE
+  // 4. Restore EXPIRING_SOON that were extended past 7 days back to ACTIVE or UNPAID
   await prisma.subscription.updateMany({
     where: { status: 'EXPIRING_SOON', endDate: { gt: sevenDaysLater } },
     data: { status: 'ACTIVE' },
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const monthStr = searchParams.get('month');
+    const yearStr = searchParams.get('year');
+
     // Keep statuses fresh on every read
     await syncSubscriptionStatuses();
+
+    const where: any = {};
+    if (monthStr) {
+      where.month = parseInt(monthStr);
+    }
+    if (yearStr) {
+      where.year = parseInt(yearStr);
+    }
+
     const subscriptions = await prisma.subscription.findMany({
+      where,
       include: {
-        student: true,
+        student: {
+          include: {
+            parent: true,
+          }
+        },
         group: true,
         payments: true,
       },
@@ -44,10 +82,31 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { studentId, groupId, price, totalSessions, startDate, endDate } = await req.json();
+    const { studentId, groupId, price, totalSessions, startDate, endDate, month, year } = await req.json();
 
     const start = startDate ? new Date(startDate) : new Date();
     const end = endDate ? new Date(endDate) : new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const finalMonth = month ? parseInt(month) : start.getMonth() + 1;
+    const finalYear = year ? parseInt(year) : start.getFullYear();
+
+    // Check if subscription already exists for this student in this month and year (Unique constraint check)
+    const existing = await prisma.subscription.findUnique({
+      where: {
+        studentId_month_year: {
+          studentId,
+          month: finalMonth,
+          year: finalYear,
+        }
+      }
+    });
+
+    if (existing) {
+      return NextResponse.json({
+        success: false,
+        error: `الطالب مسجل بالفعل في اشتراك لشهر ${finalMonth}/${finalYear}.`
+      }, { status: 400 });
+    }
 
     let finalPrice = 350;
     if (price !== undefined && price !== '') {
@@ -68,7 +127,9 @@ export async function POST(req: Request) {
         totalSessions: parseInt(totalSessions) || 8,
         startDate: start,
         endDate: end,
-        status: 'ACTIVE',
+        status: 'UNPAID',
+        month: finalMonth,
+        year: finalYear,
       },
     });
 

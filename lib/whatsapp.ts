@@ -152,6 +152,13 @@ export async function sendWhatsAppMessage(
       return { success: false, error: 'Invalid phone number format' };
     }
 
+    if (process.env.VERCEL === '1') {
+      return {
+        success: false,
+        error: 'Direct WhatsApp connection is disabled in production (Vercel serverless). Please configure the HTTP Gateway.',
+      };
+    }
+
     // Ensure initialization is started
     if (!global.__waSocket || global.__waConnectionStatus !== 'CONNECTED') {
       initWhatsApp().catch(() => {});

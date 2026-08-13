@@ -23,7 +23,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/registration/options') || // get options
     pathname.startsWith('/api/registration/check-phone') || // check phone
     pathname.startsWith('/api/auth/forgot-password') ||
-    pathname.startsWith('/parent-report');
+    pathname.startsWith('/parent-report') ||
+    pathname === '/api/settings/whatsapp/update-tunnel';
 
   if (isPublicPath) {
     return NextResponse.next();

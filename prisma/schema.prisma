@@ -30,6 +30,10 @@ enum SubscriptionStatus {
   EXPIRED
   SUSPENDED
   CANCELLED
+  PAID
+  PARTIALLY_PAID
+  UNPAID
+  OVERDUE
 }
 
 enum SessionStatus {
@@ -395,13 +399,18 @@ model Subscription {
   price          Float
   status         SubscriptionStatus @default(ACTIVE)
   payments       Payment[]
+  month          Int?
+  year           Int?
+  paidAt         DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
+  @@unique([studentId, month, year])
   @@index([studentId])
   @@index([groupId])
   @@index([endDate])
   @@index([status])
+  @@index([month, year])
 }
 
 model Payment {
@@ -417,6 +426,9 @@ model Payment {
   recordedById    String
   recordedBy      User          @relation(fields: [recordedById], references: [id])
   notes           String?       @db.Text
+  month           Int?
+  year            Int?
+  paidAt          DateTime      @default(now())
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

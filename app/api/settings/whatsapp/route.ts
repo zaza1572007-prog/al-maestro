@@ -13,25 +13,35 @@ export async function sendWhatsAppMessage(to: string, body: string) {
   // 2. Fallback to HTTP gateway if configured
   const settings = await prisma.systemSettings.findFirst();
   if (settings?.waGatewayUrl && settings?.waApiToken) {
-    const res = await fetch(settings.waGatewayUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.waApiToken}`,
-      },
-      body: JSON.stringify({
-        token: settings.waApiToken,
-        to,
-        body,
-      }),
-    });
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Gateway responded ${res.status}: ${text}`);
+      const res = await fetch(settings.waGatewayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.waApiToken}`,
+        },
+        body: JSON.stringify({
+          token: settings.waApiToken,
+          to,
+          body,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Gateway responded ${res.status}: ${text}`);
+      }
+
+      return await res.json();
+    } catch (err: any) {
+      throw new Error(`Gateway connection failed or timed out: ${err.message}`);
     }
-
-    return await res.json();
   }
 
   // If Baileys failed and no gateway

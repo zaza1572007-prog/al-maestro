@@ -33,14 +33,14 @@ export async function POST(req: NextRequest) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    // Look for subscription that overlaps with current month
+    // Look for subscription that matches current month and year
     let subscription = await prisma.subscription.findFirst({
       where: {
         studentId: student.id,
         groupId: student.groupId,
-        endDate: { gte: startOfMonth },
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
       },
-      orderBy: { endDate: 'desc' },
     });
 
     const price = student?.academicStage?.monthlyPrice ?? 350; // stage subscription price
@@ -54,12 +54,14 @@ export async function POST(req: NextRequest) {
           endDate: endOfMonth,
           totalSessions: 8,
           price: price,
-          status: 'ACTIVE',
+          status: 'UNPAID',
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
         },
       });
     }
 
-    // 3. Mark as fully paid by creating a Payment record
+    // 3. Mark as fully paid by creating a Payment record and updating subscription status
     const owner = await prisma.user.findFirst();
     const recorderId = owner?.id || '';
 
@@ -75,6 +77,8 @@ export async function POST(req: NextRequest) {
         data: {
           paidAmount: subscription.price,
           remainingAmount: 0,
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
         },
       });
     } else {
@@ -87,9 +91,21 @@ export async function POST(req: NextRequest) {
           remainingAmount: 0,
           recordedById: recorderId,
           notes: 'دفع سريع من ماسح الباركود',
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+          paidAt: now,
         },
       });
     }
+
+    // Update subscription status to PAID
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: 'PAID',
+        paidAt: now,
+      },
+    });
 
     // 4. Send WhatsApp message to parent (fire-and-forget)
     const parentPhone = student.parent?.phone || student.phone || '';
