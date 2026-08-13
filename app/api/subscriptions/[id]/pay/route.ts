@@ -103,7 +103,7 @@ export async function POST(
 
       if (targetPhone) {
         const settings = await prisma.systemSettings.findFirst();
-        const tpl = settings?.waTplAttendance || `👨‍👩‍👦 *تأكيد استلام نقدية - منصة المايسترو* 👨‍👩‍👦\n\nتم استلام قيمة اشتراك شهر [month]/[year] للطالب: *[student_name]*.\n\n*المبلغ المدفوع:* [paid_amount] ج.م\n*حالة الاشتراك:* [status]\n*المتبقي:* [remaining_amount] ج.م\n*تاريخ الدفع:* [payment_date]\n\nشكراً لكم وثقتكم بنا 🌸\n*الأستاذ أحمد راضي كحلة*`;
+        const tpl = settings?.waTplPayment || `👨‍👩‍👦 *تأكيد استلام نقدية - منصة المايسترو* 👨‍👩‍👦\n\nتم استلام قيمة اشتراك شهر [month]/[year] للطالب: *[student_name]*.\n\n*المبلغ المدفوع:* [paid_amount] ج.م\n*حالة الاشتراك:* [status]\n*المتبقي:* [remaining_amount] ج.م\n*تاريخ الدفع:* [payment_date]\n\nشكراً لكم وثقتكم بنا 🌸\n*الأستاذ أحمد راضي كحلة*`;
         
         const statusText = totalPaidSoFar >= subscription.price ? 'مدفوع بالكامل ✅' : 'مدفوع جزئياً 🟡';
         const dateStr = paidAtDate.toLocaleDateString('ar-EG', {

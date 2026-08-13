@@ -6,7 +6,13 @@ import { useToast } from '@/components/ToastProvider';
 
 interface Subscription {
   id: string;
-  student: { id: string; name: string; code: string; parent?: { phone?: string; whatsapp?: string } };
+  student: { 
+    id: string; 
+    name: string; 
+    code: string; 
+    parent?: { phone?: string; whatsapp?: string };
+    subscriptions?: { id: string; month: number | null; year: number | null; price: number; status: string }[] 
+  };
   group: { id: string; name: string };
   startDate: string;
   endDate: string;
@@ -87,6 +93,14 @@ export default function SubscriptionsPage() {
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth() + 1));
   const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
+
+  // Bulk Reminder states
+  const [isBulkReminding, setIsBulkReminding] = useState(false);
+  const [bulkTotal, setBulkTotal] = useState(0);
+  const [bulkCurrent, setBulkCurrent] = useState(0);
+  const [bulkSuccess, setBulkSuccess] = useState(0);
+  const [bulkFail, setBulkFail] = useState(0);
+  const [bulkLogs, setBulkLogs] = useState<string[]>([]);
 
   // Search Combobox states for Add Subscription
   const [searchStudentQuery, setSearchStudentQuery] = useState('');
@@ -266,6 +280,49 @@ export default function SubscriptionsPage() {
     }
   };
 
+  // WhatsApp Collective/Bulk Reminder
+  const handleBulkReminder = async () => {
+    const unpaidSubs = filtered.filter(s => s.status === 'UNPAID' || s.status === 'OVERDUE');
+    if (unpaidSubs.length === 0) {
+      toast.info('لا يوجد طلاب غير مسددين في القائمة الحالية لإرسال إنذار جماعي لهم.');
+      return;
+    }
+
+    if (!confirm(`هل أنت متأكد من إرسال إنذار سداد جماعي لـ ${unpaidSubs.length} من الطلاب غير المسددين؟`)) return;
+
+    setIsBulkReminding(true);
+    setBulkTotal(unpaidSubs.length);
+    setBulkCurrent(0);
+    setBulkSuccess(0);
+    setBulkFail(0);
+    setBulkLogs([]);
+
+    for (let i = 0; i < unpaidSubs.length; i++) {
+      const sub = unpaidSubs[i];
+      setBulkCurrent(i + 1);
+      
+      try {
+        const res = await fetch(`/api/subscriptions/${sub.id}/remind`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          setBulkSuccess(prev => prev + 1);
+          setBulkLogs(prev => [...prev, `✅ تم الإرسال بنجاح للطالب: ${sub.student?.name}`]);
+        } else {
+          setBulkFail(prev => prev + 1);
+          setBulkLogs(prev => [...prev, `❌ فشل الإرسال للطالب: ${sub.student?.name} (${data.error || 'خطأ من البوابة'})`]);
+        }
+      } catch (err: any) {
+        setBulkFail(prev => prev + 1);
+        setBulkLogs(prev => [...prev, `❌ خطأ في الاتصال للطالب: ${sub.student?.name}`]);
+      }
+
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    toast.success('اكتملت عملية الإرسال الجماعي! 📢');
+    fetchData();
+  };
+
   // Monthly subscription payment handler
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,7 +387,16 @@ export default function SubscriptionsPage() {
           <h1 className="text-2xl font-bold text-white">💳 الاشتراكات الشهرية</h1>
           <p className="text-slate-400 text-sm mt-1">متابعة اشتراكات الطلاب وتتبع الجلسات والمدفوعات الشهرية</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          {filterStatus === 'UNPAID' && filtered.length > 0 && (
+            <button
+              onClick={handleBulkReminder}
+              className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs md:text-sm transition shadow-lg shadow-rose-600/20 cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              إنذار جماعي ⚠️
+            </button>
+          )}
           <button onClick={fetchData} className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition cursor-pointer">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -492,6 +558,15 @@ export default function SubscriptionsPage() {
                     <span>من: {new Date(sub.startDate).toLocaleDateString('ar-EG')}</span>
                     <span>إلى: {new Date(sub.endDate).toLocaleDateString('ar-EG')}</span>
                   </div>
+
+                  {sub.student?.subscriptions && sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).length > 0 && (
+                    <div className="mt-2 text-[10px] text-rose-400 bg-rose-950/20 border border-rose-500/10 rounded-xl p-2 flex flex-col gap-0.5">
+                      <span className="font-bold flex items-center gap-1">⚠️ متأخرات سابقة:</span>
+                      {sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).map((s: any) => (
+                        <span key={s.id}>· لم يدفع اشتراك شهر {s.month}/{s.year} ({s.price} ج.م)</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5 pt-3 border-t border-slate-800/80 flex-wrap">
@@ -803,6 +878,67 @@ export default function SubscriptionsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Reminder Modal */}
+      {isBulkReminding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              📢 إرسال الإنذار الجماعي بالواتساب
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm font-semibold">
+                <span className="text-slate-400">حالة التقدم:</span>
+                <span className="text-white">{bulkCurrent} من أصل {bulkTotal}</span>
+              </div>
+              
+              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                <div 
+                  className="bg-rose-500 h-full transition-all duration-300 rounded-full" 
+                  style={{ width: `${(bulkCurrent / bulkTotal) * 100}%` }}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="p-3 bg-emerald-950/40 border border-emerald-500/20 rounded-2xl">
+                  <span className="block text-xl font-black text-emerald-400">{bulkSuccess}</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">نجاح الإرسال</span>
+                </div>
+                <div className="p-3 bg-rose-950/40 border border-rose-500/20 rounded-2xl">
+                  <span className="block text-xl font-black text-rose-400">{bulkFail}</span>
+                  <span className="text-[10px] text-slate-400 font-semibold">فشل الإرسال</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-850 rounded-2xl p-4 h-48 overflow-y-auto text-xs font-mono flex flex-col gap-1 text-slate-300 text-right">
+                {bulkLogs.map((log, idx) => (
+                  <div key={idx}>{log}</div>
+                ))}
+                {bulkCurrent < bulkTotal ? (
+                  <div className="text-slate-500 animate-pulse">⚡ جارٍ معالجة الطالب التالي...</div>
+                ) : (
+                  <div className="text-emerald-400 font-bold mt-2">✓ اكتملت العملية تماماً. يمكنك إغلاق النافذة.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-4">
+              <button 
+                type="button" 
+                disabled={bulkCurrent < bulkTotal}
+                onClick={() => {
+                  setIsBulkReminding(false);
+                  fetchData();
+                }} 
+                className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm disabled:opacity-50 cursor-pointer"
+              >
+                إغلاق النافذة
+              </button>
+            </div>
           </div>
         </div>
       )}

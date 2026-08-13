@@ -5,74 +5,100 @@ async function syncSubscriptionStatuses() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // 0. Sync payment-based statuses for subscriptions that are not fully paid in DB
-  const unpaidSubs = await prisma.subscription.findMany({
-    where: {
-      status: { notIn: ['PAID', 'CANCELLED'] }
-    },
+  // Determine if we are in the last 8 days of the current month
+  const endOfMonth = new Date(currentYear, currentMonth, 0); // e.g. August 31
+  const totalDays = endOfMonth.getDate();
+  const last8DaysStart = totalDays - 7; // e.g. 31 - 7 = 24. Day 24 onwards is the last 8 days.
+  const isLast8Days = now.getDate() >= last8DaysStart;
+
+  // 1. Automatically create subscriptions for the current month for all active students if they don't exist
+  try {
+    const activeStudents = await prisma.student.findMany({
+      include: {
+        academicStage: true
+      }
+    });
+
+    const currentSubs = await prisma.subscription.findMany({
+      where: {
+        month: currentMonth,
+        year: currentYear
+      },
+      select: {
+        studentId: true
+      }
+    });
+
+    const currentSubStudentIds = new Set(currentSubs.map(s => s.studentId));
+    const studentsWithoutSub = activeStudents.filter(s => !currentSubStudentIds.has(s.id));
+
+    if (studentsWithoutSub.length > 0) {
+      const defaultStatus = isLast8Days ? 'UNPAID' : 'ACTIVE';
+      const start = new Date(currentYear, currentMonth - 1, 1);
+      const end = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+
+      await prisma.subscription.createMany({
+        data: studentsWithoutSub.map(s => ({
+          studentId: s.id,
+          groupId: s.groupId,
+          startDate: start,
+          endDate: end,
+          totalSessions: 8,
+          price: s.academicStage?.monthlyPrice ?? 350,
+          status: defaultStatus,
+          month: currentMonth,
+          year: currentYear
+        }))
+      });
+      console.log(`🤖 Auto-created ${studentsWithoutSub.length} new subscriptions for month ${currentMonth}/${currentYear}.`);
+    }
+  } catch (err) {
+    console.error('Error auto-creating monthly subscriptions:', err);
+  }
+
+  // 2. Sync status for ALL subscriptions
+  const allSubs = await prisma.subscription.findMany({
     include: {
       payments: true
     }
   });
 
-  for (const sub of unpaidSubs) {
+  for (const sub of allSubs) {
+    if (sub.status === 'CANCELLED' || sub.status === 'SUSPENDED') continue;
+
     const totalPaid = sub.payments.reduce((sum, p) => sum + p.paidAmount, 0);
-    let newStatus = sub.status;
-    
+    let expectedStatus = sub.status;
+
+    const subMonth = sub.month || (new Date(sub.startDate).getMonth() + 1);
+    const subYear = sub.year || new Date(sub.startDate).getFullYear();
+
+    const isCurrentMonth = subMonth === currentMonth && subYear === currentYear;
+    const isPastMonth = subYear < currentYear || (subYear === currentYear && subMonth < currentMonth);
+
     if (totalPaid >= sub.price) {
-      newStatus = 'PAID';
+      expectedStatus = 'PAID';
     } else if (totalPaid > 0) {
-      newStatus = 'PARTIALLY_PAID';
+      expectedStatus = 'PARTIALLY_PAID';
+    } else {
+      // No payments
+      if (isCurrentMonth) {
+        expectedStatus = isLast8Days ? 'UNPAID' : 'ACTIVE';
+      } else if (isPastMonth) {
+        expectedStatus = 'OVERDUE';
+      }
     }
 
-    if (newStatus !== sub.status) {
+    if (sub.status !== expectedStatus) {
       await prisma.subscription.update({
         where: { id: sub.id },
         data: {
-          status: newStatus,
-          paidAt: newStatus === 'PAID' ? (sub.payments[0]?.paidAt || new Date()) : sub.paidAt
+          status: expectedStatus,
+          paidAt: expectedStatus === 'PAID' ? (sub.payments[0]?.paidAt || new Date()) : sub.paidAt
         }
       });
     }
   }
-
-  // 1. Mark unpaid/active subscriptions of past months as OVERDUE
-  await prisma.subscription.updateMany({
-    where: {
-      status: { notIn: ['PAID', 'PARTIALLY_PAID', 'OVERDUE', 'CANCELLED'] },
-      OR: [
-        { year: { lt: currentYear } },
-        { AND: [{ year: currentYear }, { month: { lt: currentMonth } }] }
-      ]
-    },
-    data: { status: 'OVERDUE' },
-  });
-
-  // 2. Mark remaining non-paid subscriptions that are past their endDate as EXPIRED (e.g. legacy subscriptions without month/year)
-  await prisma.subscription.updateMany({
-    where: {
-      status: { notIn: ['EXPIRED', 'PAID', 'PARTIALLY_PAID', 'CANCELLED', 'OVERDUE'] },
-      endDate: { lt: now }
-    },
-    data: { status: 'EXPIRED' },
-  });
-
-  // 3. Mark active subscriptions expiring soon
-  await prisma.subscription.updateMany({
-    where: {
-      status: 'ACTIVE',
-      endDate: { gte: now, lte: sevenDaysLater }
-    },
-    data: { status: 'EXPIRING_SOON' },
-  });
-
-  // 4. Restore EXPIRING_SOON that were extended past 7 days back to ACTIVE or UNPAID
-  await prisma.subscription.updateMany({
-    where: { status: 'EXPIRING_SOON', endDate: { gt: sevenDaysLater } },
-    data: { status: 'ACTIVE' },
-  });
 }
 
 export async function GET(req: Request) {

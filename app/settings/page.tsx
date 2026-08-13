@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [tplAttendance, setTplAttendance] = useState('📅 تنبيه حضور\nالطالب: [student_name]\nالحالة: [status]\nالوقت: [time]\nمنصة المايسترو 🏫');
   const [tplAbsent, setTplAbsent] = useState('📅 تنبيه غياب\nالطالب: [student_name]\nتغيب عن حضور حصة اليوم بالمجموعة.\nيرجى المتابعة 🏫');
   const [tplMonthlyReport, setTplMonthlyReport] = useState('📊 *تقرير المتابعة الشهري لولي الأمر* 📊\n\n*اسم الطالب:* [student_name]\n*الصف الدراسي:* [stage_name]\n*المجموعة:* [group_name]\n*التقرير الخاص بشهر:* [month_name] [year]\n\n*1. الحضور والغياب:* 📅\n- إجمالي عدد الحصص: [total_sessions]\n- حضور: [present_count] حصص\n- غياب: [absent_count] حصص\n[absent_details]\n\n*2. الاختبارات والتقييمات:* 📝\n[exams_list]\n\n*3. المصروفات والاشتراك:* 💰\n- حالة السداد للشهر: *[payment_status]*\n\n🔗 *رابط التقرير التفاعلي السريع (رابط سحري):*\nيمكنكم الاطلاع على تقرير الحضور والدرجات التفاعلي والرسوم البيانية عبر هذا الرابط:\n[magic_link]\n\nنتمنى للطالب دوام التوفيق والتميز! 🌸\n*منصة المايسترو - الأستاذ أحمد راضي كحلة*');
+  const [tplPayment, setTplPayment] = useState('👨‍👩‍👦 *تأكيد استلام نقدية - منصة المايسترو* 👨‍👩‍👦\n\nتم استلام قيمة اشتراك شهر [month]/[year] للطالب: *[student_name]*.\n\n*المبلغ المدفوع:* [paid_amount] ج.م\n*حالة الاشتراك:* [status]\n*المتبقي:* [remaining_amount] ج.م\n*تاريخ الدفع:* [payment_date]\n\nشكراً لكم وثقتكم بنا 🌸\n*الأستاذ أحمد راضي كحلة*');
+  const [tplReminder, setTplReminder] = useState('👨‍👩‍👦 *تذكير بسداد الاشتراك - منصة المايسترو* 👨‍👩‍👦\n\nنود تذكيركم بعدم سداد اشتراك شهر [month]/[year] للطالب: *[student_name]*.\n\nالرجاء السداد في أقرب وقت. شاكرين تعاونكم المستمر 🌸\n*الأستاذ أحمد راضي كحلة*');
 
   // Account settings
   const [accountName, setAccountName] = useState('');
@@ -273,6 +275,8 @@ export default function SettingsPage() {
             if (waData.settings.templates.attendance) setTplAttendance(waData.settings.templates.attendance);
             if (waData.settings.templates.absent) setTplAbsent(waData.settings.templates.absent);
             if (waData.settings.templates.monthlyReport) setTplMonthlyReport(waData.settings.templates.monthlyReport);
+            if (waData.settings.templates.payment) setTplPayment(waData.settings.templates.payment);
+            if (waData.settings.templates.reminder) setTplReminder(waData.settings.templates.reminder);
           }
         }
 
@@ -1527,7 +1531,7 @@ export default function SettingsPage() {
                           apiToken: waApiToken,
                           senderNumber: waSenderNumber,
                           autoSendCredentials,
-                          templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent, monthlyReport: tplMonthlyReport },
+                          templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent, monthlyReport: tplMonthlyReport, payment: tplPayment, reminder: tplReminder },
                         }),
                       });
                       const data = await res.json();

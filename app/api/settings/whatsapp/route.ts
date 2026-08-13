@@ -85,6 +85,8 @@ export async function GET(req: NextRequest) {
           attendance: settings?.waTplAttendance || '',
           absent: settings?.waTplAbsent || '',
           monthlyReport: settings?.waTplMonthlyReport || '',
+          payment: settings?.waTplPayment || '',
+          reminder: settings?.waTplReminder || '',
         },
       },
     });
@@ -114,6 +116,8 @@ export async function PUT(req: NextRequest) {
     if (templates?.attendance !== undefined) data.waTplAttendance = templates.attendance;
     if (templates?.absent !== undefined) data.waTplAbsent = templates.absent;
     if (templates?.monthlyReport !== undefined) data.waTplMonthlyReport = templates.monthlyReport;
+    if (templates?.payment !== undefined) data.waTplPayment = templates.payment;
+    if (templates?.reminder !== undefined) data.waTplReminder = templates.reminder;
 
     if (autoSendEnabled !== undefined) data.autoSendEnabled = !!autoSendEnabled;
     if (autoSendCredentials !== undefined) data.autoSendCredentials = !!autoSendCredentials;
