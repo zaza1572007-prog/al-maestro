@@ -65,7 +65,7 @@ async function syncSubscriptionStatuses() {
   });
 
   for (const sub of allSubs) {
-    if (sub.status === 'CANCELLED' || sub.status === 'SUSPENDED') continue;
+    if (sub.isExempt || sub.status === 'CANCELLED' || sub.status === 'SUSPENDED') continue;
 
     const totalPaid = sub.payments.reduce((sum, p) => sum + p.paidAmount, 0);
     let expectedStatus = sub.status;
@@ -124,6 +124,7 @@ export async function GET(req: Request) {
         student: {
           include: {
             parent: true,
+            subscriptions: true,
           }
         },
         group: true,

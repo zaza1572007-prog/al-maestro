@@ -26,8 +26,9 @@ export async function PATCH(
       const subscription = await prisma.subscription.update({
         where: { id },
         data: {
-          status: 'ACTIVE',
+          status: 'PAID',
           price: 0,
+          isExempt: true,
           endDate: nextMonthEnd,
           usedSessions: 0,
         },

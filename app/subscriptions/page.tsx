@@ -23,6 +23,7 @@ interface Subscription {
   month: number | null;
   year: number | null;
   payments: { paidAmount: number }[];
+  isExempt?: boolean;
 }
 
 interface Student {
@@ -500,7 +501,7 @@ export default function SubscriptionsPage() {
           {filtered.map((sub) => {
             const pct = sub.totalSessions > 0 ? Math.round((sub.usedSessions / sub.totalSessions) * 100) : 0;
             const paid = totalPaid(sub);
-            const remaining = sub.price - paid;
+            const remaining = sub.isExempt ? 0 : (sub.price - paid);
             return (
               <div key={sub.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3">
                 <div className="space-y-3">
@@ -510,7 +511,15 @@ export default function SubscriptionsPage() {
                         <User className="w-5 h-5 text-emerald-400" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-white text-sm md:text-base">{sub.student?.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-white text-sm md:text-base">{sub.student?.name}</h3>
+                          {sub.isExempt && (
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.7)] flex-shrink-0 animate-pulse" 
+                              title="معفي من دفع الاشتراك"
+                            />
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400">{sub.group?.name} · كود الطالب: {sub.student?.code}</p>
                       </div>
                     </div>

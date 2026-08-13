@@ -398,6 +398,7 @@ model Subscription {
   usedSessions   Int                @default(0)
   price          Float
   status         SubscriptionStatus @default(ACTIVE)
+  isExempt       Boolean            @default(false)
   payments       Payment[]
   month          Int?
   year           Int?

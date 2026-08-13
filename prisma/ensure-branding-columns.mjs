@@ -54,6 +54,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Existing columns
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Subscription" ADD COLUMN IF NOT EXISTS "isExempt" BOOLEAN DEFAULT false;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "portraitBase64" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "logoBase64" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "autoSendCredentials" BOOLEAN DEFAULT true;`);
