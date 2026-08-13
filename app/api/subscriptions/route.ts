@@ -7,6 +7,37 @@ async function syncSubscriptionStatuses() {
   const currentMonth = now.getMonth() + 1;
   const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+  // 0. Sync payment-based statuses for subscriptions that are not fully paid in DB
+  const unpaidSubs = await prisma.subscription.findMany({
+    where: {
+      status: { notIn: ['PAID', 'CANCELLED'] }
+    },
+    include: {
+      payments: true
+    }
+  });
+
+  for (const sub of unpaidSubs) {
+    const totalPaid = sub.payments.reduce((sum, p) => sum + p.paidAmount, 0);
+    let newStatus = sub.status;
+    
+    if (totalPaid >= sub.price) {
+      newStatus = 'PAID';
+    } else if (totalPaid > 0) {
+      newStatus = 'PARTIALLY_PAID';
+    }
+
+    if (newStatus !== sub.status) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: {
+          status: newStatus,
+          paidAt: newStatus === 'PAID' ? (sub.payments[0]?.paidAt || new Date()) : sub.paidAt
+        }
+      });
+    }
+  }
+
   // 1. Mark unpaid/active subscriptions of past months as OVERDUE
   await prisma.subscription.updateMany({
     where: {
