@@ -11,18 +11,6 @@ export default function SelectRolePage() {
 
   const roles = [
     {
-      id: "TEACHER",
-      title: "👨‍🏫 المدرس والمساعدين",
-      subTitle: "لوحة تحكم الأستاذ والإدارة",
-      description: "إدارة الطلاب، المجموعات، الحضور، الواجبات والامتحانات والاشتراكات والمالية",
-      icon: ShieldCheck,
-      color: "from-purple-500/20 to-indigo-500/20",
-      borderColor: "border-purple-500/30",
-      glowColor: "group-hover:shadow-purple-500/25",
-      badge: "الإدارة والمعلم",
-      href: "/login?role=TEACHER",
-    },
-    {
       id: "STUDENT",
       title: "🎓 الطالب",
       subTitle: "بوابة التلميذ والتفاعل",
@@ -93,7 +81,7 @@ export default function SelectRolePage() {
       </motion.div>
 
       {/* Role Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10 w-full max-w-6xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 relative z-10 w-full max-w-4xl mx-auto">
         {roles.map((role, idx) => {
           const Icon = role.icon;
           return (
