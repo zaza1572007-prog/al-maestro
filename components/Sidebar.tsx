@@ -224,18 +224,18 @@ export default function Sidebar() {
       <motion.aside
         animate={
           isMobile
-            ? { x: isMobileOpen ? 0 : '100%', width: 280 }
-            : { x: 0, width: isCollapsed ? 88 : 280 }
+            ? { x: isMobileOpen ? 0 : '100%', width: 240 }
+            : { x: 0, width: isCollapsed ? 72 : 240 }
         }
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="glass-panel border-r border-y-0 border-l border-white/10 flex flex-col h-screen fixed lg:sticky top-0 right-0 lg:right-auto no-print select-none z-50 lg:z-30 shadow-2xl backdrop-blur-2xl bg-slate-950/80"
       >
 
       {/* Brand Header & Toggle */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 overflow-hidden">
+      <div className="p-3 border-b border-white/10 flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 overflow-hidden">
           <div 
-            className="relative flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center font-black text-white text-xl shadow-lg border border-white/20 overflow-hidden bg-slate-900"
+            className="relative flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-lg border border-white/20 overflow-hidden bg-slate-900"
             style={{
               borderColor: 'rgb(var(--p) / 0.3)',
               boxShadow: '0 4px 15px rgb(var(--p) / 0.25)'
@@ -250,7 +250,7 @@ export default function Sidebar() {
                 style={{ transform: `scale(${logoScale})` }}
               />
             ) : (
-              <Sparkles className="w-6 h-6 animate-pulse" style={{ color: 'rgb(var(--p))' }} />
+              <Sparkles className="w-5 h-5 animate-pulse" style={{ color: 'rgb(var(--p))' }} />
             )}
           </div>
           {!isCollapsed && (
@@ -260,10 +260,10 @@ export default function Sidebar() {
               exit={{ opacity: 0, x: 10 }}
               className="min-w-0"
             >
-              <h1 className="font-bold text-base text-white tracking-tight leading-tight truncate">
+              <h1 className="font-bold text-sm text-white tracking-tight leading-tight truncate">
                 {portalTitle}
               </h1>
-              <p className="text-xs font-medium truncate" style={{ color: 'rgb(var(--p))' }}>
+              <p className="text-[10px] font-medium truncate" style={{ color: 'rgb(var(--p))' }}>
                 {portalSubtitle}
               </p>
             </motion.div>
@@ -272,15 +272,15 @@ export default function Sidebar() {
 
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           title={isCollapsed ? 'توسيع القائمة' : 'تصغير القائمة'}
         >
-          {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {isCollapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </button>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
         {currentNavItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -305,9 +305,9 @@ export default function Sidebar() {
               className="relative block group"
             >
               <div
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl font-medium text-sm transition-all duration-200 ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl font-semibold text-[13px] transition-all duration-200 ${
                   isActive
-                    ? 'text-white font-semibold'
+                    ? 'text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
@@ -315,7 +315,7 @@ export default function Sidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="sidebar-active-indicator"
-                    className="absolute inset-0 border rounded-2xl shadow-lg"
+                    className="absolute inset-0 border rounded-xl shadow-lg"
                     style={{
                       background: 'linear-gradient(to left, rgb(var(--p) / 0.25) 0%, rgb(var(--s) / 0.1) 100%)',
                       borderColor: 'rgb(var(--p) / 0.35)',
@@ -326,7 +326,7 @@ export default function Sidebar() {
                 )}
 
                 <div
-                  className={`relative z-10 p-2 rounded-xl transition-colors flex items-center justify-center ${
+                  className={`relative z-10 p-1.5 rounded-lg transition-colors flex items-center justify-center ${
                     isActive
                       ? 'border shadow-inner'
                       : 'text-slate-400 group-hover:text-slate-200'
@@ -341,7 +341,7 @@ export default function Sidebar() {
                       : undefined
                   }
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className="w-4.5 h-4.5 flex-shrink-0" />
                 </div>
 
                 {!isCollapsed && (
@@ -361,11 +361,11 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer User Info & Logout */}
-      <div className="p-3 border-t border-white/10 bg-slate-900/40 backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="p-2.5 border-t border-white/10 bg-slate-900/40 backdrop-blur-md">
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-2 min-w-0">
             <div 
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0 overflow-hidden"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-md border border-white/20 flex-shrink-0 overflow-hidden"
               style={{
                 background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)'
               }}

@@ -243,12 +243,18 @@ export default function Navbar() {
       {/* Action Icons & Profile */}
       <div className="flex items-center gap-4">
         {/* Notification Bell */}
-        <div className="relative">
+        <div 
+          className="relative"
+          onMouseEnter={() => {
+            setShowNotifications(true);
+            setShowCalendarQuick(false);
+            setShowProfileMenu(false);
+          }}
+          onMouseLeave={() => setShowNotifications(false)}
+        >
           <button
             onClick={() => {
               setShowNotifications(!showNotifications);
-              setShowCalendarQuick(false);
-              setShowProfileMenu(false);
             }}
             className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 transition-all relative group"
             style={{
@@ -319,12 +325,18 @@ export default function Navbar() {
         </div>
 
         {/* Quick Calendar */}
-        <div className="relative">
+        <div 
+          className="relative"
+          onMouseEnter={() => {
+            setShowCalendarQuick(true);
+            setShowNotifications(false);
+            setShowProfileMenu(false);
+          }}
+          onMouseLeave={() => setShowCalendarQuick(false)}
+        >
           <button
             onClick={() => {
               setShowCalendarQuick(!showCalendarQuick);
-              setShowNotifications(false);
-              setShowProfileMenu(false);
             }}
             className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 hover:border-blue-500/40 transition-all group"
             title="جدول الحصص السريع"
@@ -380,12 +392,18 @@ export default function Navbar() {
         <div className="h-8 w-[1px] bg-white/10"></div>
 
         {/* User Profile Glass Badge */}
-        <div className="relative">
+        <div 
+          className="relative"
+          onMouseEnter={() => {
+            setShowProfileMenu(true);
+            setShowNotifications(false);
+            setShowCalendarQuick(false);
+          }}
+          onMouseLeave={() => setShowProfileMenu(false)}
+        >
           <div
             onClick={() => {
               setShowProfileMenu(!showProfileMenu);
-              setShowNotifications(false);
-              setShowCalendarQuick(false);
             }}
             className="flex items-center gap-3 p-1.5 pl-3 rounded-2xl glass-panel border border-white/10 cursor-pointer transition-all select-none"
             style={{
