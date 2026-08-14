@@ -29,6 +29,8 @@ export default function Navbar() {
   const { toggleMobileOpen } = useSidebar();
 
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchUser = () => {
       fetch('/api/auth/me')
@@ -42,6 +44,36 @@ export default function Navbar() {
     window.addEventListener('maestro-profile-updated', fetchUser);
     return () => window.removeEventListener('maestro-profile-updated', fetchUser);
   }, []);
+
+  useEffect(() => {
+    const checkAvatar = async () => {
+      if (currentUser) {
+        if (currentUser.role === 'OWNER' || currentUser.role === 'ASSISTANT') {
+          try {
+            const res = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
+            if (res.ok) {
+              setAvatarUrl('/api/settings/branding?type=portrait&t=' + Date.now());
+            } else {
+              setAvatarUrl(null);
+            }
+          } catch {
+            setAvatarUrl(null);
+          }
+        } else if (currentUser.role === 'STUDENT' && currentUser.profileImage) {
+          setAvatarUrl(currentUser.profileImage);
+        } else {
+          setAvatarUrl(null);
+        }
+      }
+    };
+    checkAvatar();
+    window.addEventListener('maestro-profile-updated', checkAvatar);
+    window.addEventListener('maestro-portrait-updated', checkAvatar);
+    return () => {
+      window.removeEventListener('maestro-profile-updated', checkAvatar);
+      window.removeEventListener('maestro-portrait-updated', checkAvatar);
+    };
+  }, [currentUser]);
 
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
   const [todaySessions, setTodaySessions] = useState<any[]>([]);
@@ -361,13 +393,18 @@ export default function Navbar() {
             }}
           >
             <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/20"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/20 overflow-hidden"
               style={{
-                background: 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)',
+                background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)',
                 boxShadow: '0 4px 15px rgb(var(--p) / 0.2)'
               }}
             >
-              {currentUser?.name?.charAt(0) || 'أ'}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={currentUser?.name} className="w-full h-full object-cover" />
+              ) : (
+                currentUser?.name?.charAt(0) || 'أ'
+              )}
             </div>
             <div className="hidden md:block text-right">
               <p className="text-sm font-bold text-white leading-tight">{currentUser?.name || 'جاري التحميل...'}</p>

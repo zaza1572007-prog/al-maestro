@@ -21,6 +21,7 @@ export async function GET(req: Request) {
         name: true,
         phone: true,
         role: true,
+        profileImage: true,
       }
     });
 
@@ -93,6 +94,7 @@ export async function PATCH(req: Request) {
         name: updatedUser.name,
         role: updatedUser.role,
         phone: updatedUser.phone,
+        profileImage: updatedUser.profileImage,
       }
     });
 

@@ -239,7 +239,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">إجمالي الطلاب</span>
-              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-400 border border-purple-500/25">
+              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-400 border border-purple-500/25 transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                 <GraduationCap className="w-5 h-5" />
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">المجموعات التعليمية</span>
-              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25">
+              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-300">
                 <Users className="w-5 h-5" />
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">نسبة حضور اليوم</span>
-              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</span>
-              <div className={`p-2.5 rounded-2xl border ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+              <div className={`p-2.5 rounded-2xl border transform group-hover:scale-110 transition-transform duration-300 ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                 <AlertTriangle className="w-5 h-5" />
               </div>
             </div>
@@ -386,17 +386,27 @@ export default function DashboardPage() {
 
               if (displayList.length === 0) {
                 return (
-                  <div className="text-center py-8 bg-slate-950/40 rounded-2xl border border-slate-800/80 space-y-2.5">
-                    <Calendar className="w-8 h-8 mx-auto opacity-30 text-slate-400" />
-                    <p className="text-xs font-semibold text-slate-300">
-                      {activeGroupTab === 'TODAY'
-                        ? 'لا توجد مجموعات مجدولة لموعد اليوم'
-                        : 'لا توجد مجموعات مسجلة في النظام'}
-                    </p>
+                  <div className="text-center py-16 bg-slate-950/20 rounded-2xl border border-white/5 space-y-4 flex flex-col items-center justify-center min-h-[260px] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20 shadow-lg shadow-purple-500/5">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1 z-10">
+                      <p className="text-sm font-bold text-white">
+                        {activeGroupTab === 'TODAY'
+                          ? 'لا توجد مجموعات مجدولة اليوم'
+                          : 'لا توجد مجموعات مسجلة'}
+                      </p>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+                        {activeGroupTab === 'TODAY'
+                          ? 'تفرغ تام اليوم! لا توجد مجموعات دراسية مبرمجة لموعد اليوم.'
+                          : 'يمكنك البدء بإنشاء مجموعة دراسية جديدة من صفحة المجموعات.'}
+                      </p>
+                    </div>
                     {activeGroupTab === 'TODAY' && allGroupsList.length > 0 && (
                       <button
                         onClick={() => setActiveGroupTab('ALL')}
-                        className="text-xs text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer"
+                        className="text-xs text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl transition cursor-pointer hover:bg-purple-500/20"
                       >
                         عرض جميع المجموعات النشطة ({allGroupsList.length}) ←
                       </button>
@@ -512,8 +522,8 @@ export default function DashboardPage() {
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorAttendanceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#a855f7" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -533,10 +543,10 @@ export default function DashboardPage() {
                     type="monotone"
                     dataKey="attendance"
                     name="نسبة الحضور (%)"
-                    stroke="#8b5cf6"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
+                    stroke="#a855f7"
+                    strokeWidth={3}
                     fill="url(#colorAttendanceGrad)"
+                    activeDot={{ r: 6, strokeWidth: 0, fill: '#a855f7' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -556,8 +566,8 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-2.5">
               <Link href="/attendance" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <QrCode className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <QrCode className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">ماسح الحضور</p>
                 </div>
@@ -565,8 +575,8 @@ export default function DashboardPage() {
 
               <Link href="/students" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-purple-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <UserPlus className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                    <UserPlus className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">إضافة طالب</p>
                 </div>
@@ -574,8 +584,8 @@ export default function DashboardPage() {
 
               <Link href="/exams" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-blue-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <Award className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
+                    <Award className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">الامتحانات والنتائج</p>
                 </div>
@@ -583,8 +593,8 @@ export default function DashboardPage() {
 
               <Link href="/subscriptions" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-amber-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <CreditCard className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                    <CreditCard className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">الاشتراكات</p>
                 </div>
@@ -592,8 +602,8 @@ export default function DashboardPage() {
 
               <Link href="/cards" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-teal-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <Printer className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <Printer className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">طباعة الكروت</p>
                 </div>
@@ -601,8 +611,8 @@ export default function DashboardPage() {
 
               <Link href="/reports" className="block">
                 <div className="p-3 bg-slate-950/70 hover:bg-slate-900 border border-white/5 hover:border-pink-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5">
-                  <div className="w-8 h-8 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <BarChart2 className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                    <BarChart2 className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white">التقارير الشاملة</p>
                 </div>

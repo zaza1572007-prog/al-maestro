@@ -104,6 +104,38 @@ export default function Sidebar() {
     return () => window.removeEventListener('maestro-profile-updated', fetchUser);
   }, []);
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkAvatar = async () => {
+      if (currentUser) {
+        if (currentUser.role === 'OWNER' || currentUser.role === 'ASSISTANT') {
+          try {
+            const res = await fetch('/api/settings/branding?type=portrait', { method: 'HEAD' });
+            if (res.ok) {
+              setAvatarUrl('/api/settings/branding?type=portrait&t=' + Date.now());
+            } else {
+              setAvatarUrl(null);
+            }
+          } catch {
+            setAvatarUrl(null);
+          }
+        } else if (currentUser.role === 'STUDENT' && currentUser.profileImage) {
+          setAvatarUrl(currentUser.profileImage);
+        } else {
+          setAvatarUrl(null);
+        }
+      }
+    };
+    checkAvatar();
+    window.addEventListener('maestro-profile-updated', checkAvatar);
+    window.addEventListener('maestro-portrait-updated', checkAvatar);
+    return () => {
+      window.removeEventListener('maestro-profile-updated', checkAvatar);
+      window.removeEventListener('maestro-portrait-updated', checkAvatar);
+    };
+  }, [currentUser]);
+
   // Don't render sidebar on public pages
   if (
     pathname === '/login' ||
@@ -333,12 +365,17 @@ export default function Sidebar() {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <div 
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md border border-white/20 flex-shrink-0 overflow-hidden"
               style={{
-                background: 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)'
+                background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)'
               }}
             >
-              {currentUser?.name?.charAt(0) || 'أ'}
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={currentUser?.name} className="w-full h-full object-cover" />
+              ) : (
+                currentUser?.name?.charAt(0) || 'أ'
+              )}
             </div>
             {!isCollapsed && (
               <div className="min-w-0">
