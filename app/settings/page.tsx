@@ -37,6 +37,14 @@ export default function SettingsPage() {
   const [cleanupBookingPassword, setCleanupBookingPassword] = useState('');
   const [cleanupAbsencePassword, setCleanupAbsencePassword] = useState('');
   const [cleanupNotificationPassword, setCleanupNotificationPassword] = useState('');
+  const [cleanupAttendanceScope, setCleanupAttendanceScope] = useState<'all' | 'stage' | 'group' | 'student'>('all');
+  const [cleanupAttendanceStageId, setCleanupAttendanceStageId] = useState('');
+  const [cleanupAttendanceGroupId, setCleanupAttendanceGroupId] = useState('');
+  const [cleanupAttendanceStudentSearch, setCleanupAttendanceStudentSearch] = useState('');
+  const [cleanupAttendanceStudentList, setCleanupAttendanceStudentList] = useState<any[]>([]);
+  const [cleanupAttendanceSelectedStudent, setCleanupAttendanceSelectedStudent] = useState<any | null>(null);
+  const [cleanupAttendanceSearchLoading, setCleanupAttendanceSearchLoading] = useState(false);
+  const [cleanupAttendancePassword, setCleanupAttendancePassword] = useState('');
   const [cleanupStatus, setCleanupStatus] = useState<{ type: string; success: boolean; message: string } | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
 
@@ -321,6 +329,7 @@ export default function SettingsPage() {
           setStagesList(stagesData.stages);
           if (stagesData.stages.length > 0) {
             setCleanupStageId(stagesData.stages[0].id);
+            setCleanupAttendanceStageId(stagesData.stages[0].id);
           }
         }
 
@@ -330,6 +339,7 @@ export default function SettingsPage() {
           setGroupsList(groupsData.groups);
           if (groupsData.groups.length > 0) {
             setCleanupGroupId(groupsData.groups[0].id);
+            setCleanupAttendanceGroupId(groupsData.groups[0].id);
           }
         }
       } catch (err) {
@@ -364,6 +374,31 @@ export default function SettingsPage() {
 
     return () => clearTimeout(timer);
   }, [cleanupStudentSearch, cleanupAbsenceScope]);
+
+  // Handle student live search for attendance cleanup
+  useEffect(() => {
+    if (cleanupAttendanceScope !== 'student' || !cleanupAttendanceStudentSearch.trim()) {
+      setCleanupAttendanceStudentList([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setCleanupAttendanceSearchLoading(true);
+      try {
+        const res = await fetch(`/api/students?search=${encodeURIComponent(cleanupAttendanceStudentSearch)}`);
+        const data = await res.json();
+        if (data.students) {
+          setCleanupAttendanceStudentList(data.students);
+        }
+      } catch (err) {
+        console.error('Error searching students for attendance cleanup:', err);
+      } finally {
+        setCleanupAttendanceSearchLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [cleanupAttendanceStudentSearch, cleanupAttendanceScope]);
 
   const handleCleanAbsences = async () => {
     if (cleanupAbsencePassword !== '147369258') {
@@ -422,6 +457,68 @@ export default function SettingsPage() {
       }
     } catch {
       setCleanupStatus({ type: 'attendance', success: false, message: 'خطأ في الاتصال بالخادم' });
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
+  const handleCleanAttendance = async () => {
+    if (cleanupAttendancePassword !== '147369258') {
+      setCleanupStatus({ type: 'attendance_present', success: false, message: 'كلمة المرور غير صحيحة' });
+      return;
+    }
+
+    const scopeNames = {
+      all: 'جميع الطلاب',
+      stage: 'المرحلة المحددة',
+      group: 'المجموعة المحددة',
+      student: cleanupAttendanceSelectedStudent ? `الطالب: ${cleanupAttendanceSelectedStudent.name}` : 'الطالب المحدد',
+    };
+    
+    if (cleanupAttendanceScope === 'stage' && !cleanupAttendanceStageId) {
+      setCleanupStatus({ type: 'attendance_present', success: false, message: 'يرجى اختيار المرحلة الدراسية أولاً' });
+      return;
+    }
+    if (cleanupAttendanceScope === 'group' && !cleanupAttendanceGroupId) {
+      setCleanupStatus({ type: 'attendance_present', success: false, message: 'يرجى اختيار المجموعة الدراسية أولاً' });
+      return;
+    }
+    if (cleanupAttendanceScope === 'student' && !cleanupAttendanceSelectedStudent) {
+      setCleanupStatus({ type: 'attendance_present', success: false, message: 'يرجى البحث واختيار الطالب أولاً' });
+      return;
+    }
+
+    const confirm = window.confirm(`⚠️ تحذير: هل أنت متأكد من رغبتك في حذف جميع تسجيلات حضور الطلاب في (${scopeNames[cleanupAttendanceScope]})؟ لا يمكن التراجع عن هذا الإجراء.`);
+    if (!confirm) return;
+
+    setCleanupLoading(true);
+    setCleanupStatus(null);
+    try {
+      const res = await fetch('/api/settings/clean', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'attendance_present',
+          password: cleanupAttendancePassword,
+          scope: cleanupAttendanceScope,
+          stageId: cleanupAttendanceStageId,
+          groupId: cleanupAttendanceGroupId,
+          studentId: cleanupAttendanceSelectedStudent?.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCleanupStatus({ type: 'attendance_present', success: true, message: data.message });
+        setCleanupAttendancePassword('');
+        if (cleanupAttendanceScope === 'student') {
+          setCleanupAttendanceSelectedStudent(null);
+          setCleanupAttendanceStudentSearch('');
+        }
+      } else {
+        setCleanupStatus({ type: 'attendance_present', success: false, message: data.error || 'حدث خطأ أثناء الحذف' });
+      }
+    } catch {
+      setCleanupStatus({ type: 'attendance_present', success: false, message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setCleanupLoading(false);
     }
@@ -1882,205 +1979,207 @@ export default function SettingsPage() {
 
       {/* Tab: Data Cleanup */}
       {activeTab === 'cleanup' && (
-        <div className="space-y-6 max-w-5xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl w-full">
           {/* Section 1: Absence Cleanup */}
-          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 space-y-6 bg-red-950/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-red-400">
-                <Trash2 className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-white">حذف عمليات الغياب</h3>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
-                {cleanupAbsencePassword === '147369258' ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">مفتوح</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5 text-red-400" />
-                    <span>مغلق</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              يمكنك حذف عمليات الغياب (الحالات المسجلة كـ غياب فقط) للطلاب بناءً على نطاق محدد. سيؤدي ذلك إلى إعادة تعيين حالة الحضور للطلاب في نفس اليوم. يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
-            </p>
-
-            <div className="space-y-4">
-              {/* Scope Selection */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">نطاق الحذف:</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { id: 'all', label: '👥 الكل' },
-                    { id: 'stage', label: '🎓 المرحلة' },
-                    { id: 'group', label: '📚 المجموعة' },
-                    { id: 'student', label: '👤 طالب واحد' },
-                  ].map((scope) => (
-                    <button
-                      key={scope.id}
-                      type="button"
-                      onClick={() => {
-                        setCleanupAbsenceScope(scope.id as any);
-                        setCleanupStatus(null);
-                      }}
-                      className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all ${
-                        cleanupAbsenceScope === scope.id
-                          ? 'border-red-500 bg-red-500/20 text-white shadow-lg shadow-red-500/10'
-                          : 'border-white/5 bg-slate-950/40 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {scope.label}
-                    </button>
-                  ))}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 bg-red-950/5 flex flex-col justify-between h-full space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <Trash2 className="w-6 h-6" />
+                  <h3 className="font-bold text-lg text-white">حذف عمليات الغياب</h3>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
+                  {cleanupAbsencePassword === '147369258' ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">مفتوح</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-red-400" />
+                      <span>مغلق</span>
+                    </>
+                  )}
                 </div>
               </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                يمكنك حذف عمليات الغياب (الحالات المسجلة كـ غياب فقط) للطلاب بناءً على نطاق محدد. سيؤدي ذلك إلى إعادة تعيين حالة الحضور للطلاب في نفس اليوم. يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
+              </p>
 
-              {/* Scope Specific Inputs */}
-              {cleanupAbsenceScope === 'stage' && (
-                <div className="space-y-1.5 animate-fadeIn">
-                  <label className="block text-xs font-semibold text-slate-300">اختر المرحلة الدراسية:</label>
-                  <select
-                    value={cleanupStageId}
-                    onChange={(e) => setCleanupStageId(e.target.value)}
-                    className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
-                  >
-                    {stagesList.length === 0 ? (
-                      <option value="">لا توجد مراحل مضافة</option>
-                    ) : (
-                      stagesList.map((stage) => (
-                        <option key={stage.id} value={stage.id} className="bg-slate-950">
-                          {stage.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              )}
-
-              {cleanupAbsenceScope === 'group' && (
-                <div className="space-y-1.5 animate-fadeIn">
-                  <label className="block text-xs font-semibold text-slate-300">اختر المجموعة:</label>
-                  <select
-                    value={cleanupGroupId}
-                    onChange={(e) => setCleanupGroupId(e.target.value)}
-                    className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
-                  >
-                    {groupsList.length === 0 ? (
-                      <option value="">لا توجد مجموعات مضافة</option>
-                    ) : (
-                      groupsList.map((group) => (
-                        <option key={group.id} value={group.id} className="bg-slate-950">
-                          {group.name} ({group.academicStage?.name})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              )}
-
-              {cleanupAbsenceScope === 'student' && (
-                <div className="space-y-2 animate-fadeIn relative">
-                  <label className="block text-xs font-semibold text-slate-300">ابحث عن الطالب وحدده:</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="اكتب اسم الطالب للبحث..."
-                      value={cleanupStudentSearch}
-                      onChange={(e) => {
-                        setCleanupStudentSearch(e.target.value);
-                        if (cleanupSelectedStudent) setCleanupSelectedStudent(null);
-                      }}
-                      className="w-full glass-input pr-10 pl-3 py-3 text-sm"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
-                  </div>
-
-                  {/* Selected Student Display */}
-                  {cleanupSelectedStudent && (
-                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300">
-                      <span>الطالب المحدد: <strong>{cleanupSelectedStudent.name}</strong> ({cleanupSelectedStudent.group?.name || 'بدون مجموعة'})</span>
+              <div className="space-y-4">
+                {/* Scope Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">نطاق الحذف:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'all', label: '👥 الكل' },
+                      { id: 'stage', label: '🎓 المرحلة' },
+                      { id: 'group', label: '📚 المجموعة' },
+                      { id: 'student', label: '👤 طالب واحد' },
+                    ].map((scope) => (
                       <button
+                        key={scope.id}
                         type="button"
                         onClick={() => {
-                          setCleanupSelectedStudent(null);
-                          setCleanupStudentSearch('');
+                          setCleanupAbsenceScope(scope.id as any);
+                          setCleanupStatus(null);
                         }}
-                        className="text-red-400 hover:text-red-300 font-bold"
+                        className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all ${
+                          cleanupAbsenceScope === scope.id
+                            ? 'border-red-500 bg-red-500/20 text-white shadow-lg shadow-red-500/10'
+                            : 'border-white/5 bg-slate-950/40 text-slate-400 hover:text-white'
+                        }`}
                       >
-                        إلغاء ❌
+                        {scope.label}
                       </button>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                </div>
 
-                  {/* Search Results Dropdown */}
-                  {!cleanupSelectedStudent && cleanupStudentSearch.trim() && (
-                    <div className="absolute z-10 w-full mt-1 bg-slate-950/95 border border-white/10 rounded-2xl max-h-60 overflow-y-auto shadow-2xl backdrop-blur-xl">
-                      {cleanupSearchLoading ? (
-                        <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          جاري البحث...
-                        </div>
-                      ) : cleanupStudentList.length === 0 ? (
-                        <div className="p-4 text-center text-xs text-slate-500">لم يتم العثور على نتائج</div>
+                {/* Scope Specific Inputs */}
+                {cleanupAbsenceScope === 'stage' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المرحلة الدراسية:</label>
+                    <select
+                      value={cleanupStageId}
+                      onChange={(e) => setCleanupStageId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {stagesList.length === 0 ? (
+                        <option value="">لا توجد مراحل مضافة</option>
                       ) : (
-                        cleanupStudentList.map((stu) => (
-                          <div
-                            key={stu.id}
-                            onClick={() => {
-                              setCleanupSelectedStudent(stu);
-                              setCleanupStudentList([]);
-                            }}
-                            className="p-3 text-xs text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex items-center justify-between"
-                          >
-                            <span className="font-bold">{stu.name}</span>
-                            <span className="text-[10px] text-slate-500">{stu.group?.name} | {stu.academicStage?.name}</span>
-                          </div>
+                        stagesList.map((stage) => (
+                          <option key={stage.id} value={stage.id} className="bg-slate-950">
+                            {stage.name}
+                          </option>
                         ))
                       )}
+                    </select>
+                  </div>
+                )}
+
+                {cleanupAbsenceScope === 'group' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المجموعة:</label>
+                    <select
+                      value={cleanupGroupId}
+                      onChange={(e) => setCleanupGroupId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {groupsList.length === 0 ? (
+                        <option value="">لا توجد مجموعات مضافة</option>
+                      ) : (
+                        groupsList.map((group) => (
+                          <option key={group.id} value={group.id} className="bg-slate-950">
+                            {group.name} ({group.academicStage?.name})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {cleanupAbsenceScope === 'student' && (
+                  <div className="space-y-2 animate-fadeIn relative">
+                    <label className="block text-xs font-semibold text-slate-300">ابحث عن الطالب وحدده:</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="اكتب اسم الطالب للبحث..."
+                        value={cleanupStudentSearch}
+                        onChange={(e) => {
+                          setCleanupStudentSearch(e.target.value);
+                          if (cleanupSelectedStudent) setCleanupSelectedStudent(null);
+                        }}
+                        className="w-full glass-input pr-10 pl-3 py-3 text-sm"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
                     </div>
-                  )}
+
+                    {/* Selected Student Display */}
+                    {cleanupSelectedStudent && (
+                      <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300">
+                        <span>الطالب المحدد: <strong>{cleanupSelectedStudent.name}</strong> ({cleanupSelectedStudent.group?.name || 'بدون مجموعة'})</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCleanupSelectedStudent(null);
+                            setCleanupStudentSearch('');
+                          }}
+                          className="text-red-400 hover:text-red-300 font-bold"
+                        >
+                          إلغاء ❌
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Search Results Dropdown */}
+                    {!cleanupSelectedStudent && cleanupStudentSearch.trim() && (
+                      <div className="absolute z-10 w-full mt-1 bg-slate-950/95 border border-white/10 rounded-2xl max-h-60 overflow-y-auto shadow-2xl backdrop-blur-xl">
+                        {cleanupSearchLoading ? (
+                          <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            جاري البحث...
+                          </div>
+                        ) : cleanupStudentList.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-slate-500">لم يتم العثور على نتائج</div>
+                        ) : (
+                          cleanupStudentList.map((stu) => (
+                            <div
+                              key={stu.id}
+                              onClick={() => {
+                                setCleanupSelectedStudent(stu);
+                                setCleanupStudentList([]);
+                              }}
+                              className="p-3 text-xs text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex items-center justify-between"
+                            >
+                              <span className="font-bold">{stu.name}</span>
+                              <span className="text-[10px] text-slate-500">{stu.group?.name} | {stu.academicStage?.name}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
+                  <input
+                    type="password"
+                    placeholder="أدخل كلمة المرور لفتح الزر..."
+                    value={cleanupAbsencePassword}
+                    onChange={(e) => {
+                      setCleanupAbsencePassword(e.target.value);
+                      setCleanupStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm font-mono text-left"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {cleanupStatus?.type === 'attendance' && (
+                <div
+                  className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    cleanupStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {cleanupStatus.message}
                 </div>
               )}
             </div>
-
-            {/* Password Input for Absence Cleanup */}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
-                <input
-                  type="password"
-                  placeholder="أدخل كلمة المرور لفتح الزر..."
-                  value={cleanupAbsencePassword}
-                  onChange={(e) => {
-                    setCleanupAbsencePassword(e.target.value);
-                    setCleanupStatus(null);
-                  }}
-                  className="w-full glass-input p-3 text-sm font-mono text-left"
-                  dir="ltr"
-                />
-              </div>
-            </div>
-
-            {cleanupStatus?.type === 'attendance' && (
-              <div
-                className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
-                  cleanupStatus.success
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                }`}
-              >
-                {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {cleanupStatus.message}
-              </div>
-            )}
 
             <button
               onClick={handleCleanAbsences}
               disabled={cleanupLoading || cleanupAbsencePassword !== '147369258' || (cleanupAbsenceScope === 'student' && !cleanupSelectedStudent)}
-              className={`w-full flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
+              className={`w-full mt-4 flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
                 cleanupAbsencePassword === '147369258' && !(cleanupAbsenceScope === 'student' && !cleanupSelectedStudent)
                   ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-red-600/20 cursor-pointer'
                   : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
@@ -2091,65 +2190,277 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Section 2: Notifications Cleanup */}
-          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 space-y-6 bg-red-950/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-red-400">
-                <Trash2 className="w-6 h-6" />
-                <h3 className="font-bold text-lg text-white">حذف الإشعارات</h3>
+          {/* Section 1.2: Attendance Present Cleanup */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 bg-red-950/5 flex flex-col justify-between h-full space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <Trash2 className="w-6 h-6" />
+                  <h3 className="font-bold text-lg text-white">حذف تسجيل الحضور</h3>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
+                  {cleanupAttendancePassword === '147369258' ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">مفتوح</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-red-400" />
+                      <span>مغلق</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
-                {cleanupNotificationPassword === '147369258' ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">مفتوح</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5 text-red-400" />
-                    <span>مغلق</span>
-                  </>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                يمكنك حذف تسجيلات حضور الطلاب (الحالات المسجلة كـ حضور، تأخير، انصراف مبكر، أو عذر) بناءً على نطاق محدد. سيؤدي ذلك إلى إعادة تعيين حالة الحضور للطلاب في نفس اليوم. يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
+              </p>
+
+              <div className="space-y-4">
+                {/* Scope Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">نطاق الحذف:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'all', label: '👥 الكل' },
+                      { id: 'stage', label: '🎓 المرحلة' },
+                      { id: 'group', label: '📚 المجموعة' },
+                      { id: 'student', label: '👤 طالب واحد' },
+                    ].map((scope) => (
+                      <button
+                        key={scope.id}
+                        type="button"
+                        onClick={() => {
+                          setCleanupAttendanceScope(scope.id as any);
+                          setCleanupStatus(null);
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all ${
+                          cleanupAttendanceScope === scope.id
+                            ? 'border-red-500 bg-red-500/20 text-white shadow-lg shadow-red-500/10'
+                            : 'border-white/5 bg-slate-950/40 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Scope Specific Inputs */}
+                {cleanupAttendanceScope === 'stage' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المرحلة الدراسية:</label>
+                    <select
+                      value={cleanupAttendanceStageId}
+                      onChange={(e) => setCleanupAttendanceStageId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {stagesList.length === 0 ? (
+                        <option value="">لا توجد مراحل مضافة</option>
+                      ) : (
+                        stagesList.map((stage) => (
+                          <option key={stage.id} value={stage.id} className="bg-slate-950">
+                            {stage.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {cleanupAttendanceScope === 'group' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المجموعة:</label>
+                    <select
+                      value={cleanupAttendanceGroupId}
+                      onChange={(e) => setCleanupAttendanceGroupId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {groupsList.length === 0 ? (
+                        <option value="">لا توجد مجموعات مضافة</option>
+                      ) : (
+                        groupsList.map((group) => (
+                          <option key={group.id} value={group.id} className="bg-slate-950">
+                            {group.name} ({group.academicStage?.name})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {cleanupAttendanceScope === 'student' && (
+                  <div className="space-y-2 animate-fadeIn relative">
+                    <label className="block text-xs font-semibold text-slate-300">ابحث عن الطالب وحدده:</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="اكتب اسم الطالب للبحث..."
+                        value={cleanupAttendanceStudentSearch}
+                        onChange={(e) => {
+                          setCleanupAttendanceStudentSearch(e.target.value);
+                          if (cleanupAttendanceSelectedStudent) setCleanupAttendanceSelectedStudent(null);
+                        }}
+                        className="w-full glass-input pr-10 pl-3 py-3 text-sm"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                    </div>
+
+                    {/* Selected Student Display */}
+                    {cleanupAttendanceSelectedStudent && (
+                      <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300">
+                        <span>الطالب المحدد: <strong>{cleanupAttendanceSelectedStudent.name}</strong> ({cleanupAttendanceSelectedStudent.group?.name || 'بدون مجموعة'})</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCleanupAttendanceSelectedStudent(null);
+                            setCleanupAttendanceStudentSearch('');
+                          }}
+                          className="text-red-400 hover:text-red-300 font-bold"
+                        >
+                          إلغاء ❌
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Search Results Dropdown */}
+                    {!cleanupAttendanceSelectedStudent && cleanupAttendanceStudentSearch.trim() && (
+                      <div className="absolute z-10 w-full mt-1 bg-slate-950/95 border border-white/10 rounded-2xl max-h-60 overflow-y-auto shadow-2xl backdrop-blur-xl">
+                        {cleanupAttendanceSearchLoading ? (
+                          <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            جاري البحث...
+                          </div>
+                        ) : cleanupAttendanceStudentList.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-slate-500">لم يتم العثور على نتائج</div>
+                        ) : (
+                          cleanupAttendanceStudentList.map((stu) => (
+                            <div
+                              key={stu.id}
+                              onClick={() => {
+                                setCleanupAttendanceSelectedStudent(stu);
+                                setCleanupAttendanceStudentList([]);
+                              }}
+                              className="p-3 text-xs text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex items-center justify-between"
+                            >
+                              <span className="font-bold">{stu.name}</span>
+                              <span className="text-[10px] text-slate-500">{stu.group?.name} | {stu.academicStage?.name}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              سيؤدي هذا الإجراء إلى حذف جميع الإشعارات والسجلات المرسلة إلى الطلاب وأولياء الأمور بالكامل من قاعدة البيانات. يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
-            </p>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
-                <input
-                  type="password"
-                  placeholder="أدخل كلمة المرور لفتح الزر..."
-                  value={cleanupNotificationPassword}
-                  onChange={(e) => {
-                    setCleanupNotificationPassword(e.target.value);
-                    setCleanupStatus(null);
-                  }}
-                  className="w-full glass-input p-3 text-sm font-mono text-left"
-                  dir="ltr"
-                />
+              {/* Password Input */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
+                  <input
+                    type="password"
+                    placeholder="أدخل كلمة المرور لفتح الزر..."
+                    value={cleanupAttendancePassword}
+                    onChange={(e) => {
+                      setCleanupAttendancePassword(e.target.value);
+                      setCleanupStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm font-mono text-left"
+                    dir="ltr"
+                  />
+                </div>
               </div>
+
+              {cleanupStatus?.type === 'attendance_present' && (
+                <div
+                  className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    cleanupStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {cleanupStatus.message}
+                </div>
+              )}
             </div>
 
-            {cleanupStatus?.type === 'notifications' && (
-              <div
-                className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
-                  cleanupStatus.success
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                }`}
-              >
-                {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {cleanupStatus.message}
+            <button
+              onClick={handleCleanAttendance}
+              disabled={cleanupLoading || cleanupAttendancePassword !== '147369258' || (cleanupAttendanceScope === 'student' && !cleanupAttendanceSelectedStudent)}
+              className={`w-full mt-4 flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
+                cleanupAttendancePassword === '147369258' && !(cleanupAttendanceScope === 'student' && !cleanupAttendanceSelectedStudent)
+                  ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-red-600/20 cursor-pointer'
+                  : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+              }`}
+            >
+              {cleanupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : cleanupAttendancePassword === '147369258' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span>حذف حضور النطاق المحدد 🗑️</span>
+            </button>
+          </div>
+
+          {/* Section 2: Notifications Cleanup */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 bg-red-950/5 flex flex-col justify-between h-full space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <Trash2 className="w-6 h-6" />
+                  <h3 className="font-bold text-lg text-white">حذف الإشعارات</h3>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
+                  {cleanupNotificationPassword === '147369258' ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">مفتوح</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-red-400" />
+                      <span>مغلق</span>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
+              <p className="text-xs text-slate-400 leading-relaxed">
+                سيؤدي هذا الإجراء إلى حذف جميع الإشعارات والسجلات المرسلة إلى الطلاب وأولياء الأمور بالكامل من قاعدة البيانات. يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
+                  <input
+                    type="password"
+                    placeholder="أدخل كلمة المرور لفتح الزر..."
+                    value={cleanupNotificationPassword}
+                    onChange={(e) => {
+                      setCleanupNotificationPassword(e.target.value);
+                      setCleanupStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm font-mono text-left"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {cleanupStatus?.type === 'notifications' && (
+                <div
+                  className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    cleanupStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {cleanupStatus.message}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={handleCleanNotifications}
               disabled={cleanupLoading || cleanupNotificationPassword !== '147369258'}
-              className={`w-full flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
+              className={`w-full mt-4 flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
                 cleanupNotificationPassword === '147369258'
                   ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-red-600/20 cursor-pointer'
                   : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
@@ -2161,64 +2472,66 @@ export default function SettingsPage() {
           </div>
 
           {/* Section 3: Booking Request Purge */}
-          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 space-y-6 bg-red-950/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-red-400">
-                <AlertTriangle className="w-6 h-6 animate-pulse" />
-                <h3 className="font-bold text-lg text-white">حذف رسائل طلبات الحجز</h3>
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-red-500/20 bg-red-950/5 flex flex-col justify-between h-full space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  <h3 className="font-bold text-lg text-white">حذف رسائل طلبات الحجز</h3>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
+                  {cleanupBookingPassword === '147369258' ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">مفتوح</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-red-400" />
+                      <span>مغلق</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
-                {cleanupBookingPassword === '147369258' ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">مفتوح</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5 text-red-400" />
-                    <span>مغلق</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              لحذف جميع رسائل طلبات الحجز المقدمة من الطلاب وأولياء الأمور بشكل نهائي، يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
-            </p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                لحذف جميع رسائل طلبات الحجز المقدمة من الطلاب وأولياء الأمور بشكل نهائي، يجب إدخال كلمة سر الحماية المطلوبة أدناه لفتح زر الحذف.
+              </p>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
-                <input
-                  type="password"
-                  placeholder="أدخل كلمة المرور لفتح الزر..."
-                  value={cleanupBookingPassword}
-                  onChange={(e) => {
-                    setCleanupBookingPassword(e.target.value);
-                    setCleanupStatus(null);
-                  }}
-                  className="w-full glass-input p-3 text-sm font-mono text-left"
-                  dir="ltr"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
+                  <input
+                    type="password"
+                    placeholder="أدخل كلمة المرور لفتح الزر..."
+                    value={cleanupBookingPassword}
+                    onChange={(e) => {
+                      setCleanupBookingPassword(e.target.value);
+                      setCleanupStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm font-mono text-left"
+                    dir="ltr"
+                  />
+                </div>
               </div>
-            </div>
 
-            {cleanupStatus?.type === 'registrations' && (
-              <div
-                className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
-                  cleanupStatus.success
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                }`}
-              >
-                {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                {cleanupStatus.message}
-              </div>
-            )}
+              {cleanupStatus?.type === 'registrations' && (
+                <div
+                  className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    cleanupStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  {cleanupStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {cleanupStatus.message}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={handleCleanBookings}
               disabled={cleanupLoading || cleanupBookingPassword !== '147369258'}
-              className={`w-full flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
+              className={`w-full mt-4 flex items-center justify-center gap-2 py-3 px-6 font-bold rounded-2xl text-sm transition-all shadow-lg ${
                 cleanupBookingPassword === '147369258'
                   ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-red-600/20 cursor-pointer'
                   : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'

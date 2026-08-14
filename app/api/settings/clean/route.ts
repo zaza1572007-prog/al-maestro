@@ -63,6 +63,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: `تم حذف ${count} من غيابات الطلاب بنجاح.` });
     }
 
+    // 1.2. Delete Attendance Registrations (حذف تسجيل الحضور)
+    if (type === 'attendance_present') {
+      if (password !== '147369258') {
+        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
+      }
+      let count = 0;
+      if (scope === 'all') {
+        const result = await prisma.attendance.deleteMany({
+          where: { status: { not: 'ABSENT' } },
+        });
+        count = result.count;
+      } else if (scope === 'stage') {
+        if (!stageId) {
+          return NextResponse.json({ success: false, error: 'الرجاء اختيار المرحلة الدراسية' }, { status: 400 });
+        }
+        const result = await prisma.attendance.deleteMany({
+          where: {
+            status: { not: 'ABSENT' },
+            student: { academicStageId: stageId },
+          },
+        });
+        count = result.count;
+      } else if (scope === 'group') {
+        if (!groupId) {
+          return NextResponse.json({ success: false, error: 'الرجاء اختيار المجموعة' }, { status: 400 });
+        }
+        const result = await prisma.attendance.deleteMany({
+          where: {
+            status: { not: 'ABSENT' },
+            student: { groupId: groupId },
+          },
+        });
+        count = result.count;
+      } else if (scope === 'student') {
+        if (!studentId) {
+          return NextResponse.json({ success: false, error: 'الرجاء اختيار الطالب' }, { status: 400 });
+        }
+        const result = await prisma.attendance.deleteMany({
+          where: {
+            status: { not: 'ABSENT' },
+            studentId: studentId,
+          },
+        });
+        count = result.count;
+      } else {
+        return NextResponse.json({ success: false, error: 'نطاق المسح المحدد غير صحيح' }, { status: 400 });
+      }
+
+      return NextResponse.json({ success: true, message: `تم حذف ${count} من تسجيلات حضور الطلاب بنجاح.` });
+    }
+
     // 2. Delete Notifications (حذف الإشعارات)
     if (type === 'notifications') {
       if (password !== '147369258') {
