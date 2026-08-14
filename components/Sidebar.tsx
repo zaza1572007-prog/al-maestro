@@ -396,10 +396,19 @@ export default function Sidebar() {
           <button
             type="button"
             onClick={async () => {
+              const role = currentUser?.role;
               try {
                 await fetch('/api/auth/logout', { method: 'POST' });
               } catch {}
-              window.location.href = '/select-role';
+              if (role === 'OWNER' || role === 'ASSISTANT') {
+                window.location.href = '/login?role=TEACHER';
+              } else if (role === 'STUDENT') {
+                window.location.href = '/login?role=STUDENT';
+              } else if (role === 'PARENT') {
+                window.location.href = '/login?role=PARENT';
+              } else {
+                window.location.href = '/login';
+              }
             }}
             className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/20 transition-colors cursor-pointer"
             title="تسجيل الخروج وتبديل الحساب"
