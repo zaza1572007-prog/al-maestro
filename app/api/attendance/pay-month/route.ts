@@ -113,10 +113,13 @@ export async function POST(req: NextRequest) {
     const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
 
     let waSuccess = true;
-    if (parentPhone) {
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings?.enableWhatsApp !== false && parentPhone) {
       sendWhatsAppMessage(parentPhone, messageBody).catch((waErr) => {
         console.warn('Failed to send payment WhatsApp message:', waErr);
       });
+    } else {
+      waSuccess = false;
     }
 
     return NextResponse.json({

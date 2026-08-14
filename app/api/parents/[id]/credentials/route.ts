@@ -8,6 +8,10 @@ async function tryDispatchWhatsApp(to: string, body: string) {
     if (!to || !body) return { success: false, error: 'بيانات غير كافية' };
 
     const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return { success: false, error: 'خدمة الواتساب معطلة في إعدادات المنصة' };
+    }
+
     if (settings?.waGatewayUrl && settings?.waApiToken) {
       const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',

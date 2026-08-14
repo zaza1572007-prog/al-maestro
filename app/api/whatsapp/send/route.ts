@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendWhatsAppMessage, initWhatsApp, getWhatsAppStatus } from '@/lib/whatsapp';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,11 +38,14 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
+    const settings = await prisma.systemSettings.findFirst();
     let status = getWhatsAppStatus();
-    if (!status.isConnected && status.status === 'DISCONNECTED') {
-      // Trigger initialization in background
-      initWhatsApp().catch((e) => console.error('Auto init WA error:', e.message));
-      status = getWhatsAppStatus();
+    if (settings?.enableWhatsApp !== false) {
+      if (!status.isConnected && status.status === 'DISCONNECTED') {
+        // Trigger initialization in background
+        initWhatsApp().catch((e) => console.error('Auto init WA error:', e.message));
+        status = getWhatsAppStatus();
+      }
     }
 
     return NextResponse.json({

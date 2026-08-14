@@ -63,6 +63,9 @@ async function tryDispatchWhatsApp(to: string, body: string) {
     if (!to || !body) return { success: false, error: 'البيانات غير كافية' };
 
     const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return { success: false, error: 'خدمة الواتساب معطلة في إعدادات المنصة' };
+    }
     
     // 1. Try HTTP gateway if configured
     if (settings?.waGatewayUrl && settings?.waApiToken) {
@@ -374,6 +377,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
     }
 
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings?.enableWhatsApp === false) {
+      return NextResponse.json({ success: false, error: 'خدمة الواتساب معطلة في إعدادات المنصة' }, { status: 400 });
+    }
+
     const body = await req.json();
     const { month, year, type, targetId, studentIds } = body;
 
@@ -407,8 +415,6 @@ export async function POST(req: NextRequest) {
         parent: true,
       },
     });
-
-    const settings = await prisma.systemSettings.findFirst();
 
     // Dispatch messages in parallel batches to avoid clogging the gateway while keeping it fast
     const dispatchTasks = students.map((student) => async () => {

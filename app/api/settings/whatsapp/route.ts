@@ -4,6 +4,11 @@ import { sendWhatsAppMessage as directSendWA } from '@/lib/whatsapp';
 
 // Utility: send a WhatsApp message via Baileys direct connection with HTTP gateway fallback
 export async function sendWhatsAppMessage(to: string, body: string) {
+  const settings = await prisma.systemSettings.findFirst();
+  if (settings && settings.enableWhatsApp === false) {
+    throw new Error('WhatsApp service is disabled in settings.');
+  }
+
   // 1. Try direct Baileys connection
   const directResult = await directSendWA(to, body);
   if (directResult.success) {
@@ -11,7 +16,6 @@ export async function sendWhatsAppMessage(to: string, body: string) {
   }
 
   // 2. Fallback to HTTP gateway if configured
-  const settings = await prisma.systemSettings.findFirst();
   if (settings?.waGatewayUrl && settings?.waApiToken) {
     try {
       const controller = new AbortController();

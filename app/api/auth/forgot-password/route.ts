@@ -62,6 +62,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'الدور المحدد غير صالح' }, { status: 400 });
     }
 
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings?.enableWhatsApp === false) {
+      return NextResponse.json({ success: false, error: 'خدمة الواتساب معطلة حالياً في الإعدادات. يرجى التواصل مع الإدارة لاستعادة كلمة المرور.' }, { status: 400 });
+    }
+
     // Dispatch WhatsApp message via direct Baileys connection or fallback HTTP gateway
     const sendResult = await sendWhatsAppMessage(targetPhone, messageText);
     if (!sendResult.success) {

@@ -15,6 +15,11 @@ async function tryDispatchWA(gatewayUrl: string | null | undefined, apiToken: st
   try {
     if (!to || !body) return false;
 
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return false;
+    }
+
     // 1. Gateway Priority
     if (gatewayUrl && apiToken) {
       try {
@@ -66,6 +71,10 @@ export async function POST(req: NextRequest) {
     const settings = await prisma.systemSettings.findFirst();
     if (!settings) {
       return NextResponse.json({ success: false, error: 'إعدادات النظام غير متوفرة' }, { status: 500 });
+    }
+
+    if (settings.enableWhatsApp === false) {
+      return NextResponse.json({ success: false, error: 'خدمة الواتساب معطلة في إعدادات النظام' }, { status: 400 });
     }
 
     // Egypt Date boundaries

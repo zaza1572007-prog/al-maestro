@@ -18,6 +18,10 @@ async function tryDispatchWA(to: string, body: string) {
 
     // 1. HTTP Gateway priority (Vercel)
     const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return;
+    }
+
     if (settings?.waGatewayUrl && settings?.waApiToken) {
       const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',

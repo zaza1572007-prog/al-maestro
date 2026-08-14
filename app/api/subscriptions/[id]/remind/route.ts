@@ -42,6 +42,9 @@ export async function POST(
 
     // 3. Construct WhatsApp reminder message
     const settings = await prisma.systemSettings.findFirst();
+    if (settings?.enableWhatsApp === false) {
+      return NextResponse.json({ success: false, error: 'خدمة الواتساب معطلة في إعدادات المنصة' }, { status: 400 });
+    }
     const tpl = settings?.waTplReminder || `👨‍👩‍👦 *تذكير بسداد الاشتراك - منصة المايسترو* 👨‍👩‍👦\n\nنود تذكيركم بعدم سداد اشتراك شهر [month]/[year] للطالب: *[student_name]*.\n\nالرجاء السداد في أقرب وقت. شاكرين تعاونكم المستمر 🌸\n*الأستاذ أحمد راضي كحلة*`;
 
     const msg = fillTemplate(tpl, {

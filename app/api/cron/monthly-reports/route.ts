@@ -158,6 +158,10 @@ function buildWhatsAppMessage(student: any, month: number, year: number, stats: 
 async function tryDispatchWhatsApp(to: string, body: string) {
   try {
     const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return { success: false, error: 'WhatsApp service is disabled in settings.' };
+    }
+
     if (settings?.waGatewayUrl && settings?.waApiToken) {
       const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',
@@ -185,6 +189,10 @@ async function runAutoSend(baseUrl: string, isManualTrigger = false) {
   const settings = await prisma.systemSettings.findFirst();
   if (!settings) {
     return { success: false, error: 'لم يتم العثور على إعدادات المنصة' };
+  }
+
+  if (settings.enableWhatsApp === false) {
+    return { success: false, error: 'خدمة الواتساب معطلة في إعدادات المنصة' };
   }
 
   // If not manual, verify configurations are enabled
@@ -283,6 +291,10 @@ export async function GET(req: NextRequest) {
     const settings = await prisma.systemSettings.findFirst();
     if (!settings) {
       return NextResponse.json({ success: false, error: 'Settings not found' }, { status: 404 });
+    }
+
+    if (settings.enableWhatsApp === false) {
+      return NextResponse.json({ success: true, message: 'Automatic reports sending skipped because WhatsApp is disabled globally' });
     }
 
     if (!settings.autoSendEnabled || settings.sendMode !== 'AUTOMATIC') {

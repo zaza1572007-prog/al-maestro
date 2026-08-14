@@ -10,6 +10,7 @@ import pino from 'pino';
 import path from 'path';
 import fs from 'fs';
 import { Boom } from '@hapi/boom';
+import { prisma } from './prisma';
 
 // Global singleton to prevent multiple socket instances across Next.js reloads
 declare global {
@@ -45,6 +46,11 @@ export function formatWhatsAppNumber(phone: string): string {
 }
 
 export async function initWhatsApp(forceNew = false): Promise<WASocket> {
+  const settings = await prisma.systemSettings.findFirst();
+  if (settings && settings.enableWhatsApp === false) {
+    throw new Error('WhatsApp service is disabled in settings.');
+  }
+
   if (global.__waSocket && global.__waConnectionStatus === 'CONNECTED' && !forceNew) {
     return global.__waSocket;
   }
@@ -143,6 +149,11 @@ export async function sendWhatsAppMessage(
   message: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    const settings = await prisma.systemSettings.findFirst();
+    if (settings && settings.enableWhatsApp === false) {
+      return { success: false, error: 'WhatsApp service is disabled in settings.' };
+    }
+
     if (!phone || !message) {
       return { success: false, error: 'Phone and message are required' };
     }

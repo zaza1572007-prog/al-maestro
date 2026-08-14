@@ -17,6 +17,8 @@ export async function GET() {
         welcomeMessage: true,
         loginBackground: true,
         enableDarkMode: true,
+        enableWhatsApp: true,
+        autoSendCredentials: true,
         portraitBase64: true,
         logoBase64: true,
         contactPhone: true,
