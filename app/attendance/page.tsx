@@ -206,10 +206,12 @@ export default function AttendancePage() {
   }, []);
 
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (groupId?: string) => {
     setLoadingHistory(true);
     try {
-      const attRes = await fetch('/api/attendance');
+      const activeGroup = groupId !== undefined ? groupId : historyGroup;
+      const url = activeGroup ? `/api/attendance?groupId=${activeGroup}` : '/api/attendance';
+      const attRes = await fetch(url);
       const attData = await attRes.json();
       if (attData.success) setRecentAttendances(attData.attendances || []);
     } catch (err) {
@@ -290,9 +292,12 @@ export default function AttendancePage() {
   };
 
   useEffect(() => {
-    fetchHistory();
     fetchTodayGroups();
   }, []);
+
+  useEffect(() => {
+    fetchHistory(historyGroup);
+  }, [historyGroup]);
 
   const handleScan = async (e?: React.FormEvent, bypassFlags?: { forceDuplicate?: boolean; forceDifferentGroup?: boolean; targetCode?: string }) => {
     if (e) e.preventDefault();
@@ -374,7 +379,7 @@ export default function AttendancePage() {
           >
             🖨️ طباعة كشف اليوم
           </button>
-          <button onClick={fetchHistory} className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
+          <button onClick={() => fetchHistory()} className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>

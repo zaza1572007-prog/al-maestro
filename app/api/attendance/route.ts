@@ -8,7 +8,18 @@ export async function GET(req: Request) {
   try {
     const staff = await verifyStaff(req);
     if (!staff) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const groupId = searchParams.get('groupId');
+
+    const whereClause = groupId ? {
+      session: {
+        groupId: groupId
+      }
+    } : {};
+
     const attendances = await prisma.attendance.findMany({
+      where: whereClause,
       include: {
         student: { select: { id: true, name: true, code: true } },
         session: {
