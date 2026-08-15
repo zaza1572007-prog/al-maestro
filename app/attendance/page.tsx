@@ -7,7 +7,7 @@ import { useToast } from '@/components/ToastProvider';
 interface AttendanceRecord {
   id: string;
   student: { name: string; code: string };
-  session: { title: string; group: { name: string } };
+  session: { title: string; group: { id: string; name: string } };
   status: string;
   checkInTime?: string;
   notes?: string;
@@ -57,6 +57,7 @@ export default function AttendancePage() {
   // Tab control in right panel: 'history' or 'absentees'
   const [rightPanelTab, setRightPanelTab] = useState<'history' | 'absentees'>('history');
   const [absenteesGroup, setAbsenteesGroup] = useState<string>('');
+  const [historyGroup, setHistoryGroup] = useState<string>('');
   const [absentees, setAbsentees] = useState<any[]>([]);
   const [loadingAbsentees, setLoadingAbsentees] = useState(false);
   const [bulkSending, setBulkSending] = useState(false);
@@ -354,6 +355,10 @@ export default function AttendancePage() {
     return d === todayStr;
   });
   const presentCount = todayAttendances.filter((a) => a.status === 'PRESENT').length;
+
+  const filteredAttendances = historyGroup
+    ? recentAttendances.filter((att) => att.session?.group?.id === historyGroup)
+    : recentAttendances;
 
   return (
     <div className="space-y-6">
@@ -664,13 +669,30 @@ export default function AttendancePage() {
 
           {/* Tab Content 1: History */}
           {rightPanelTab === 'history' && (
-            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
+            <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
               <h2 className="font-bold text-white text-sm">آخر سجلات الحضور</h2>
+              
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-400">اختر المجموعة لعرض الحضور:</label>
+                <select
+                  value={historyGroup}
+                  onChange={(e) => setHistoryGroup(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs font-bold focus:border-purple-500 focus:outline-none"
+                >
+                  <option value="">-- كل المجموعات --</option>
+                  {todayGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {loadingHistory ? (
                 <p className="text-slate-400 text-sm text-center py-4">جارٍ التحميل...</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {recentAttendances.slice(0, 20).map((att) => (
+                  {filteredAttendances.slice(0, 20).map((att) => (
                     <div key={att.id} className="flex items-center justify-between text-xs p-2.5 bg-slate-950/60 rounded-xl">
                       <div>
                         <p className="font-semibold text-white">{att.student?.name}</p>
@@ -688,7 +710,7 @@ export default function AttendancePage() {
                       </div>
                     </div>
                   ))}
-                  {recentAttendances.length === 0 && (
+                  {filteredAttendances.length === 0 && (
                     <p className="text-slate-500 text-center py-4">لا توجد سجلات حضور</p>
                   )}
                 </div>
