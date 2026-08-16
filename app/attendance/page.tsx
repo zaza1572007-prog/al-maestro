@@ -863,7 +863,7 @@ export default function AttendancePage() {
 
       {/* Warning confirmation Modal */}
       {warningData && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-amber-500/30 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
             <div className="text-center">
               <div className="w-14 h-14 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -1053,7 +1053,7 @@ export default function AttendancePage() {
 
       {/* Selected Group Sheet Modal */}
       {selectedGroupSheet && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[95] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">

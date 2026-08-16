@@ -43,7 +43,7 @@ export default function RootLayout({
             <Sidebar />
             {/* Global Command Palette - available on all pages */}
             <CommandPalette />
-            <div className="flex-1 flex flex-col min-w-0 min-h-screen relative z-10">
+            <div className="flex-1 flex flex-col min-w-0 min-h-screen">
               <Navbar />
               <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
                 <PageTransition>
