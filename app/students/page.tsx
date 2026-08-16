@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { ShieldCheck } from 'lucide-react';
+import EmptyState from '@/components/EmptyState';
 
 interface Student {
   id: string;
@@ -354,10 +356,22 @@ function StudentsContent() {
               )}
               {!loading && filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-500 bg-slate-900/40 border border-slate-800">
-                    {searchQuery.trim()
-                      ? `لا توجد نتائج مطابقة للبحث عن "${searchQuery}"`
-                      : 'لا يوجد طلاب مسجلون حالياً في قاعدة البيانات.'}
+                  <td colSpan={7} className="p-4">
+                    <EmptyState
+                      variant={searchQuery.trim() ? 'search' : 'students'}
+                      title={
+                        searchQuery.trim()
+                          ? `لا توجد نتائج لمطابقة "${searchQuery}"`
+                          : 'لا يوجد طلاب مسجلون حالياً'
+                      }
+                      description={
+                        searchQuery.trim()
+                          ? 'تأكد من كتابة الكود، اسم الطالب، أو رقم الهاتف بشكل صحيح.'
+                          : 'ابدأ بإضافة الطالب الأول أو استيراد الطلاب للبدء في إدارة المجموعات.'
+                      }
+                      actionLabel={!searchQuery.trim() ? 'إضافة طالب جديد' : undefined}
+                      onAction={!searchQuery.trim() ? () => setIsAddingStudent(true) : undefined}
+                    />
                   </td>
                 </tr>
               )}
