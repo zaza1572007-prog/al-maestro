@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ToastProvider";
 import { SidebarProvider } from "@/components/SidebarContext";
 import TeacherOverlay from "@/components/TeacherOverlay";
 import ThemeProvider from "@/components/ThemeProvider";
+import PageTransition from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "منصة المايسترو - الأستاذ أحمد راضي كحلة",
@@ -23,6 +24,11 @@ export default function RootLayout({
       dir="rtl"
       className="h-full antialiased dark"
     >
+      <head>
+        {/* Cairo font preconnect for performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className="min-h-screen bg-slate-950 text-slate-100 flex flex-row font-sans">
         {/* نظام الثيم الديناميكي */}
         <ThemeProvider />
@@ -36,7 +42,11 @@ export default function RootLayout({
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0 min-h-screen relative z-10">
               <Navbar />
-              <main className="flex-1 p-4 sm:p-6 overflow-y-auto">{children}</main>
+              <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+                <PageTransition>
+                  {children}
+                </PageTransition>
+              </main>
             </div>
           </SidebarProvider>
         </ToastProvider>
@@ -44,6 +54,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-
-

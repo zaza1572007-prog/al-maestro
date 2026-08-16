@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import {
   Search,
   Bell,
@@ -13,7 +14,8 @@ import {
   LogOut,
   Sparkles,
   ChevronDown,
-  Menu
+  Menu,
+  Clock
 } from 'lucide-react';
 import { useSidebar } from '@/components/SidebarContext';
 
@@ -163,20 +165,44 @@ export default function Navbar() {
     }
   };
 
+  const [currentTime, setCurrentTime] = useState('');
+  useEffect(() => {
+    const update = () => {
+      setCurrentTime(
+        new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true })
+      );
+    };
+    update();
+    const t = setInterval(update, 30000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
-    <header className="h-20 border-b border-white/10 glass-panel bg-slate-950/60 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 no-print">
-      {/* Right side: Hamburger menu + Search */}
+    <header
+      className="h-16 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 no-print"
+      style={{
+        background: 'rgba(6,9,19,0.85)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        boxShadow: '0 1px 30px rgba(0,0,0,0.4)',
+      }}
+    >
+      {/* Right side: Hamburger + Search */}
       <div className="flex items-center gap-3">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={toggleMobileOpen}
-          className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 lg:hidden transition-colors"
+          className="p-2 rounded-xl border text-slate-300 hover:text-white transition-all lg:hidden cursor-pointer"
+          style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}
           title="القائمة"
         >
           <Menu className="w-5 h-5" />
-        </button>
+        </motion.button>
 
         {/* Search Input */}
-        <div className="relative w-full max-w-[160px] sm:max-w-xs md:w-96 hidden sm:block">
+        <div className="relative w-full max-w-[150px] sm:max-w-xs md:w-80 hidden sm:block">
           <div className="relative">
             <input
               type="text"
@@ -185,15 +211,15 @@ export default function Navbar() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}
               onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
-              className="w-full glass-input py-2.5 px-4 pr-11 pl-16 text-sm text-slate-100 placeholder-slate-400 focus:outline-none"
+              className="w-full glass-input py-2 px-4 pr-10 pl-16 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
-            <Search className="w-5 h-5 absolute right-3.5 top-3 text-slate-400" />
+            <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-500" />
             <span 
-              className="absolute left-3 top-2.5 text-[10px] font-mono px-2 py-1 rounded-lg border"
+              className="absolute left-3 top-2 text-[10px] font-mono px-2 py-0.5 rounded-lg border"
               style={{
-                backgroundColor: 'rgb(var(--p) / 0.1)',
+                backgroundColor: 'rgb(var(--p) / 0.08)',
                 borderColor: 'rgb(var(--p) / 0.2)',
-                color: 'rgb(var(--p))'
+                color: 'rgb(var(--p) / 0.8)'
               }}
             >
               Ctrl+K
@@ -240,8 +266,22 @@ export default function Navbar() {
       </div>
 
 
-      {/* Action Icons & Profile */}
-      <div className="flex items-center gap-4">
+      {/* Action Icons & Time */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Live clock */}
+        {currentTime && (
+          <div
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              color: 'rgb(var(--p))',
+            }}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>{currentTime}</span>
+          </div>
+        )}
         {/* Notification Bell */}
         <div 
           className="relative"
@@ -252,21 +292,23 @@ export default function Navbar() {
           }}
           onMouseLeave={() => setShowNotifications(false)}
         >
-          <button
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-            }}
-            className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 transition-all relative group"
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2.5 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer"
             style={{
-              borderColor: showNotifications ? 'rgb(var(--p) / 0.4)' : undefined
+              background: showNotifications ? 'rgb(var(--p) / 0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${showNotifications ? 'rgb(var(--p) / 0.35)' : 'rgba(255,255,255,0.08)'}`,
+              boxShadow: showNotifications ? `0 0 16px rgb(var(--p) / 0.2)` : 'none',
             }}
             title="التنبيهات"
           >
-            <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <Bell className="w-4.5 h-4.5" />
             {notificationsList.some((n) => n.unread) && (
-              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-slate-950 animate-ping" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-slate-950 animate-pulse" />
             )}
-          </button>
+          </motion.button>
 
           <AnimatePresence>
             {showNotifications && (
@@ -334,15 +376,20 @@ export default function Navbar() {
           }}
           onMouseLeave={() => setShowCalendarQuick(false)}
         >
-          <button
-            onClick={() => {
-              setShowCalendarQuick(!showCalendarQuick);
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
+            onClick={() => setShowCalendarQuick(!showCalendarQuick)}
+            className="p-2.5 rounded-xl text-slate-400 hover:text-white transition-all cursor-pointer"
+            style={{
+              background: showCalendarQuick ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${showCalendarQuick ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.08)'}`,
+              boxShadow: showCalendarQuick ? '0 0 16px rgba(59,130,246,0.2)' : 'none',
             }}
-            className="p-3 text-slate-300 hover:text-white rounded-2xl glass-panel border border-white/10 hover:border-blue-500/40 transition-all group"
             title="جدول الحصص السريع"
           >
-            <Calendar className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+            <Calendar className="w-4.5 h-4.5" />
+          </motion.button>
 
           <AnimatePresence>
             {showCalendarQuick && (
