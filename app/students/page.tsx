@@ -389,7 +389,7 @@ function StudentsContent() {
 
       {/* Edit Student Modal */}
       {editingStudent && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-white">✏️ تعديل بيانات الطالب: {editingStudent.name}</h3>
@@ -481,7 +481,7 @@ function StudentsContent() {
 
       {/* Add Student Modal */}
       {isAddingStudent && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-white">➕ إضافة طالب جديد لقاعدة البيانات</h3>
@@ -624,7 +624,7 @@ function StudentsContent() {
 
       {/* Credentials Manager Modal */}
       {credentialsStudent && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-purple-500/10 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -809,7 +809,7 @@ function StudentsContent() {
 
       {/* New Student Credentials Reveal Modal */}
       {newStudentCredentials && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-7 w-full max-w-md shadow-2xl shadow-emerald-500/10 space-y-6">
             <div className="text-center">
               <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -873,7 +873,7 @@ function StudentsContent() {
 
       {/* Delete Confirmation Modal */}
       {studentToDelete && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
             <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
               <span className="text-3xl">⚠️</span>
