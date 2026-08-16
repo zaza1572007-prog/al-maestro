@@ -33,7 +33,8 @@ import {
   Layers,
   FileText,
   UserPlus,
-  User
+  User,
+  ClipboardList
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -158,6 +159,7 @@ export default function Sidebar() {
     { label: 'المجموعات التعليمية', path: '/groups', icon: Users },
     { label: 'قائمة الطلاب', path: '/students', icon: GraduationCap },
     { label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode },
+    { label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList },
     { label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck },
     { label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet },
     { label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard },
