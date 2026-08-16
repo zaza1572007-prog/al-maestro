@@ -4,10 +4,14 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import StatusIndicator from '@/components/StatusIndicator';
+import SplitView from '@/components/SplitView';
+import ResizableTable from '@/components/ResizableTable';
+import CollapsibleSection from '@/components/CollapsibleSection';
+
 
 
 interface Student {
@@ -248,13 +252,25 @@ function StudentsContent() {
     return matchesGroup && matchesStage && matchesSearch;
   });
 
+  const [selectedDetailStudent, setSelectedDetailStudent] = useState<Student | null>(null);
+
+  const columns = [
+    { key: 'code', label: 'الكود', defaultWidth: 90, align: 'right' as const },
+    { key: 'qrCode', label: 'الباركود', defaultWidth: 110, align: 'right' as const },
+    { key: 'name', label: 'اسم الطالب', defaultWidth: 180, align: 'right' as const },
+    { key: 'stage', label: 'المرحلة والمجموعة', defaultWidth: 150, align: 'right' as const },
+    { key: 'parent', label: 'ولي الأمر والتواصل', defaultWidth: 160, align: 'right' as const },
+    { key: 'status', label: 'حالة الاشتراك', defaultWidth: 110, align: 'right' as const },
+    { key: 'actions', label: 'الإجراءات والخيارات', defaultWidth: 200, align: 'center' as const },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">👨‍🎓 إدارة قائمة الطلاب (Students List)</h1>
+          <h1 className="text-2xl font-bold text-white gradient-heading">👨‍🎓 إدارة قائمة الطلاب (Students List)</h1>
           <p className="text-slate-400 text-sm mt-1">
-            {groupIdFilter ? `عرض طلاب المجموعة المحددة` : 'عرض جدول الطلاب والإجراءات السريعة (Quick Actions)'}
+            {groupIdFilter ? `عرض طلاب المجموعة المحددة` : 'عرض جدول الطلاب والإجراءات السريعة والعرض المجانب'}
           </p>
         </div>
         <button
@@ -271,121 +287,159 @@ function StudentsContent() {
         </button>
       </div>
 
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <CollapsibleSection
+        title="تصفية وجدول الطلاب"
+        subtitle={`إجمالي نتائج الاستعلام: ${filteredStudents.length} طالب`}
+        storageKey="students_table_section"
+        badge={filteredStudents.length}
+      >
+        <div className="mb-4">
           <input
             type="text"
-            placeholder="البحث بالاسم، الكود، رقم الهاتف، أو رقم ولي الأمر..."
+            placeholder="البحث بالاسم، الكود، رقم الهاتف، أو رقم ولي الأمر... (اضغط على أي طالب للمعاينة المباشرة)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full max-w-md bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
           />
-          <span className="text-xs text-slate-400">إجمالي نتائج الاستعلام: {filteredStudents.length} طالب</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
-            <thead className="bg-slate-950/80 text-slate-400 text-xs font-semibold border-b border-slate-800">
-              <tr>
-                <th className="p-3.5">الكود</th>
-                <th className="p-3.5">الباركود (Barcode)</th>
-                <th className="p-3.5">اسم الطالب</th>
-                <th className="p-3.5">المرحلة والمجموعة</th>
-                <th className="p-3.5">ولي الأمر ورقم التواصل</th>
-                <th className="p-3.5">حالة الاشتراك</th>
-                <th className="p-3.5 text-center">الإجراءات وحذف الطالب</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">جارٍ تحميل قائمة الطلاب من قاعدة البيانات الحقيقية...</td>
-                </tr>
-              ) : (
-                filteredStudents.map((stu) => (
-                  <tr key={stu.id} className="hover:bg-slate-800/40 transition">
-                    <td className="p-3.5 font-mono text-blue-400 font-bold">{stu.code}</td>
-                    <td className="p-3.5 font-mono text-purple-400 font-semibold">{stu.qrCode}</td>
-                    <td className="p-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar name={stu.name} size="sm" />
-                        <div>
-                          <p className="font-bold text-white leading-tight">{stu.name}</p>
-                          {stu.phone && <p className="text-[11px] text-slate-400 font-mono">{stu.phone}</p>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3.5">
-                      <p className="text-slate-200">{stu.stage}</p>
-                      <p className="text-xs text-slate-400">{stu.group}</p>
-                    </td>
-                    <td className="p-3.5">
-                      <p className="text-slate-200">{stu.parentName}</p>
-                      <p className="text-xs text-slate-400 font-mono">{stu.parentPhone}</p>
-                    </td>
-                    <td className="p-3.5">
-                      <StatusIndicator
-                        status={stu.subStatus === 'ACTIVE' ? 'active' : 'pending'}
-                        label={stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
-                        size="sm"
-                      />
-                    </td>
-                    <td className="p-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                        <button
-                          onClick={() => handleEditClick(stu)}
-                          className="px-2.5 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                        >
-                          ✏️ تعديل
-                        </button>
-                        <button
-                          onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
-                          className="px-2.5 py-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                        >
-                          🔑 الاعتماديات
-                        </button>
-                        <button
-                          onClick={() => setStudentToDelete({id: stu.id, name: stu.name})}
-                          className="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                        >
-                          🗑️ حذف
-                        </button>
-                        <Link
-                          href={`/students/${stu.id}`}
-                          className="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition"
-                        >
-                          الملف الشامل
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-              {!loading && filteredStudents.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-4">
-                    <EmptyState
-                      variant={searchQuery.trim() ? 'search' : 'students'}
-                      title={
-                        searchQuery.trim()
-                          ? `لا توجد نتائج لمطابقة "${searchQuery}"`
-                          : 'لا يوجد طلاب مسجلون حالياً'
-                      }
-                      description={
-                        searchQuery.trim()
-                          ? 'تأكد من كتابة الكود، اسم الطالب، أو رقم الهاتف بشكل صحيح.'
-                          : 'ابدأ بإضافة الطالب الأول أو استيراد الطلاب للبدء في إدارة المجموعات.'
-                      }
-                      actionLabel={!searchQuery.trim() ? 'إضافة طالب جديد' : undefined}
-                      onAction={!searchQuery.trim() ? () => setIsAddingStudent(true) : undefined}
-                    />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <SplitView
+          isOpen={!!selectedDetailStudent}
+          onClose={() => setSelectedDetailStudent(null)}
+          title={`معاينة: ${selectedDetailStudent?.name || ''}`}
+          master={
+            <ResizableTable
+              columns={columns}
+              data={filteredStudents}
+              storageKey="students_table"
+              rowKey={(stu) => stu.id}
+              selectedRowKey={selectedDetailStudent?.id}
+              onRowClick={(stu) => setSelectedDetailStudent(stu)}
+              emptyState={
+                <EmptyState
+                  variant={searchQuery.trim() ? 'search' : 'students'}
+                  title={searchQuery.trim() ? `لا توجد نتائج لـ "${searchQuery}"` : 'لا يوجد طلاب مسجلون حالياً'}
+                  description="تأكد من البحث بشكل صحيح أو أضف طالباً جديداً."
+                  actionLabel={!searchQuery.trim() ? 'إضافة طالب جديد' : undefined}
+                  onAction={!searchQuery.trim() ? () => setIsAddingStudent(true) : undefined}
+                />
+              }
+              renderCell={(stu, colKey) => {
+                if (colKey === 'code') return <span className="font-mono text-blue-400 font-bold">{stu.code}</span>;
+                if (colKey === 'qrCode') return <span className="font-mono text-purple-400 font-semibold">{stu.qrCode}</span>;
+                if (colKey === 'name') return (
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={stu.name} size="sm" />
+                    <div>
+                      <p className="font-bold text-white leading-tight">{stu.name}</p>
+                      {stu.phone && <p className="text-[11px] text-slate-400 font-mono">{stu.phone}</p>}
+                    </div>
+                  </div>
+                );
+                if (colKey === 'stage') return (
+                  <div>
+                    <p className="text-slate-200">{stu.stage}</p>
+                    <p className="text-xs text-slate-400">{stu.group}</p>
+                  </div>
+                );
+                if (colKey === 'parent') return (
+                  <div>
+                    <p className="text-slate-200">{stu.parentName}</p>
+                    <p className="text-xs text-slate-400 font-mono">{stu.parentPhone}</p>
+                  </div>
+                );
+                if (colKey === 'status') return (
+                  <StatusIndicator
+                    status={stu.subStatus === 'ACTIVE' ? 'active' : 'pending'}
+                    label={stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
+                    size="sm"
+                  />
+                );
+                if (colKey === 'actions') return (
+                  <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleEditClick(stu)}
+                      className="px-2 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                      ✏️ تعديل
+                    </button>
+                    <button
+                      onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
+                      className="px-2 py-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                      🔑 الاعتماديات
+                    </button>
+                    <button
+                      onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
+                      className="px-2 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    >
+                      🗑️ حذف
+                    </button>
+                    <Link
+                      href={`/students/${stu.id}`}
+                      className="px-2 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                    >
+                      الملف
+                    </Link>
+                  </div>
+                );
+                return null;
+              }}
+            />
+          }
+          detail={
+            selectedDetailStudent ? (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-900 border border-white/5">
+                  <Avatar name={selectedDetailStudent.name} size="lg" />
+                  <div>
+                    <h4 className="font-bold text-white text-base">{selectedDetailStudent.name}</h4>
+                    <p className="text-xs text-purple-400 font-mono">كود: {selectedDetailStudent.code} · QR: {selectedDetailStudent.qrCode}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
+                    <p className="text-slate-500 font-semibold mb-1">المرحلة الدراسية</p>
+                    <p className="font-bold text-slate-200">{selectedDetailStudent.stage || 'غير محددة'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
+                    <p className="text-slate-500 font-semibold mb-1">المجموعة</p>
+                    <p className="font-bold text-slate-200">{selectedDetailStudent.group || 'غير محددة'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
+                    <p className="text-slate-500 font-semibold mb-1">هاتف الطالب</p>
+                    <p className="font-mono text-blue-400 font-bold">{selectedDetailStudent.phone || 'غير مسجل'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
+                    <p className="text-slate-500 font-semibold mb-1">هاتف ولي الأمر</p>
+                    <p className="font-mono text-emerald-400 font-bold">{selectedDetailStudent.parentPhone}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2 text-xs">
+                  <p className="font-bold text-purple-300">👨‍👩‍👦 بيانات ولي الأمر</p>
+                  <p className="text-slate-300">الاسم: <strong>{selectedDetailStudent.parentName}</strong></p>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+                  <Link href={`/students/${selectedDetailStudent.id}`}>
+                    <button className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+                      فتح الملف الشامل والتقارير كاملة ←
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => handleEditClick(selectedDetailStudent)}
+                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
+                  >
+                    ✏️ تعديل بيانات الطالب
+                  </button>
+                </div>
+              </div>
+            ) : null
+          }
+        />
+      </CollapsibleSection>
 
       {/* Edit Student Modal */}
       {editingStudent && (
