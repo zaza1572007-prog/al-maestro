@@ -6,7 +6,7 @@ import {
   ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, 
   Loader2, Palette, RefreshCw, Layout, Maximize2, Sparkles, 
   Laptop, Tablet, Smartphone, Sliders, ZoomIn, Move, Eye, EyeOff, RotateCcw,
-  Trash2, Lock, Unlock, Search, AlertTriangle
+  Trash2, Lock, Unlock, Search, AlertTriangle, CalendarClock
 } from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
@@ -47,6 +47,25 @@ export default function SettingsPage() {
   const [cleanupAttendancePassword, setCleanupAttendancePassword] = useState('');
   const [cleanupStatus, setCleanupStatus] = useState<{ type: string; success: boolean; message: string } | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  // Vacation States
+  const [vacationScope, setVacationScope] = useState<'all' | 'stage' | 'group' | 'student'>('all');
+  const [vacationStageId, setVacationStageId] = useState('');
+  const [vacationGroupId, setVacationGroupId] = useState('');
+  const [vacationStudentSearch, setVacationStudentSearch] = useState('');
+  const [vacationStudentList, setVacationStudentList] = useState<any[]>([]);
+  const [vacationSelectedStudent, setVacationSelectedStudent] = useState<any | null>(null);
+  const [vacationSearchLoading, setVacationSearchLoading] = useState(false);
+  const [vacationDate, setVacationDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [vacationPassword, setVacationPassword] = useState('');
+  const [vacationStatus, setVacationStatus] = useState<{ type: string; success: boolean; message: string } | null>(null);
+  const [vacationLoading, setVacationLoading] = useState(false);
 
   // WhatsApp Gateway settings
   const [waGatewayUrl, setWaGatewayUrl] = useState('');
@@ -330,6 +349,7 @@ export default function SettingsPage() {
           if (stagesData.stages.length > 0) {
             setCleanupStageId(stagesData.stages[0].id);
             setCleanupAttendanceStageId(stagesData.stages[0].id);
+            setVacationStageId(stagesData.stages[0].id);
           }
         }
 
@@ -340,6 +360,7 @@ export default function SettingsPage() {
           if (groupsData.groups.length > 0) {
             setCleanupGroupId(groupsData.groups[0].id);
             setCleanupAttendanceGroupId(groupsData.groups[0].id);
+            setVacationGroupId(groupsData.groups[0].id);
           }
         }
       } catch (err) {
@@ -399,6 +420,98 @@ export default function SettingsPage() {
 
     return () => clearTimeout(timer);
   }, [cleanupAttendanceStudentSearch, cleanupAttendanceScope]);
+
+  // Handle student live search for vacation
+  useEffect(() => {
+    if (vacationScope !== 'student' || !vacationStudentSearch.trim()) {
+      setVacationStudentList([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setVacationSearchLoading(true);
+      try {
+        const res = await fetch(`/api/students?search=${encodeURIComponent(vacationStudentSearch)}`);
+        const data = await res.json();
+        if (data.students) {
+          setVacationStudentList(data.students);
+        }
+      } catch (err) {
+        console.error('Error searching students for vacation:', err);
+      } finally {
+        setVacationSearchLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [vacationStudentSearch, vacationScope]);
+
+  const handleVacationAction = async (action: 'register' | 'cancel') => {
+    if (vacationPassword !== '147369258') {
+      setVacationStatus({ type: 'vacation', success: false, message: 'كلمة المرور غير صحيحة' });
+      return;
+    }
+
+    const scopeNames = {
+      all: 'جميع الطلاب',
+      stage: 'المرحلة المحددة',
+      group: 'المجموعة المحددة',
+      student: vacationSelectedStudent ? `الطالب: ${vacationSelectedStudent.name}` : 'الطالب المحدد',
+    };
+    
+    if (vacationScope === 'stage' && !vacationStageId) {
+      setVacationStatus({ type: 'vacation', success: false, message: 'يرجى اختيار المرحلة الدراسية أولاً' });
+      return;
+    }
+    if (vacationScope === 'group' && !vacationGroupId) {
+      setVacationStatus({ type: 'vacation', success: false, message: 'يرجى اختيار المجموعة الدراسية أولاً' });
+      return;
+    }
+    if (vacationScope === 'student' && !vacationSelectedStudent) {
+      setVacationStatus({ type: 'vacation', success: false, message: 'يرجى البحث واختيار الطالب أولاً' });
+      return;
+    }
+
+    const confirmMsg = action === 'register' 
+      ? `⚠️ هل أنت متأكد من تسجيل يوم ${vacationDate} كإجازة لـ (${scopeNames[vacationScope]})؟`
+      : `⚠️ هل أنت متأكد من إلغاء إجازة يوم ${vacationDate} لـ (${scopeNames[vacationScope]})؟`;
+
+    const confirm = window.confirm(confirmMsg);
+    if (!confirm) return;
+
+    setVacationLoading(true);
+    setVacationStatus(null);
+    try {
+      const res = await fetch('/api/settings/vacation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          password: vacationPassword,
+          scope: vacationScope,
+          stageId: vacationStageId,
+          groupId: vacationGroupId,
+          studentId: vacationSelectedStudent?.id,
+          date: vacationDate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVacationStatus({ type: 'vacation', success: true, message: data.message });
+        setVacationPassword('');
+        if (vacationScope === 'student') {
+          setVacationSelectedStudent(null);
+          setVacationStudentSearch('');
+        }
+      } else {
+        setVacationStatus({ type: 'vacation', success: false, message: data.error || 'حدث خطأ أثناء تنفيذ الإجراء' });
+      }
+    } catch {
+      setVacationStatus({ type: 'vacation', success: false, message: 'خطأ في الاتصال بالخادم' });
+    } finally {
+      setVacationLoading(false);
+    }
+  };
 
   const handleCleanAbsences = async () => {
     if (cleanupAbsencePassword !== '147369258') {
@@ -2540,6 +2653,245 @@ export default function SettingsPage() {
               {cleanupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : cleanupBookingPassword === '147369258' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
               <span>حذف جميع طلبات الحجز 🗑️</span>
             </button>
+          </div>
+
+          {/* Section 4: Vacation Settings */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-indigo-500/20 bg-indigo-950/5 flex flex-col justify-between h-full space-y-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-indigo-400">
+                  <CalendarClock className="w-6 h-6" />
+                  <h3 className="font-bold text-lg text-white">تسجيل وإلغاء الإجازات</h3>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-white/5 text-[10px] font-bold text-slate-400">
+                  {vacationPassword === '147369258' ? (
+                    <>
+                      <Unlock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">مفتوح</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-red-400" />
+                      <span>مغلق</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                يمكنك تسجيل يوم إجازة للطلاب بناءً على نطاق محدد وتاريخ معين. سيتم احتساب هذا اليوم كإجازة في كشوفات البحث، سجل الطالب، والتقارير الشهرية. يمكنك أيضاً إلغاء الإجازة لنفس النطاق والتاريخ.
+              </p>
+
+              <div className="space-y-4">
+                {/* Date Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">تاريخ الإجازة:</label>
+                  <input
+                    type="date"
+                    value={vacationDate}
+                    onChange={(e) => {
+                      setVacationDate(e.target.value);
+                      setVacationStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm text-white bg-slate-950 border-white/10"
+                  />
+                </div>
+
+                {/* Scope Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">نطاق الإجازة:</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'all', label: '👥 الكل' },
+                      { id: 'stage', label: '🎓 المرحلة' },
+                      { id: 'group', label: '📚 المجموعة' },
+                      { id: 'student', label: '👤 طالب واحد' },
+                    ].map((scope) => (
+                      <button
+                        key={scope.id}
+                        type="button"
+                        onClick={() => {
+                          setVacationScope(scope.id as any);
+                          setVacationStatus(null);
+                        }}
+                        className={`py-2 px-3 rounded-xl border text-center text-xs font-bold transition-all ${
+                          vacationScope === scope.id
+                            ? 'border-indigo-500 bg-indigo-500/20 text-white shadow-lg shadow-indigo-500/10'
+                            : 'border-white/5 bg-slate-950/40 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {scope.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Scope Specific Inputs */}
+                {vacationScope === 'stage' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المرحلة الدراسية:</label>
+                    <select
+                      value={vacationStageId}
+                      onChange={(e) => setVacationStageId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {stagesList.length === 0 ? (
+                        <option value="">لا توجد مراحل مضافة</option>
+                      ) : (
+                        stagesList.map((stage) => (
+                          <option key={stage.id} value={stage.id} className="bg-slate-950">
+                            {stage.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {vacationScope === 'group' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-300">اختر المجموعة:</label>
+                    <select
+                      value={vacationGroupId}
+                      onChange={(e) => setVacationGroupId(e.target.value)}
+                      className="w-full glass-input p-3 text-sm bg-slate-950 text-white border-white/10"
+                    >
+                      {groupsList.length === 0 ? (
+                        <option value="">لا توجد مجموعات مضافة</option>
+                      ) : (
+                        groupsList.map((group) => (
+                          <option key={group.id} value={group.id} className="bg-slate-950">
+                            {group.name} ({group.academicStage?.name})
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {vacationScope === 'student' && (
+                  <div className="space-y-2 animate-fadeIn relative">
+                    <label className="block text-xs font-semibold text-slate-300">ابحث عن الطالب وحدده:</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="اكتب اسم الطالب للبحث..."
+                        value={vacationStudentSearch}
+                        onChange={(e) => {
+                          setVacationStudentSearch(e.target.value);
+                          if (vacationSelectedStudent) setVacationSelectedStudent(null);
+                        }}
+                        className="w-full glass-input pr-10 pl-3 py-3 text-sm"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+                    </div>
+
+                    {/* Selected Student Display */}
+                    {vacationSelectedStudent && (
+                      <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300">
+                        <span>الطالب المحدد: <strong>{vacationSelectedStudent.name}</strong> ({vacationSelectedStudent.group?.name || 'بدون مجموعة'})</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVacationSelectedStudent(null);
+                            setVacationStudentSearch('');
+                          }}
+                          className="text-red-400 hover:text-red-300 font-bold"
+                        >
+                          إلغاء ❌
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Search Results Dropdown */}
+                    {!vacationSelectedStudent && vacationStudentSearch.trim() && (
+                      <div className="absolute z-10 w-full mt-1 bg-slate-950/95 border border-white/10 rounded-2xl max-h-60 overflow-y-auto shadow-2xl backdrop-blur-xl">
+                        {vacationSearchLoading ? (
+                          <div className="p-4 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            جاري البحث...
+                          </div>
+                        ) : vacationStudentList.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-slate-500">لم يتم العثور على نتائج</div>
+                        ) : (
+                          vacationStudentList.map((stu) => (
+                            <div
+                              key={stu.id}
+                              onClick={() => {
+                                setVacationSelectedStudent(stu);
+                                setVacationStudentList([]);
+                              }}
+                              className="p-3 text-xs text-slate-300 hover:text-white hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 flex items-center justify-between"
+                            >
+                              <span className="font-bold">{stu.name}</span>
+                              <span className="text-[10px] text-slate-500">{stu.group?.name} | {stu.academicStage?.name}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">كلمة مرور فتح الإجراء:</label>
+                  <input
+                    type="password"
+                    placeholder="أدخل كلمة المرور لفتح الزر..."
+                    value={vacationPassword}
+                    onChange={(e) => {
+                      setVacationPassword(e.target.value);
+                      setVacationStatus(null);
+                    }}
+                    className="w-full glass-input p-3 text-sm font-mono text-left"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {vacationStatus && (
+                <div
+                  className={`flex items-center gap-2 text-xs font-bold p-3 rounded-xl ${
+                    vacationStatus.success
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  }`}
+                >
+                  {vacationStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {vacationStatus.message}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => handleVacationAction('register')}
+                disabled={vacationLoading || vacationPassword !== '147369258' || (vacationScope === 'student' && !vacationSelectedStudent)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 font-bold rounded-2xl text-xs transition-all shadow-lg ${
+                  vacationPassword === '147369258' && !(vacationScope === 'student' && !vacationSelectedStudent)
+                    ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-600/20 cursor-pointer'
+                    : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+                }`}
+              >
+                {vacationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : vacationPassword === '147369258' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                <span>تسجيل إجازة 📅</span>
+              </button>
+              
+              <button
+                onClick={() => handleVacationAction('cancel')}
+                disabled={vacationLoading || vacationPassword !== '147369258' || (vacationScope === 'student' && !vacationSelectedStudent)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 font-bold rounded-2xl text-xs transition-all shadow-lg ${
+                  vacationPassword === '147369258' && !(vacationScope === 'student' && !vacationSelectedStudent)
+                    ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white shadow-rose-600/20 cursor-pointer'
+                    : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+                }`}
+              >
+                {vacationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : vacationPassword === '147369258' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                <span>إلغاء الإجازة ❌</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

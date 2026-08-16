@@ -62,11 +62,11 @@ export async function POST(req: Request) {
           data: { status: 'OPEN' }
         });
 
-        // Delete any auto-generated absences so they can be re-recorded if the student doesn't show up again
+        // Delete any auto-generated absences or vacations so they can be re-recorded if the student doesn't show up again
         await prisma.attendance.deleteMany({
           where: {
             sessionId: session.id,
-            status: 'ABSENT'
+            status: { in: ['ABSENT', 'VACATION'] }
           }
         });
       } else {

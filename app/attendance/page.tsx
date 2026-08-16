@@ -28,6 +28,7 @@ const statusColors: Record<string, string> = {
   LATE: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   LEFT_EARLY: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   EXCUSED: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  VACATION: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
 };
 
 const statusLabels: Record<string, string> = {
@@ -36,6 +37,7 @@ const statusLabels: Record<string, string> = {
   LATE: 'متأخر',
   LEFT_EARLY: 'انصرف مبكراً',
   EXCUSED: 'غياب بعذر',
+  VACATION: 'إجازة',
 };
 
 export default function AttendancePage() {
@@ -1074,8 +1076,8 @@ export default function AttendancePage() {
                           <td style="border: 1px solid #333; padding: 8px;">${idx + 1}</td>
                           <td style="border: 1px solid #333; padding: 8px; font-family: monospace;">${student.code}</td>
                           <td style="border: 1px solid #333; padding: 8px; text-align: right;">${student.name}</td>
-                          <td style="border: 1px solid #333; padding: 8px; font-weight: bold; color: ${student.status === 'ABSENT' ? 'red' : 'green'};">
-                            ${student.status === 'PRESENT' ? 'حاضر ✅' : student.status === 'LATE' ? 'متأخر ⚠️' : student.status === 'ABSENT' ? 'غائب ❌' : student.status === 'LEFT_EARLY' ? 'انصرف مبكراً 🔔' : 'لم يحضر بعد'}
+                          <td style="border: 1px solid #333; padding: 8px; font-weight: bold; color: ${student.status === 'ABSENT' ? 'red' : student.status === 'VACATION' ? 'indigo' : 'green'};">
+                            ${student.status === 'PRESENT' ? 'حاضر ✅' : student.status === 'LATE' ? 'متأخر ⚠️' : student.status === 'VACATION' ? 'إجازة 📅' : student.status === 'ABSENT' ? 'غائب ❌' : student.status === 'LEFT_EARLY' ? 'انصرف مبكراً 🔔' : 'لم يحضر بعد'}
                           </td>
                           <td style="border: 1px solid #333; padding: 8px; font-family: monospace;">
                             ${student.checkInTime ? new Date(student.checkInTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -1188,6 +1190,8 @@ export default function AttendancePage() {
                                   ? student.status === 'LATE'
                                     ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                                     : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  : student.status === 'VACATION'
+                                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                                   : isAbsent
                                   ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                                   : 'bg-slate-800 text-slate-500 border-slate-700'
@@ -1197,6 +1201,8 @@ export default function AttendancePage() {
                                 ? 'حاضر ✅'
                                 : student.status === 'LATE'
                                 ? 'متأخر ⚠️'
+                                : student.status === 'VACATION'
+                                ? 'إجازة 📅'
                                 : student.status === 'ABSENT'
                                 ? 'غائب ❌'
                                 : student.status === 'LEFT_EARLY'

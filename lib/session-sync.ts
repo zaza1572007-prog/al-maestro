@@ -81,20 +81,35 @@ export async function syncTodaySessionsState() {
     }
   });
 
+  // Fetch vacations for today
+  const vacationsToday = await prisma.vacation.findMany({
+    where: {
+      date: {
+        gte: todayStart,
+        lt: todayEnd,
+      },
+    },
+  });
+
   for (const group of groupsToday) {
     const slot = getGroupSlotForDay(group, todayDayArabic);
     const start = parseTimeToMinutes(slot.startTime);
     const end = parseTimeToMinutes(slot.endTime);
 
     const session = todaySessions.find(s => s.groupId === group.id);
+    const isGroupVacation = vacationsToday.some(v =>
+      v.scope === 'all' ||
+      (v.scope === 'stage' && v.academicStageId === group.academicStageId) ||
+      (v.scope === 'group' && v.groupId === group.id)
+    );
 
     // Case A: The current time is within class time
     if (currentMinutes >= start && currentMinutes < end) {
       if (!session) {
-        // Auto-create session as OPEN
+        // Auto-create session as OPEN (with vacation name if applicable)
         await prisma.lessonSession.create({
           data: {
-            title: `جلسة ${group.name}`,
+            title: isGroupVacation ? `إجازة - ${group.name}` : `جلسة ${group.name}`,
             groupId: group.id,
             date: new Date(egyptTimeStr), // save in database using correct current time
             startTime: slot.startTime,
@@ -107,17 +122,20 @@ export async function syncTodaySessionsState() {
         // Automatically open it
         await prisma.lessonSession.update({
           where: { id: session.id },
-          data: { status: 'OPEN' }
+          data: { 
+            status: 'OPEN',
+            ...(isGroupVacation && { title: `إجازة - ${group.name}` })
+          }
         });
       }
     }
     // Case B: The current time is PAST the class end time
     else if (currentMinutes >= end) {
       if (!session) {
-        // Session never created but the scheduled time has passed. Create as COMPLETED and mark all as ABSENT.
+        // Session never created but the scheduled time has passed. Create as COMPLETED and mark all as ABSENT or VACATION.
         const newSession = await prisma.lessonSession.create({
           data: {
-            title: `جلسة ${group.name}`,
+            title: isGroupVacation ? `إجازة - ${group.name}` : `جلسة ${group.name}`,
             groupId: group.id,
             date: new Date(egyptTimeStr),
             startTime: slot.startTime,
@@ -129,12 +147,16 @@ export async function syncTodaySessionsState() {
 
         const students = await prisma.student.findMany({ where: { groupId: group.id } });
         for (const student of students) {
+          const isStudentVacation = isGroupVacation || vacationsToday.some(v =>
+            v.scope === 'student' && v.studentId === student.id
+          );
+
           await prisma.attendance.create({
             data: {
               studentId: student.id,
               sessionId: newSession.id,
-              status: 'ABSENT',
-              notes: 'غياب تلقائي لانتهاء وقت الحصة'
+              status: isStudentVacation ? 'VACATION' : 'ABSENT',
+              notes: isStudentVacation ? 'إجازة تلقائية' : 'غياب تلقائي لانتهاء وقت الحصة'
             }
           });
         }
@@ -142,7 +164,10 @@ export async function syncTodaySessionsState() {
         // Close session
         await prisma.lessonSession.update({
           where: { id: session.id },
-          data: { status: 'COMPLETED' }
+          data: { 
+            status: 'COMPLETED',
+            ...(isGroupVacation && { title: `إجازة - ${group.name}` })
+          }
         });
 
         const students = await prisma.student.findMany({ where: { groupId: group.id } });
@@ -153,12 +178,16 @@ export async function syncTodaySessionsState() {
 
         for (const student of students) {
           if (!attendedStudentIds.includes(student.id)) {
+            const isStudentVacation = isGroupVacation || vacationsToday.some(v =>
+              v.scope === 'student' && v.studentId === student.id
+            );
+
             await prisma.attendance.create({
               data: {
                 studentId: student.id,
                 sessionId: session.id,
-                status: 'ABSENT',
-                notes: 'غياب تلقائي لانتهاء وقت الحصة'
+                status: isStudentVacation ? 'VACATION' : 'ABSENT',
+                notes: isStudentVacation ? 'إجازة تلقائية' : 'غياب تلقائي لانتهاء وقت الحصة'
               }
             });
           }
@@ -172,10 +201,20 @@ export async function syncTodaySessionsState() {
   for (const session of activeSessions) {
     const end = parseTimeToMinutes(session.endTime);
     if (currentMinutes >= end) {
+      const group = allGroups.find(g => g.id === session.groupId);
+      const isGroupVacation = group ? vacationsToday.some(v =>
+        v.scope === 'all' ||
+        (v.scope === 'stage' && v.academicStageId === group.academicStageId) ||
+        (v.scope === 'group' && v.groupId === group.id)
+      ) : false;
+
       // Close session
       await prisma.lessonSession.update({
         where: { id: session.id },
-        data: { status: 'COMPLETED' }
+        data: { 
+          status: 'COMPLETED',
+          ...(isGroupVacation && group && { title: `إجازة - ${group.name}` })
+        }
       });
 
       const students = await prisma.student.findMany({ where: { groupId: session.groupId } });
@@ -186,12 +225,16 @@ export async function syncTodaySessionsState() {
 
       for (const student of students) {
         if (!attendedStudentIds.includes(student.id)) {
+          const isStudentVacation = isGroupVacation || vacationsToday.some(v =>
+            v.scope === 'student' && v.studentId === student.id
+          );
+
           await prisma.attendance.create({
             data: {
               studentId: student.id,
               sessionId: session.id,
-              status: 'ABSENT',
-              notes: 'غياب تلقائي لانتهاء وقت الحصة'
+              status: isStudentVacation ? 'VACATION' : 'ABSENT',
+              notes: isStudentVacation ? 'إجازة تلقائية' : 'غياب تلقائي لانتهاء وقت الحصة'
             }
           });
         }

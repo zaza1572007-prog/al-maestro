@@ -22,6 +22,7 @@ enum AttendanceStatus {
   LATE
   LEFT_EARLY
   EXCUSED
+  VACATION
 }
 
 enum SubscriptionStatus {
@@ -167,6 +168,7 @@ model Student {
   communications  ParentCommunication[]
   files           File[]
   notifications   Notification[]
+  vacations       Vacation[]
 
   @@index([code])
   @@index([name])
@@ -227,6 +229,7 @@ model AcademicStage {
   students             Student[]
   files                File[]
   registrationRequests RegistrationRequest[]
+  vacations            Vacation[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -256,6 +259,7 @@ model Group {
   exams                Exam[]
   files                File[]
   registrationRequests RegistrationRequest[]
+  vacations            Vacation[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -595,4 +599,20 @@ model SystemSettings {
   scheduledTime       String   @default("20:00")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+model Vacation {
+  id              String         @id @default(uuid())
+  date            DateTime       // تاريخ الإجازة
+  scope           String         // "all" | "stage" | "group" | "student"
+  academicStageId String?
+  academicStage   AcademicStage? @relation(fields: [academicStageId], references: [id], onDelete: Cascade)
+  groupId         String?
+  group           Group?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentId       String?
+  student         Student?       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([date])
 }

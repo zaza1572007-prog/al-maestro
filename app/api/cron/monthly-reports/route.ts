@@ -31,8 +31,6 @@ async function calculateMonthlyReportForStudent(studentId: string, groupId: stri
     },
   });
 
-  const totalSessions = sessions.length;
-
   const attendances = await prisma.attendance.findMany({
     where: {
       studentId: studentId,
@@ -42,6 +40,9 @@ async function calculateMonthlyReportForStudent(studentId: string, groupId: stri
     },
     include: { session: true },
   });
+
+  const vacationCount = attendances.filter((a) => a.status === 'VACATION').length;
+  const totalSessions = sessions.length - vacationCount;
 
   const presentCount = attendances.filter(
     (a) => a.status === 'PRESENT' || a.status === 'LATE' || a.status === 'LEFT_EARLY'
@@ -105,6 +106,7 @@ async function calculateMonthlyReportForStudent(studentId: string, groupId: stri
     presentCount,
     absentCount,
     absentDays,
+    vacationCount,
     exams,
     paymentStatus,
   };

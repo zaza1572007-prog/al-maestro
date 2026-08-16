@@ -57,9 +57,10 @@ export default function StudentProfilePage() {
     present: student.attendances?.filter((a: any) => a.status === 'PRESENT').length || 0,
     absent: student.attendances?.filter((a: any) => a.status === 'ABSENT').length || 0,
     late: student.attendances?.filter((a: any) => a.status === 'LATE').length || 0,
-    total: student.attendances?.length || 0,
+    vacation: student.attendances?.filter((a: any) => a.status === 'VACATION').length || 0,
+    total: student.attendances?.filter((a: any) => a.status !== 'VACATION').length || 0,
   };
-  const attendanceRate = attendanceStats.total > 0 ? Math.round((attendanceStats.present / attendanceStats.total) * 100) : 0;
+  const attendanceRate = attendanceStats.total > 0 ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -136,7 +137,7 @@ export default function StudentProfilePage() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-center">
             <p className="text-xs text-slate-500">إجمالي الحضور</p>
             <p className="text-2xl font-black text-emerald-400">{attendanceStats.present}</p>
@@ -148,6 +149,10 @@ export default function StudentProfilePage() {
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-center">
             <p className="text-xs text-slate-500">التأخيرات</p>
             <p className="text-2xl font-black text-amber-400">{attendanceStats.late}</p>
+          </div>
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-center">
+            <p className="text-xs text-slate-500">الإجازات</p>
+            <p className="text-2xl font-black text-indigo-400">{attendanceStats.vacation}</p>
           </div>
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 text-center">
             <p className="text-xs text-slate-500">نسبة الحضور</p>
@@ -175,9 +180,10 @@ export default function StudentProfilePage() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                       att.status === 'PRESENT' ? 'bg-emerald-500/20 text-emerald-400' :
                       att.status === 'LATE' ? 'bg-amber-500/20 text-amber-400' :
+                      att.status === 'VACATION' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
                       'bg-rose-500/20 text-rose-400'
                     }`}>
-                      {att.status === 'PRESENT' ? 'حاضر' : att.status === 'LATE' ? 'متأخر' : 'غائب'}
+                      {att.status === 'PRESENT' ? 'حاضر' : att.status === 'LATE' ? 'متأخر' : att.status === 'VACATION' ? 'إجازة' : 'غائب'}
                     </span>
                   </td>
                   <td className="p-3 text-center text-slate-400">

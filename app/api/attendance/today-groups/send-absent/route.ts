@@ -110,11 +110,32 @@ export async function POST(req: NextRequest) {
       select: { studentId: true, status: true }
     });
 
+    // Fetch vacations for today
+    const vacationsToday = await prisma.vacation.findMany({
+      where: {
+        date: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+      },
+    });
+
+    // Filter out students on vacation today
+    const activeStudents = students.filter((student) => {
+      const isVac = vacationsToday.some((v) =>
+        v.scope === 'all' ||
+        (v.scope === 'stage' && student.academicStageId === v.academicStageId) ||
+        (v.scope === 'group' && student.groupId === v.groupId) ||
+        (v.scope === 'student' && student.id === v.studentId)
+      );
+      return !isVac;
+    });
+
     const attendedStudentIds = attendanceRecords
-      .filter(r => r.status !== 'ABSENT')
+      .filter(r => r.status !== 'ABSENT' && r.status !== 'VACATION')
       .map(r => r.studentId);
 
-    const absentStudents = students.filter(s => !attendedStudentIds.includes(s.id));
+    const absentStudents = activeStudents.filter(s => !attendedStudentIds.includes(s.id));
 
     if (absentStudents.length === 0) {
       return NextResponse.json({ success: true, count: 0, message: 'لا يوجد أي طلاب غائبين في هذه المجموعة اليوم' });

@@ -31,9 +31,10 @@ export async function GET() {
 
     // Real attendance rate for today
     let todayAttendanceRate = '0%';
-    if (todayAttendances.length > 0) {
-      const presentCount = todayAttendances.filter((a: { status: string }) => a.status === 'PRESENT').length;
-      const rate = Math.round((presentCount / todayAttendances.length) * 100);
+    const nonVacationToday = todayAttendances.filter((a: { status: string }) => a.status !== 'VACATION');
+    if (nonVacationToday.length > 0) {
+      const presentCount = nonVacationToday.filter((a: { status: string }) => a.status === 'PRESENT' || a.status === 'LATE' || a.status === 'LEFT_EARLY').length;
+      const rate = Math.round((presentCount / nonVacationToday.length) * 100);
       todayAttendanceRate = `${rate}%`;
     }
 

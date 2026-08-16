@@ -40,12 +40,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const records = attendances.map((a) => ({
       id: a.id,
       date: new Date(a.session.date).toLocaleDateString('ar-EG'),
-      status: a.status === 'PRESENT' ? 'حاضر' : a.status === 'ABSENT' ? 'غائب' : 'متأخر',
+      status: a.status === 'PRESENT' ? 'حاضر' : a.status === 'VACATION' ? 'إجازة' : a.status === 'ABSENT' ? 'غائب' : 'متأخر',
       time: a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '--',
     }));
 
-    const attendanceRate = records.length > 0 
-      ? Math.round((records.filter(r => r.status === 'حاضر').length / records.length) * 100) 
+    const nonVacationRecords = records.filter(r => r.status !== 'إجازة');
+    const attendanceRate = nonVacationRecords.length > 0 
+      ? Math.round((nonVacationRecords.filter(r => r.status === 'حاضر' || r.status === 'متأخر').length / nonVacationRecords.length) * 100) 
       : 0;
 
     return NextResponse.json({ success: true, records, attendanceRate: `${attendanceRate}%` });

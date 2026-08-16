@@ -33,6 +33,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Fetch vacations for today
+    const vacationsToday = await prisma.vacation.findMany({
+      where: {
+        date: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+      },
+    });
+
     const students = await prisma.student.findMany({
       where: { groupId },
       select: {
@@ -40,6 +50,8 @@ export async function GET(req: NextRequest) {
         name: true,
         code: true,
         phone: true,
+        academicStageId: true,
+        groupId: true,
         parent: {
           select: {
             name: true,
@@ -51,11 +63,22 @@ export async function GET(req: NextRequest) {
       orderBy: { name: 'asc' },
     });
 
+    // Exclude students who are on vacation today
+    const activeStudents = students.filter((student) => {
+      const isVac = vacationsToday.some((v) =>
+        v.scope === 'all' ||
+        (v.scope === 'stage' && student.academicStageId === v.academicStageId) ||
+        (v.scope === 'group' && student.groupId === v.groupId) ||
+        (v.scope === 'student' && student.id === v.studentId)
+      );
+      return !isVac;
+    });
+
     if (!session) {
       // If no session is open yet today, all students are not checked in
       return NextResponse.json({
         success: true,
-        absentees: students,
+        absentees: activeStudents,
         sessionId: null,
       });
     }
@@ -70,10 +93,10 @@ export async function GET(req: NextRequest) {
     });
 
     const attendedStudentIds = attendanceRecords
-      .filter((r) => r.status !== 'ABSENT')
+      .filter((r) => r.status !== 'ABSENT' && r.status !== 'VACATION')
       .map((r) => r.studentId);
 
-    const absentees = students.filter((s) => !attendedStudentIds.includes(s.id));
+    const absentees = activeStudents.filter((s) => !attendedStudentIds.includes(s.id));
 
     return NextResponse.json({
       success: true,

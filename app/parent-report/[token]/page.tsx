@@ -76,8 +76,6 @@ export default async function ParentReportPage({ params }: PageProps) {
     orderBy: { date: 'asc' },
   });
 
-  const totalSessions = sessions.length;
-
   // Fetch all attendances for the student in this month
   const attendances = await prisma.attendance.findMany({
     where: {
@@ -89,6 +87,9 @@ export default async function ParentReportPage({ params }: PageProps) {
     include: { session: true },
     orderBy: { session: { date: 'asc' } },
   });
+
+  const vacationCount = attendances.filter((a) => a.status === 'VACATION').length;
+  const totalSessions = sessions.length - vacationCount;
 
   const presentCount = attendances.filter(
     (a) => a.status === 'PRESENT' || a.status === 'LATE' || a.status === 'LEFT_EARLY'
@@ -251,7 +252,7 @@ export default async function ParentReportPage({ params }: PageProps) {
               </div>
 
               {/* Stats Counters */}
-              <div className="grid grid-cols-3 gap-4 w-full sm:w-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full sm:w-auto">
                 <div className="bg-slate-950/60 p-3 rounded-2xl border border-white/5 text-center min-w-[80px]">
                   <p className="text-2xl font-black text-white">{totalSessions}</p>
                   <p className="text-[10px] text-slate-500 mt-1">حصص الشهر</p>
@@ -259,6 +260,10 @@ export default async function ParentReportPage({ params }: PageProps) {
                 <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/10 text-center min-w-[80px]">
                   <p className="text-2xl font-black text-emerald-400">{presentCount}</p>
                   <p className="text-[10px] text-emerald-500 mt-1">حضور</p>
+                </div>
+                <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/10 text-center min-w-[80px]">
+                  <p className="text-2xl font-black text-indigo-400">{vacationCount}</p>
+                  <p className="text-[10px] text-indigo-400 mt-1">إجازة</p>
                 </div>
                 <div className="bg-rose-500/10 p-3 rounded-2xl border border-rose-500/10 text-center min-w-[80px]">
                   <p className="text-2xl font-black text-rose-400">{absentCount}</p>

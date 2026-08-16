@@ -85,15 +85,32 @@ export async function POST(req: Request) {
       select: { studentId: true }
     })).map(a => a.studentId);
 
-    // Mark remaining students as ABSENT
+    // Fetch vacations for today
+    const vacationsToday = await prisma.vacation.findMany({
+      where: {
+        date: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+      },
+    });
+
+    // Mark remaining students as ABSENT or VACATION
     for (const student of students) {
       if (!attendedStudentIds.includes(student.id)) {
+        const isVac = vacationsToday.some((v) =>
+          v.scope === 'all' ||
+          (v.scope === 'stage' && student.academicStageId === v.academicStageId) ||
+          (v.scope === 'group' && student.groupId === v.groupId) ||
+          (v.scope === 'student' && student.id === v.studentId)
+        );
+
         await prisma.attendance.create({
           data: {
             studentId: student.id,
             sessionId: session.id,
-            status: 'ABSENT',
-            notes: 'غياب يدوي لإنهاء الحصة يدوياً'
+            status: isVac ? 'VACATION' : 'ABSENT',
+            notes: isVac ? 'إجازة تلقائية' : 'غياب يدوي لإنهاء الحصة يدوياً'
           }
         });
       }

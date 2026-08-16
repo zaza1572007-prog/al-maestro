@@ -40,6 +40,8 @@ export async function GET(req: Request) {
             id: true,
             name: true,
             code: true,
+            academicStageId: true,
+            groupId: true,
             academicStage: { select: { name: true } }
           }
         }
@@ -63,6 +65,16 @@ export async function GET(req: Request) {
           }
         }
       }
+    });
+
+    // Fetch vacations for today
+    const vacationsToday = await prisma.vacation.findMany({
+      where: {
+        date: {
+          gte: todayStart,
+          lt: todayEnd,
+        },
+      },
     });
 
     // Today's groups: scheduled for today, or has a session today
@@ -100,18 +112,36 @@ export async function GET(req: Request) {
       // Map all students in this group to their attendance record if it exists
       const studentsSheet = group.students.map((student) => {
         const attendance = attendancesList.find(a => a.studentId === student.id);
+        const isVacation = vacationsToday.some(v =>
+          v.scope === 'all' ||
+          (v.scope === 'stage' && v.academicStageId === student.academicStageId) ||
+          (v.scope === 'group' && v.groupId === student.groupId) ||
+          (v.scope === 'student' && v.studentId === student.id)
+        );
+
+        let status = '';
+        if (attendance) {
+          status = attendance.status;
+        } else if (isVacation) {
+          status = 'VACATION';
+        } else if (sessionStatus === 'COMPLETED') {
+          status = 'ABSENT';
+        }
+
         return {
           id: student.id,
           name: student.name,
           code: student.code,
           stageName: student.academicStage?.name,
-          attended: !!attendance && attendance.status !== 'ABSENT',
-          status: attendance ? attendance.status : (sessionStatus === 'COMPLETED' ? 'ABSENT' : ''),
+          attended: !!attendance && attendance.status !== 'ABSENT' && attendance.status !== 'VACATION',
+          status,
           checkInTime: attendance?.checkInTime || null,
           checkOutTime: attendance?.checkOutTime || null,
-          notes: attendance?.notes || ''
+          notes: attendance?.notes || (isVacation && !attendance ? 'إجازة' : '')
         };
       });
+
+      const vacationCount = studentsSheet.filter(s => s.status === 'VACATION').length;
 
       return {
         id: group.id,
@@ -123,7 +153,7 @@ export async function GET(req: Request) {
         sessionId,
         stats: {
           present: presentCount + lateCount, // total present and late
-          absent: sessionStatus === 'COMPLETED' ? absentCount : (group.students.length - (presentCount + lateCount)),
+          absent: sessionStatus === 'COMPLETED' ? absentCount : (group.students.length - (presentCount + lateCount + vacationCount)),
           total: group.students.length
         },
         students: studentsSheet

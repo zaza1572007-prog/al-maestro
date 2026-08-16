@@ -82,6 +82,19 @@ export async function GET(req: Request) {
           };
         });
 
+      // Map vacations specifically
+      const vacations = student.attendances
+        .filter((a) => a.status === 'VACATION')
+        .map((a) => {
+          const date = new Date(a.session.date);
+          return {
+            id: a.id,
+            date: date.toISOString().split('T')[0],
+            day: getArabicDayName(date),
+            sessionTitle: a.session.title,
+          };
+        });
+
       return NextResponse.json({
         success: true,
         student: {
@@ -102,6 +115,7 @@ export async function GET(req: Request) {
           sessionTitle: a.session.title,
         })),
         absences,
+        vacations,
         exams: student.examResults.map((r) => ({
           id: r.id,
           title: r.exam.title,
@@ -160,7 +174,8 @@ export async function GET(req: Request) {
 
     const studentList = students.map((student) => {
       const attendances = student.attendances;
-      const totalAtt = attendances.length;
+      const vacationCount = attendances.filter((a) => a.status === 'VACATION').length;
+      const totalAtt = attendances.length - vacationCount;
       const presentCount = attendances.filter(
         (a) => a.status === 'PRESENT' || a.status === 'LATE' || a.status === 'LEFT_EARLY'
       ).length;
