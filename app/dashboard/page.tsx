@@ -37,6 +37,10 @@ import {
 } from 'recharts';
 import AttendanceHeatmap from '@/components/AttendanceHeatmap';
 import EmptyState from '@/components/EmptyState';
+import Avatar from '@/components/Avatar';
+import StatusIndicator from '@/components/StatusIndicator';
+import Timeline from '@/components/Timeline';
+
 
 
 
@@ -164,19 +168,15 @@ export default function DashboardPage() {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           {/* Greeting & Info */}
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-xs font-bold shadow-inner">
-                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                لوحة التحكم الذكية · المايسترو
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
+                لوحة المتابعة الذكية
               </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                النظام متصل ونشط
-              </span>
+              <StatusIndicator status="success" label="النظام متصل 🟢" size="sm" />
             </div>
-
-            <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-              {greeting}، <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-indigo-200 to-white">أ/ أحمد راضي كحلة</span> 👋
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight gradient-heading">
+              أهلاً بك، أستاذ أحمد راضي كحلة 👋
             </h1>
 
             <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2 flex-wrap">
@@ -441,21 +441,17 @@ export default function DashboardPage() {
                                 {grp.stageName || 'مجموعة دراسية'}
                               </p>
                             </div>
-                            <span
-                              className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border flex-shrink-0 ${
+                            <StatusIndicator
+                              status={
                                 grp.sessionStatus === 'OPEN'
-                                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                  ? 'open'
                                   : grp.sessionStatus === 'COMPLETED'
-                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                  : 'bg-slate-900 text-slate-400 border-slate-700'
-                              }`}
-                            >
-                              {grp.sessionStatus === 'OPEN'
-                                ? '🟢 الجلسة مفتوحة'
-                                : grp.sessionStatus === 'COMPLETED'
-                                ? 'مكتملة'
-                                : 'مجدولة'}
-                            </span>
+                                  ? 'closed'
+                                  : 'pending'
+                              }
+                              pulse={grp.sessionStatus === 'OPEN'}
+                              size="sm"
+                            />
                           </div>
 
                           <div className="space-y-1">
@@ -639,14 +635,18 @@ export default function DashboardPage() {
 
             <div className="space-y-2.5 max-h-64 overflow-y-auto pr-0.5">
               {recentActivities.length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-6">لا توجد عمليات مسجلة حالياً</p>
+                <EmptyState
+                  variant="generic"
+                  title="لا توجد عمليات"
+                  description="ستظهر السجلات والعمليات المنفذة هنا تلقائياً."
+                />
               ) : (
                 recentActivities.slice(0, 6).map((act) => (
                   <div
                     key={act.id}
-                    className="p-2.5 rounded-xl bg-slate-950/70 border border-white/5 flex items-start gap-2.5 hover:border-purple-500/20 transition-all"
+                    className="p-2.5 rounded-xl bg-slate-950/70 border border-white/5 flex items-center gap-3 hover:border-purple-500/20 transition-all"
                   >
-                    <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
+                    <Avatar name={act.text || 'أحد الطلاب'} size="xs" />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-slate-300 font-medium truncate">{act.text}</p>
                       <span className="text-[10px] text-slate-500 block mt-0.5 font-mono">

@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { ShieldCheck } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
+import Avatar from '@/components/Avatar';
+import StatusIndicator from '@/components/StatusIndicator';
+
 
 interface Student {
   id: string;
@@ -303,7 +306,15 @@ function StudentsContent() {
                   <tr key={stu.id} className="hover:bg-slate-800/40 transition">
                     <td className="p-3.5 font-mono text-blue-400 font-bold">{stu.code}</td>
                     <td className="p-3.5 font-mono text-purple-400 font-semibold">{stu.qrCode}</td>
-                    <td className="p-3.5 font-bold text-white">{stu.name}</td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar name={stu.name} size="sm" />
+                        <div>
+                          <p className="font-bold text-white leading-tight">{stu.name}</p>
+                          {stu.phone && <p className="text-[11px] text-slate-400 font-mono">{stu.phone}</p>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="p-3.5">
                       <p className="text-slate-200">{stu.stage}</p>
                       <p className="text-xs text-slate-400">{stu.group}</p>
@@ -313,15 +324,11 @@ function StudentsContent() {
                       <p className="text-xs text-slate-400 font-mono">{stu.parentPhone}</p>
                     </td>
                     <td className="p-3.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          stu.subStatus === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}
-                      >
-                        {stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
-                      </span>
+                      <StatusIndicator
+                        status={stu.subStatus === 'ACTIVE' ? 'active' : 'pending'}
+                        label={stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
+                        size="sm"
+                      />
                     </td>
                     <td className="p-3.5 text-center">
                       <div className="flex items-center justify-center gap-1.5 flex-wrap">
