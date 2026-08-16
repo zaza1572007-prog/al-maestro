@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import EmptyState from '@/components/EmptyState';
 
 // ─────────────────────────────────────────────
 // Types
@@ -521,18 +522,17 @@ export default function DailyAttendancePage() {
             <span className="text-sm font-semibold animate-pulse">جارٍ تحميل البيانات...</span>
           </div>
         ) : !hasData ? (
-          <div className="text-center py-16 text-slate-500">
-            <ClipboardList className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">اختر تاريخاً لعرض مجموعاته</p>
-          </div>
+          <EmptyState
+            variant="attendance"
+            title="حدد تاريخ الكشف"
+            description="اختر تاريخاً من الأعلى لاستعراض المجموعات المسجلة وكشوفات الحضور والغياب الخاصة بها."
+          />
         ) : groups.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
-            <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-semibold">لا توجد مجموعات مسجلة في هذا اليوم</p>
-            <p className="text-xs mt-1 opacity-70">
-              يُعرض فقط الأيام التي تم فتح جلسات فيها فعلياً
-            </p>
-          </div>
+          <EmptyState
+            variant="groups"
+            title="لا توجد مجموعات مسجلة في هذا اليوم"
+            description="يتم فتح الجلسات وتسجيل الحضور تلقائياً عند بدء حصص المجموعة في هذا اليوم."
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((group) => {

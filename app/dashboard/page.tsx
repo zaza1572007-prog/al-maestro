@@ -35,6 +35,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import AttendanceHeatmap from '@/components/AttendanceHeatmap';
+import EmptyState from '@/components/EmptyState';
+
+
 
 interface TodayGroup {
   id: string;
@@ -332,6 +336,10 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+      {/* 🔥 Attendance Activity Heatmap */}
+      <AttendanceHeatmap />
+
+
       {/* 🚀 Main 2-Column Command Center */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column (8 cols): Today's Schedule + Analytics Chart */}
@@ -386,32 +394,29 @@ export default function DashboardPage() {
 
               if (displayList.length === 0) {
                 return (
-                  <div className="text-center py-16 bg-slate-950/20 rounded-2xl border border-white/5 space-y-4 flex flex-col items-center justify-center min-h-[260px] relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20 shadow-lg shadow-purple-500/5">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1 z-10">
-                      <p className="text-sm font-bold text-white">
-                        {activeGroupTab === 'TODAY'
-                          ? 'لا توجد مجموعات مجدولة اليوم'
-                          : 'لا توجد مجموعات مسجلة'}
-                      </p>
-                      <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                        {activeGroupTab === 'TODAY'
-                          ? 'تفرغ تام اليوم! لا توجد مجموعات دراسية مبرمجة لموعد اليوم.'
-                          : 'يمكنك البدء بإنشاء مجموعة دراسية جديدة من صفحة المجموعات.'}
-                      </p>
-                    </div>
-                    {activeGroupTab === 'TODAY' && allGroupsList.length > 0 && (
-                      <button
-                        onClick={() => setActiveGroupTab('ALL')}
-                        className="text-xs text-purple-400 hover:text-purple-300 font-bold bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-xl transition cursor-pointer hover:bg-purple-500/20"
-                      >
-                        عرض جميع المجموعات النشطة ({allGroupsList.length}) ←
-                      </button>
-                    )}
-                  </div>
+                  <EmptyState
+                    variant="groups"
+                    title={
+                      activeGroupTab === 'TODAY'
+                        ? 'لا توجد مجموعات مجدولة اليوم'
+                        : 'لا توجد مجموعات مسجلة'
+                    }
+                    description={
+                      activeGroupTab === 'TODAY'
+                        ? 'تفرغ تام اليوم! لا توجد مجموعات دراسية مبرمجة لموعد اليوم.'
+                        : 'يمكنك البدء بإنشاء مجموعة دراسية جديدة من صفحة المجموعات.'
+                    }
+                    actionLabel={
+                      activeGroupTab === 'TODAY' && allGroupsList.length > 0
+                        ? `عرض جميع المجموعات النشطة (${allGroupsList.length})`
+                        : undefined
+                    }
+                    onAction={
+                      activeGroupTab === 'TODAY' && allGroupsList.length > 0
+                        ? () => setActiveGroupTab('ALL')
+                        : undefined
+                    }
+                  />
                 );
               }
 

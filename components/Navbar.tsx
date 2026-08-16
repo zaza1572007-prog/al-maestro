@@ -201,68 +201,25 @@ export default function Navbar() {
           <Menu className="w-5 h-5" />
         </motion.button>
 
-        {/* Search Input */}
-        <div className="relative w-full max-w-[150px] sm:max-w-xs md:w-80 hidden sm:block">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="البحث الشامل... (Ctrl + K)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              onBlur={() => setTimeout(() => setIsSearchOpen(false), 200)}
-              className="w-full glass-input py-2 px-4 pr-10 pl-16 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
-            />
-            <Search className="w-4 h-4 absolute right-3 top-2.5 text-slate-500" />
-            <span 
-              className="absolute left-3 top-2 text-[10px] font-mono px-2 py-0.5 rounded-lg border"
-              style={{
-                backgroundColor: 'rgb(var(--p) / 0.08)',
-                borderColor: 'rgb(var(--p) / 0.2)',
-                color: 'rgb(var(--p) / 0.8)'
-              }}
-            >
+        {/* Command Palette Trigger Button */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          onClick={() => document.getElementById('command-palette-trigger')?.click()}
+          className="hidden sm:flex items-center gap-3 w-64 md:w-80 px-3 py-2 rounded-xl text-sm text-slate-500 cursor-pointer transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+          title="فتح لوحة الأوامر (Ctrl+K)"
+        >
+          <Search className="w-4 h-4 shrink-0" />
+          <span className="flex-1 text-right text-[13px]">البحث في المنصة...</span>
+          <div className="flex items-center gap-1 shrink-0">
+            <kbd className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgb(var(--p) / 0.8)' }}>
               Ctrl+K
-            </span>
+            </kbd>
           </div>
-
-          {/* Quick Search Dropdown */}
-          <AnimatePresence>
-            {isSearchOpen && searchQuery.trim().length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute top-14 right-0 left-0 glass-panel border border-white/15 rounded-2xl shadow-2xl p-4 z-50 text-sm bg-slate-900/90"
-              >
-                <p className="text-xs text-slate-400 mb-3">نتائج البحث عن "{searchQuery}"</p>
-                <div className="space-y-2">
-                  {currentUser?.role !== 'STUDENT' && currentUser?.role !== 'PARENT' && (
-                    <>
-                      <Link
-                        href={`/students?search=${encodeURIComponent(searchQuery)}`}
-                        className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                      >
-                        <span className="font-medium">البحث في قائمة الطلاب 👨‍🎓</span>
-                        <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                      </Link>
-                      <Link
-                        href={`/groups?search=${encodeURIComponent(searchQuery)}`}
-                        className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-slate-200 transition-colors"
-                      >
-                        <span className="font-medium">البحث في المجموعات 👥</span>
-                        <span className="text-xs text-purple-400 font-bold">عرض الكل ↵</span>
-                      </Link>
-                    </>
-                  )}
-                  {(currentUser?.role === 'STUDENT' || currentUser?.role === 'PARENT') && (
-                     <div className="p-3 text-slate-400 text-center">البحث متاح لأسماء الملفات فقط حالياً.</div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        </motion.button>
       </div>
 
 
