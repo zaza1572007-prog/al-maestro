@@ -19,6 +19,8 @@ export async function middleware(request: NextRequest) {
     pathname === '/register' ||
     pathname === '/select-role' ||
     pathname === '/forgot-password' ||
+    pathname === '/qr-login' ||                       // QR auto-login page
+    pathname === '/api/auth/qr-login' ||              // QR auto-login API
     pathname === '/api/registration' || // submit registration (POST)
     pathname.startsWith('/api/registration/options') || // get options
     pathname.startsWith('/api/registration/check-phone') || // check phone
