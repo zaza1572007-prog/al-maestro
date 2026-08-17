@@ -307,7 +307,7 @@ export default function ParentPortalDashboard() {
           <h3 className="text-base font-bold text-white">التواصل السريع مع إدارة المنصة</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* WhatsApp inquiry */}
           <button
             onClick={() => openWhatsApp(`السلام عليكم، أنا ولي أمر الطالب ${child.name}. لدي استفسار.`)}
@@ -336,19 +336,6 @@ export default function ParentPortalDashboard() {
             </div>
           </button>
 
-          {/* Subscription renewal */}
-          <button
-            onClick={() => openWhatsApp(`السلام عليكم، أرغب في تجديد اشتراك الطالب ${child.name} للشهر القادم.`)}
-            className="group relative overflow-hidden flex items-center justify-between gap-3 rounded-2xl border border-purple-500/25 bg-purple-500/10 hover:bg-purple-500/20 px-4 py-3.5 text-right transition-all duration-200 cursor-pointer hover:border-purple-400/40 hover:shadow-lg hover:shadow-purple-500/10"
-          >
-            <div>
-              <p className="font-bold text-white text-sm">تجديد الاشتراك الشهري</p>
-              <p className="text-xs text-purple-400 mt-0.5">تواصل مباشر مع الإدارة</p>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-              <CreditCard className="w-4 h-4 text-purple-400" />
-            </div>
-          </button>
         </div>
       </motion.div>
 
