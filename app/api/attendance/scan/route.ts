@@ -17,7 +17,13 @@ async function tryDispatchWA(to: string, body: string) {
     if (!to || !body) return;
 
     // 1. HTTP Gateway priority (Vercel)
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: {
+        enableWhatsApp: true,
+        waGatewayUrl: true,
+        waApiToken: true,
+      }
+    });
     if (settings && settings.enableWhatsApp === false) {
       return;
     }
@@ -214,7 +220,13 @@ export async function POST(req: Request) {
         const parentName = student.parent?.name || 'ولي الأمر';
         const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
         
-        const settings = await prisma.systemSettings.findFirst();
+        const settings = await prisma.systemSettings.findFirst({
+          select: {
+            enableWhatsApp: true,
+            waGatewayUrl: true,
+            waApiToken: true,
+          }
+        });
         if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
           fetch(settings.waGatewayUrl, {
             method: 'POST',
@@ -483,7 +495,13 @@ export async function POST(req: Request) {
         const parentName = student.parent?.name || 'ولي الأمر';
         const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
         
-        const settings = await prisma.systemSettings.findFirst();
+        const settings = await prisma.systemSettings.findFirst({
+          select: {
+            enableWhatsApp: true,
+            waGatewayUrl: true,
+            waApiToken: true,
+          }
+        });
         if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
           fetch(settings.waGatewayUrl, {
             method: 'POST',
@@ -543,7 +561,12 @@ export async function POST(req: Request) {
     }
 
     // 9. WhatsApp Attendance Notification (fire-and-forget)
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: {
+        enableWhatsApp: true,
+        waTplAttendance: true,
+      }
+    });
     if (settings?.enableWhatsApp) {
       const statusLabels: Record<string, string> = {
         PRESENT: 'حاضر ✅', ABSENT: 'غائب ❌', LATE: 'متأخر ⚠️',

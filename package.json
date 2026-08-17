@@ -11,6 +11,7 @@
     "seed": "tsx prisma/seed.ts",
     "prisma:migrate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
+    "db:migrate-data": "node scripts/migrate-db-data.js",
     "whatsapp": "tsx scripts/start-whatsapp.ts",
     "whatsapp:service": "tsx whatsapp-server/start-service.ts",
     "gateway": "tsx whatsapp-server/gateway.ts",

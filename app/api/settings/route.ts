@@ -1,43 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, safeSettingsSelect } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
 
 export async function GET() {
   try {
     let settings = await prisma.systemSettings.findFirst({
-      select: {
-        id: true,
-        platformName: true,
-        isRegistrationOpen: true,
-        logo: true,
-        favicon: true,
-        primaryColor: true,
-        secondaryColor: true,
-        backgroundImage: true,
-        welcomeMessage: true,
-        loginBackground: true,
-        enableDarkMode: true,
-        enableWhatsApp: true,
-        autoSendCredentials: true,
-        portraitBase64: true,
-        logoBase64: true,
-        contactPhone: true,
-        contactWhatsapp: true,
-        motivationQuote: true,
-        portraitOpacity: true,
-        portraitScale: true,
-        portraitPosition: true,
-        portraitConfig: true,
-        logoScale: true,
-      }
+      select: safeSettingsSelect,
     });
     if (!settings) {
       const created = await prisma.systemSettings.create({
         data: { platformName: 'منصة المايسترو', isRegistrationOpen: true },
+        select: safeSettingsSelect,
       });
-      return NextResponse.json({ success: true, settings: created });
+      return NextResponse.json({
+        success: true,
+        settings: {
+          ...created,
+          hasPortrait: false,
+          hasPortraitTablet: false,
+          hasPortraitMobile: false,
+          hasLogo: false,
+        },
+      });
     }
-    return NextResponse.json({ success: true, settings });
+
+    const brandingCheck = await prisma.$queryRaw<Array<{
+      hasPortrait: boolean;
+      hasPortraitTablet: boolean;
+      hasPortraitMobile: boolean;
+      hasLogo: boolean;
+    }>>`
+      SELECT 
+        ("portraitBase64" IS NOT NULL AND "portraitBase64" <> '') AS "hasPortrait",
+        ("portraitTabletBase64" IS NOT NULL AND "portraitTabletBase64" <> '') AS "hasPortraitTablet",
+        ("portraitMobileBase64" IS NOT NULL AND "portraitMobileBase64" <> '') AS "hasPortraitMobile",
+        ("logoBase64" IS NOT NULL AND "logoBase64" <> '') AS "hasLogo"
+      FROM "SystemSettings"
+      LIMIT 1
+    `;
+
+    const flags = brandingCheck[0] || {
+      hasPortrait: false,
+      hasPortraitTablet: false,
+      hasPortraitMobile: false,
+      hasLogo: false,
+    };
+
+    return NextResponse.json({
+      success: true,
+      settings: {
+        ...settings,
+        ...flags,
+      },
+    });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
@@ -68,11 +83,14 @@ export async function PATCH(req: NextRequest) {
       logoScale
     } = body;
 
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await prisma.systemSettings.findFirst({
+      select: { id: true },
+    });
 
     if (settings) {
       settings = await prisma.systemSettings.update({
         where: { id: settings.id },
+        select: safeSettingsSelect,
         data: {
           ...(platformName !== undefined && { platformName }),
           ...(isRegistrationOpen !== undefined && { isRegistrationOpen }),
@@ -92,6 +110,7 @@ export async function PATCH(req: NextRequest) {
       });
     } else {
       settings = await prisma.systemSettings.create({
+        select: safeSettingsSelect,
         data: { 
           platformName: platformName || 'منصة المايسترو', 
           isRegistrationOpen: isRegistrationOpen ?? true,
@@ -114,3 +133,4 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }
+

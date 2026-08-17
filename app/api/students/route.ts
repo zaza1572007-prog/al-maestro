@@ -19,7 +19,12 @@ async function tryDispatchWhatsApp(to: string, body: string) {
     if (!to || !body) return;
 
     // 1. If HTTP gateway is configured (e.g. for Vercel deployment), dispatch immediately via Gateway
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: {
+        waGatewayUrl: true,
+        waApiToken: true,
+      }
+    });
     if (settings?.waGatewayUrl && settings?.waApiToken) {
       const res = await fetch(settings.waGatewayUrl, {
         method: 'POST',
@@ -260,7 +265,14 @@ export async function POST(req: Request) {
     });
 
     // Dispatch WhatsApp welcome messages
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: {
+        enableWhatsApp: true,
+        autoSendCredentials: true,
+        waTplStudent: true,
+        waTplParent: true,
+      }
+    });
     if (settings?.enableWhatsApp !== false && settings?.autoSendCredentials !== false) {
       // Student message
       const studentTpl = settings?.waTplStudent || '🎓 مرحباً [student_name]\nتم إنشاء حسابك بمنصة المايسترو بنجاح 🎉\nكود الطالب: [student_code]\nاسم المستخدم: [username]\nكلمة المرور: [password]\nنتمنى لك عاماً دراسياً موفقاً وناجحاً 🌟';

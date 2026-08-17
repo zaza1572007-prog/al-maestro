@@ -53,12 +53,9 @@ function LoginForm() {
           if (data.settings.logoScale !== undefined) {
             setLogoScale(data.settings.logoScale);
           }
-        }
-
-        // Check if custom logo exists
-        const logoRes = await fetch('/api/settings/branding?type=logo', { method: 'HEAD' });
-        if (logoRes.ok) {
-          setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
+          if (data.settings.hasLogo) {
+            setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
+          }
         }
       } catch (e) {
         console.error('Failed to load branding in login page', e);

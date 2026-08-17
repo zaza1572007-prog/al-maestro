@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: { enableWhatsApp: true }
+    });
     let status = getWhatsAppStatus();
     if (settings?.enableWhatsApp !== false) {
       if (!status.isConnected && status.status === 'DISCONNECTED') {

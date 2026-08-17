@@ -307,18 +307,14 @@ export default function SettingsPage() {
           }
         }
 
-        // Fetch custom portrait presences
-        const [portRes, portTabRes, portMobRes, logoCheck] = await Promise.all([
-          fetch('/api/settings/branding?type=portrait', { method: 'HEAD' }),
-          fetch('/api/settings/branding?type=portrait-tablet', { method: 'HEAD' }),
-          fetch('/api/settings/branding?type=portrait-mobile', { method: 'HEAD' }),
-          fetch('/api/settings/branding?type=logo', { method: 'HEAD' }),
-        ]);
-
-        if (portRes.ok) setPortraitUrl('/api/settings/branding?type=portrait&t=' + Date.now());
-        if (portTabRes.ok) setPortraitTabletUrl('/api/settings/branding?type=portrait-tablet&t=' + Date.now());
-        if (portMobRes.ok) setPortraitMobileUrl('/api/settings/branding?type=portrait-mobile&t=' + Date.now());
-        if (logoCheck.ok) setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
+        // Check custom portrait presences from flags loaded in /api/settings
+        if (data.success && data.settings) {
+          const s = data.settings;
+          if (s.hasPortrait) setPortraitUrl('/api/settings/branding?type=portrait&t=' + Date.now());
+          if (s.hasPortraitTablet) setPortraitTabletUrl('/api/settings/branding?type=portrait-tablet&t=' + Date.now());
+          if (s.hasPortraitMobile) setPortraitMobileUrl('/api/settings/branding?type=portrait-mobile&t=' + Date.now());
+          if (s.hasLogo) setLogoUrl('/api/settings/branding?type=logo&t=' + Date.now());
+        }
 
         // Fetch logged-in user profile details
         const meRes = await fetch('/api/auth/me');

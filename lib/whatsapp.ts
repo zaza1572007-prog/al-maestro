@@ -46,7 +46,9 @@ export function formatWhatsAppNumber(phone: string): string {
 }
 
 export async function initWhatsApp(forceNew = false): Promise<WASocket> {
-  const settings = await prisma.systemSettings.findFirst();
+  const settings = await prisma.systemSettings.findFirst({
+    select: { enableWhatsApp: true }
+  });
   if (settings && settings.enableWhatsApp === false) {
     throw new Error('WhatsApp service is disabled in settings.');
   }
@@ -149,7 +151,9 @@ export async function sendWhatsAppMessage(
   message: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const settings = await prisma.systemSettings.findFirst();
+    const settings = await prisma.systemSettings.findFirst({
+      select: { enableWhatsApp: true }
+    });
     if (settings && settings.enableWhatsApp === false) {
       return { success: false, error: 'WhatsApp service is disabled in settings.' };
     }

@@ -5,23 +5,72 @@ import { verifyStaff } from '@/lib/auth';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_SIZE_MB = 5;
 
+/** HEAD /api/settings/branding?type=portrait|portrait-tablet|portrait-mobile|logo
+ *  Quickly checks if a branding image exists without transferring the heavy Base64 content.
+ */
+export async function HEAD(request: NextRequest) {
+  try {
+    const type = request.nextUrl.searchParams.get('type') ?? 'portrait';
+    
+    // Choose the database field based on type
+    let selectField = 'portraitBase64';
+    if (type === 'logo') {
+      selectField = 'logoBase64';
+    } else if (type === 'portrait-tablet') {
+      selectField = 'portraitTabletBase64';
+    } else if (type === 'portrait-mobile') {
+      selectField = 'portraitMobileBase64';
+    }
+
+    // Check if the field is not null/empty via a database-side null check query
+    const brandingCheck = await prisma.$queryRawUnsafe<Array<Record<string, boolean>>>(
+      `SELECT ("${selectField}" IS NOT NULL AND "${selectField}" <> '') AS "hasImage" FROM "SystemSettings" LIMIT 1`
+    );
+
+    const hasImage = brandingCheck?.[0]?.hasImage ?? false;
+
+    if (!hasImage) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    return new NextResponse(null, { status: 200 });
+  } catch (e: any) {
+    return new NextResponse(null, { status: 500 });
+  }
+}
+
 /** GET /api/settings/branding?type=portrait|portrait-tablet|portrait-mobile|logo
  *  Returns the branding image as the actual image binary (for <img src> use).
  */
 export async function GET(request: NextRequest) {
   try {
     const type = request.nextUrl.searchParams.get('type') ?? 'portrait';
-    const settings = await prisma.systemSettings.findFirst();
+    
+    // Select ONLY the requested field(s) to avoid downloading all images in a single query
+    const selectFields: any = { id: true };
+    if (type === 'logo') {
+      selectFields.logoBase64 = true;
+    } else if (type === 'portrait-tablet') {
+      selectFields.portraitTabletBase64 = true;
+      selectFields.portraitBase64 = true; // fallback
+    } else if (type === 'portrait-mobile') {
+      selectFields.portraitMobileBase64 = true;
+      selectFields.portraitBase64 = true; // fallback
+    } else {
+      selectFields.portraitBase64 = true;
+    }
+
+    const settings: any = await prisma.systemSettings.findFirst({
+      select: selectFields,
+    });
 
     let b64: string | null | undefined = null;
 
     if (type === 'logo') {
       b64 = settings?.logoBase64;
     } else if (type === 'portrait-tablet') {
-      // Use tablet-specific portrait or fallback to main portrait
       b64 = settings?.portraitTabletBase64 || settings?.portraitBase64;
     } else if (type === 'portrait-mobile') {
-      // Use mobile-specific portrait or fallback to main portrait
       b64 = settings?.portraitMobileBase64 || settings?.portraitBase64;
     } else {
       b64 = settings?.portraitBase64;
@@ -108,15 +157,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert into SystemSettings
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await prisma.systemSettings.findFirst({
+      select: { id: true },
+    });
 
     if (settings) {
       settings = await prisma.systemSettings.update({
         where: { id: settings.id },
+        select: { id: true },
         data: updateData,
       });
     } else {
       settings = await prisma.systemSettings.create({
+        select: { id: true },
         data: {
           platformName: 'منصة المايسترو',
           ...updateData,
