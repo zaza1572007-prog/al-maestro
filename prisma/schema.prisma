@@ -184,11 +184,13 @@ model Parent {
   relation      String    @default("Father")
   whatsapp      String?
   extraPhone    String?
+  qrCode        String?   @unique
   students      Student[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([phone])
+  @@index([qrCode])
 }
 
 model RegistrationRequest {

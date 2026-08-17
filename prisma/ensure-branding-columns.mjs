@@ -81,6 +81,22 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
 
+  // Parent qrCode — add column first (nullable, no constraint), fill with UUID, then add UNIQUE
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" ADD COLUMN IF NOT EXISTS "qrCode" TEXT;`);
+  await prisma.$executeRawUnsafe(`
+    UPDATE "Parent" SET "qrCode" = gen_random_uuid()::text WHERE "qrCode" IS NULL;
+  `);
+  // Add UNIQUE constraint only if it doesn't already exist
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'Parent_qrCode_key'
+      ) THEN
+        ALTER TABLE "Parent" ADD CONSTRAINT "Parent_qrCode_key" UNIQUE ("qrCode");
+      END IF;
+    END $$;
+  `);
+
   // Generate plain passwords for legacy students who don't have passwordPlain
   const studentsWithoutPlain = await prisma.student.findMany({
     where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },

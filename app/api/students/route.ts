@@ -165,6 +165,7 @@ export async function POST(req: Request) {
           extraPhone: parentExtraPhone || null,
           password: hashedParentPassword,
           passwordPlain: parentPasswordPlain,
+          qrCode: `PARENT-${crypto.randomUUID()}`,
         },
       });
     } else {
@@ -177,6 +178,10 @@ export async function POST(req: Request) {
       if (!parent.password) {
         updateData.password = hashedParentPassword;
         updateData.passwordPlain = parentPasswordPlain;
+      }
+      // Ensure every parent has a qrCode
+      if (!(parent as any).qrCode) {
+        updateData.qrCode = `PARENT-${crypto.randomUUID()}`;
       }
       if (Object.keys(updateData).length > 0) {
         parent = await prisma.parent.update({

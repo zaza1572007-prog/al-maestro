@@ -150,6 +150,7 @@ export default function Sidebar() {
     { label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard },
     { label: 'المدفوعات والسداد', path: '/payments', icon: Banknote },
     { label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard },
+    { label: 'طباعة QR', path: '/qr-print', icon: QrCode },
     SEPARATOR,
     { label: 'المكتبة والملفات', path: '/files', icon: FolderArchive },
     { label: 'إدارة المهام', path: '/tasks', icon: CheckSquare },
