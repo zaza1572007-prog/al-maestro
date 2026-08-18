@@ -10,7 +10,8 @@ interface Student {
   name: string;
   qrCode: string;
   academicStage?: { name: string };
-  group?: { name: string };
+  group?: { id?: string; name: string };
+  groupId?: string;
 }
 
 interface Parent {
@@ -19,7 +20,7 @@ interface Parent {
   phone: string;
   qrCode: string | null;
   relation: string;
-  students?: { name: string }[];
+  students?: { id: string; name: string; code?: string }[];
 }
 
 type Tab = 'students' | 'parents';
@@ -28,6 +29,8 @@ export default function QrPrintPage() {
   const [tab, setTab] = useState<Tab>('students');
   const [students, setStudents] = useState<Student[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -41,14 +44,17 @@ export default function QrPrintPage() {
     setLoading(true);
     setSelectedIds(new Set());
     try {
-      const [stuRes, parRes] = await Promise.all([
+      const [stuRes, parRes, grpRes] = await Promise.all([
         fetch('/api/students'),
         fetch('/api/parents'),
+        fetch('/api/groups'),
       ]);
       const stuData = await stuRes.json();
       const parData = await parRes.json();
+      const grpData = await grpRes.json();
       setStudents(stuData.students || []);
       setParents(parData.parents || parData || []);
+      setGroups(grpData.groups || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -60,13 +66,42 @@ export default function QrPrintPage() {
     fetchData();
   }, []);
 
-  const filteredStudents = students.filter((s) =>
-    searchQuery.trim() === '' ? true : s.name.includes(searchQuery) || s.code.includes(searchQuery)
-  );
+  const filteredStudents = students.filter((s) => {
+    const matchesGroup =
+      selectedGroupId === 'ALL'
+        ? true
+        : s.group?.id === selectedGroupId ||
+          s.group?.name === selectedGroupId ||
+          (s as any).groupId === selectedGroupId;
 
-  const filteredParents = parents.filter((p) =>
-    searchQuery.trim() === '' ? true : p.name.includes(searchQuery) || p.phone.includes(searchQuery)
-  );
+    const matchesSearch =
+      searchQuery.trim() === ''
+        ? true
+        : s.name.includes(searchQuery) || s.code.includes(searchQuery);
+
+    return matchesGroup && matchesSearch;
+  });
+
+  const filteredParents = parents.filter((p) => {
+    const matchesGroup =
+      selectedGroupId === 'ALL'
+        ? true
+        : p.students?.some((st) => {
+            const fullStu = students.find((s) => s.id === st.id);
+            return (
+              fullStu?.group?.id === selectedGroupId ||
+              fullStu?.group?.name === selectedGroupId ||
+              (fullStu as any)?.groupId === selectedGroupId
+            );
+          });
+
+    const matchesSearch =
+      searchQuery.trim() === ''
+        ? true
+        : p.name.includes(searchQuery) || p.phone.includes(searchQuery);
+
+    return matchesGroup && matchesSearch;
+  });
 
   const currentList = tab === 'students' ? filteredStudents : filteredParents;
 
@@ -196,7 +231,7 @@ export default function QrPrintPage() {
       {/* Tabs */}
       <div className="no-print flex gap-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-1.5 w-fit">
         <button
-          onClick={() => { setTab('students'); setSelectedIds(new Set()); setSearchQuery(''); }}
+          onClick={() => { setTab('students'); setSelectedIds(new Set()); setSearchQuery(''); setSelectedGroupId('ALL'); }}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
             tab === 'students'
               ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -210,7 +245,7 @@ export default function QrPrintPage() {
           </span>
         </button>
         <button
-          onClick={() => { setTab('parents'); setSelectedIds(new Set()); setSearchQuery(''); }}
+          onClick={() => { setTab('parents'); setSelectedIds(new Set()); setSearchQuery(''); setSelectedGroupId('ALL'); }}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer ${
             tab === 'parents'
               ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
@@ -228,13 +263,30 @@ export default function QrPrintPage() {
       {/* Toolbar */}
       <div className="no-print bg-slate-900/80 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-          <input
-            type="text"
-            placeholder={tab === 'students' ? '🔍 ابحث باسم الطالب أو الكود...' : '🔍 ابحث باسم ولي الأمر أو رقم الهاتف...'}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setSelectedIds(new Set()); }}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 flex-1 min-w-[240px]"
-          />
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-1">
+            <input
+              type="text"
+              placeholder={tab === 'students' ? '🔍 ابحث باسم الطالب أو الكود...' : '🔍 ابحث باسم ولي الأمر أو رقم الهاتف...'}
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setSelectedIds(new Set()); }}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 flex-1 min-w-[240px]"
+            />
+            <select
+              value={selectedGroupId}
+              onChange={(e) => {
+                setSelectedGroupId(e.target.value);
+                setSelectedIds(new Set());
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-purple-500 cursor-pointer"
+            >
+              <option value="ALL">كل المجموعات ({tab === 'students' ? students.length : parents.length})</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-2 w-full md:w-auto justify-end">
             <button
               onClick={toggleSelectAll}
