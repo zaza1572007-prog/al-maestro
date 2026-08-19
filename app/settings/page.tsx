@@ -6,15 +6,25 @@ import {
   ToggleLeft, ToggleRight, Upload, Image as ImageIcon, CheckCircle2, XCircle, 
   Loader2, Palette, RefreshCw, Layout, Maximize2, Sparkles, 
   Laptop, Tablet, Smartphone, Sliders, ZoomIn, Move, Eye, EyeOff, RotateCcw,
-  Trash2, Lock, Unlock, Search, AlertTriangle, CalendarClock
+  Trash2, Lock, Unlock, Search, AlertTriangle, CalendarClock,
+  Folder, FolderCog, FolderSync, HardDrive, Clock
 } from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
 import DeviceFramePreview from '@/components/DeviceFramePreview';
 import { DEFAULT_PORTRAIT_CONFIG, MultiDevicePortraitConfig, DevicePortraitConfig } from '@/components/TeacherOverlay';
+import { useToast } from '@/components/ToastProvider';
+import {
+  pickAndSaveBackupDirectory,
+  getSavedBackupDirectory,
+  clearSavedBackupDirectory,
+  writeBackupToDirectory,
+} from '@/lib/localBackup';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('registration');
+
+  const toast = useToast();
 
   // DB-backed settings
   const [platformName, setPlatformName] = useState('منصة المايسترو');
@@ -23,6 +33,14 @@ export default function SettingsPage() {
   const [enableWhatsApp, setEnableWhatsApp] = useState(true);
   const [saveMsg, setSaveMsg] = useState('');
   const [loadingSettings, setLoadingSettings] = useState(true);
+
+  // Backup Local Folder States
+  const [backupDirHandle, setBackupDirHandle] = useState<any | null>(null);
+  const [backupFolderName, setBackupFolderName] = useState<string | null>(null);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
+  const [isBackupDirSupported, setIsBackupDirSupported] = useState<boolean>(true);
+  const [isBackupSyncing, setIsBackupSyncing] = useState<boolean>(false);
+  const [backupStatusMsg, setBackupStatusMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Cleanup States
   const [stagesList, setStagesList] = useState<any[]>([]);
@@ -323,6 +341,13 @@ export default function SettingsPage() {
           setAccountName(meData.user.name || '');
           setAccountPhone(meData.user.phone || '');
         }
+
+        // Initialize local backup directory handle & metadata from IndexedDB
+        const dirInfo = await getSavedBackupDirectory();
+        setBackupDirHandle(dirInfo.handle);
+        setBackupFolderName(dirInfo.folderName);
+        setLastBackupTime(dirInfo.lastBackupTime);
+        setIsBackupDirSupported(dirInfo.isSupported);
       } catch (err) {
         console.error(err);
       } finally {
@@ -799,6 +824,81 @@ export default function SettingsPage() {
       reader.readAsText(file);
     } catch {
       setRestoreMsg('خطأ في تنسيق ملف النسخة الاحتياطية');
+    }
+  };
+
+  const handleSelectDirectory = async () => {
+    setBackupStatusMsg(null);
+    const res = await pickAndSaveBackupDirectory();
+    if (res.cancelled) {
+      return;
+    }
+    if (res.error) {
+      setBackupStatusMsg({ text: res.error, ok: false });
+      toast.error(res.error);
+      return;
+    }
+    if (res.handle) {
+      setBackupDirHandle(res.handle);
+      setBackupFolderName(res.folderName || 'مجلد مخصص');
+      const successText = `تم اختيار المجلد (${res.folderName || 'المجلد المختار'}) بنجاح ✅`;
+      setBackupStatusMsg({ text: successText, ok: true });
+      toast.success(`تم إعداد مجلد النسخ الاحتياطي (${res.folderName}) بنجاح!`);
+    }
+  };
+
+  const handleChangeDirectory = async () => {
+    await clearSavedBackupDirectory();
+    setBackupDirHandle(null);
+    setBackupFolderName(null);
+    setBackupStatusMsg(null);
+    await handleSelectDirectory();
+  };
+
+  const handleSyncLocalBackup = async () => {
+    let handle = backupDirHandle;
+    if (!handle) {
+      const savedInfo = await getSavedBackupDirectory();
+      handle = savedInfo.handle;
+    }
+
+    if (!handle) {
+      toast.error('يرجى اختيار مجلد النسخ الاحتياطي على الجهاز أولاً');
+      return;
+    }
+
+    setIsBackupSyncing(true);
+    setBackupStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/backup');
+      if (!res.ok) {
+        throw new Error('فشل جلب النسخة الاحتياطية من الخادم');
+      }
+      const backupData = await res.json();
+
+      const result = await writeBackupToDirectory(handle, backupData);
+
+      if (result.success) {
+        setLastBackupTime(result.timestamp || null);
+        const folderDisplayName = backupFolderName || handle.name || 'المجلد المختار';
+        const msg = `تم تحديث النسخة الاحتياطية بنجاح داخل المجلد (${folderDisplayName})! 📦\nالملفات: ${result.datedFileName} و ${result.latestFileName}\nتاريخ الحفظ: ${result.timestamp}`;
+        setBackupStatusMsg({ text: msg, ok: true });
+        toast.success(`تم حفظ النسخة الاحتياطية في المجلد (${folderDisplayName}) بنجاح! (${result.timestamp})`);
+      } else {
+        if (result.permissionDenied) {
+          toast.error('لم يتم منح صلاحيات القراءة والكتابة للمجلد. يرجى إعطاء الصلاحية أو إعادة اختيار المجلد.');
+        } else {
+          toast.error(result.error || 'فشلت عملية كتابة الملفات داخل المجلد');
+        }
+        setBackupStatusMsg({ text: result.error || 'فشل تحديث النسخة الاحتياطية local', ok: false });
+      }
+    } catch (err: any) {
+      console.error('Local backup sync error:', err);
+      toast.error(err.message || 'خطأ في عملية النسخ الاحتياطي المحلي');
+      setBackupStatusMsg({ text: err.message || 'خطأ غير متوقع أثناء الحفظ في المجلد', ok: false });
+    } finally {
+      setIsBackupSyncing(false);
     }
   };
 
@@ -2055,32 +2155,160 @@ export default function SettingsPage() {
 
       {/* Tab: Backup */}
       {activeTab === 'backup' && (
-        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-6 max-w-5xl">
+        <div className="glass-panel p-6 md:p-8 rounded-3xl border border-white/10 space-y-8 max-w-5xl">
           <div>
-            <h3 className="font-bold text-lg text-white">تصدير واستعادة نسخة احتياطية</h3>
-            <p className="text-xs text-slate-400 mt-1">تصدير كافة البيانات في ملف JSON واستعادتها في أي وقت</p>
+            <h3 className="font-bold text-xl text-white flex items-center gap-3">
+              <FolderCog className="w-6 h-6 text-emerald-400" />
+              إدارة النسخ الاحتياطي المحلي والتلقائي (Offline-First)
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              تمكين المستر من حفظ النسخ الاحتياطية مباشرة داخل مجلد مخصص على جهازه تلقائياً مع تذكر المسار والصلاحيات.
+            </p>
           </div>
-          {restoreMsg && (
-            <p className="text-xs text-emerald-400 font-bold p-3 bg-white/5 rounded-xl border border-white/10">{restoreMsg}</p>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 text-center">
-              <h4 className="font-bold text-white text-sm">تصدير النسخة الاحتياطية</h4>
-              <p className="text-xs text-slate-400">تحميل كافة البيانات في ملف JSON</p>
-              <button
-                onClick={handleExportBackup}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition"
-              >
-                تنزيل النسخة الآن 📥
-              </button>
+
+          {/* Local Folder Path Picker Section */}
+          <div className="p-6 bg-slate-900/60 rounded-3xl border border-emerald-500/20 space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-400">
+                  <HardDrive className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-base">مجلد النسخ الاحتياطي التلقائي على الجهاز</h4>
+                  <p className="text-xs text-slate-400">حفظ ملفات almaestro_backup_YYYY-MM-DD.json و latest_backup.json مباشرة</p>
+                </div>
+              </div>
+              
+              {backupFolderName && (
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4" />
+                  تم الربط بمجلد محلي
+                </span>
+              )}
             </div>
-            <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 text-center">
-              <h4 className="font-bold text-white text-sm">استعادة النسخة الاحتياطية</h4>
-              <p className="text-xs text-slate-400">رفع ملف JSON لاسترجاع قواعد البيانات</p>
-              <label className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition block cursor-pointer">
-                اختر ملف النسخة 📤
-                <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
-              </label>
+
+            {/* Folder Status Content */}
+            {!backupFolderName ? (
+              /* State 1: No Folder Selected */
+              <div className="text-center py-6 space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-3xl bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400">
+                  <Folder className="w-8 h-8 text-emerald-400/80" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                  <p className="text-sm font-semibold text-slate-200">لم يتم تحديد مجلد محلي للنسخ الاحتياطي بعد</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    قم باختيار مجلد على جهازك وسوف يتذكره التطبيق تلقائياً، ليتم حفظ أحدث نسختين من قواعد البيانات داخل المجلد بضغطة زر.
+                  </p>
+                </div>
+
+                {isBackupDirSupported ? (
+                  <button
+                    onClick={handleSelectDirectory}
+                    className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-sm shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    📁 اختيار مجلد النسخ الاحتياطي على الجهاز
+                  </button>
+                ) : (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-300 text-xs font-medium max-w-lg mx-auto">
+                    ⚠️ متصفحك لا يدعم اختيار المجلدات المباشر (File System Access API). يمكنك استخدام خيار التنزيل المباشر أدناه، أو فتح التطبيق من متصفح Chrome أو Edge.
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* State 2: Folder Already Selected */
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">اسم المجلد المختار:</span>
+                    <div className="flex items-center gap-2 font-bold text-emerald-400 text-sm dir-ltr justify-end">
+                      <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>{backupFolderName}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-medium text-slate-400 block">آخر تحديث للنسخة الاحتياطية:</span>
+                    <div className="flex items-center gap-2 font-bold text-slate-200 text-sm">
+                      <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>{lastBackupTime ? lastBackupTime : 'لم يتم التحديث في هذا المجلد بعد'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleSyncLocalBackup}
+                    disabled={isBackupSyncing}
+                    className="flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isBackupSyncing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>جارٍ حفظ الملفات داخل المجلد...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        <span>🔄 تحديث النسخة الآن</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleChangeDirectory}
+                    title="تغيير المجلد المحفوظ"
+                    className="py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-2xl text-xs transition border border-white/10 flex items-center gap-2"
+                  >
+                    <FolderSync className="w-4 h-4 text-amber-400" />
+                    <span>تغيير المجلد</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {backupStatusMsg && (
+              <div
+                className={`p-4 rounded-2xl text-xs font-semibold border flex items-center gap-3 ${
+                  backupStatusMsg.ok
+                    ? 'bg-emerald-950/60 border-emerald-500/30 text-emerald-200'
+                    : 'bg-rose-950/60 border-rose-500/30 text-rose-200'
+                }`}
+              >
+                {backupStatusMsg.ok ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                )}
+                <span className="whitespace-pre-line">{backupStatusMsg.text}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Classic Manual Download & Import Backup */}
+          <div className="space-y-4 pt-4 border-t border-white/10">
+            <h4 className="font-bold text-white text-sm">التنزيل والاستعادة اليدوية</h4>
+            {restoreMsg && (
+              <p className="text-xs text-emerald-400 font-bold p-3 bg-white/5 rounded-xl border border-white/10">{restoreMsg}</p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 text-center">
+                <h4 className="font-bold text-white text-sm">تصدير يدوي (تنزيل ملف)</h4>
+                <p className="text-xs text-slate-400">تحميل كافة البيانات مباشرة عبر المتصفح</p>
+                <button
+                  onClick={handleExportBackup}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition border border-white/10 flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4 rotate-180" />
+                  <span>تنزيل النسخة الآن (JSON) 📥</span>
+                </button>
+              </div>
+              <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 text-center">
+                <h4 className="font-bold text-white text-sm">استعادة النسخة الاحتياطية</h4>
+                <p className="text-xs text-slate-400">رفع ملف JSON لاسترجاع كافة بيانات المنصة</p>
+                <label className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition block cursor-pointer">
+                  اختر ملف النسخة 📤
+                  <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+                </label>
+              </div>
             </div>
           </div>
         </div>

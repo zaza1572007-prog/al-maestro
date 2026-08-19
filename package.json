@@ -30,6 +30,7 @@
     "clsx": "^2.1.1",
     "cookies": "^0.9.1",
     "framer-motion": "^12.42.2",
+    "idb-keyval": "^6.3.0",
     "jose": "^6.2.4",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^1.26.0",
