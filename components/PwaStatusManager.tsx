@@ -1,29 +1,70 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Wifi, WifiOff, Laptop } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
+/**
+ * Real live network & backend server connectivity status hook.
+ * Performs real live heartbeat HTTP pings to /api/health with timeout.
+ */
 export function useNetworkStatus() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
+
+  const checkRealConnection = useCallback(async () => {
+    // 1. Check browser network interface first
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsOnline(false);
+      return;
+    }
+
+    // 2. Perform live HTTP heartbeat check against /api/health with a 4s timeout
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch('/api/health?t=' + Date.now(), {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        setIsOnline(true);
+      } else {
+        setIsOnline(false);
+      }
+    } catch {
+      // Network error, timeout, or server unreachable
+      setIsOnline(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    setIsOnline(navigator.onLine);
+    // Check connection immediately on mount
+    checkRealConnection();
 
-    const handleOnline = () => setIsOnline(true);
+    // Listen to browser network change events
+    const handleOnline = () => checkRealConnection();
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Live heartbeat ping every 10 seconds to verify real backend status
+    const interval = setInterval(checkRealConnection, 10000);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
     };
-  }, []);
+  }, [checkRealConnection]);
 
   return isOnline;
 }
@@ -47,7 +88,6 @@ export function usePwaInstallPrompt() {
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent automatic browser banner so we can trigger custom prompt
       e.preventDefault();
       setDeferredPrompt(e);
       setCanInstall(true);
@@ -86,7 +126,7 @@ export function usePwaInstallPrompt() {
 
 /**
  * Global PWA Status Manager component that registers the Service Worker
- * and shows online/offline toast notifications.
+ * and shows online/offline toast notifications based on real server connection.
  */
 export default function PwaStatusManager() {
   const isOnline = useNetworkStatus();
@@ -106,9 +146,9 @@ export default function PwaStatusManager() {
   useEffect(() => {
     if (prevStatus !== null && prevStatus !== isOnline) {
       if (isOnline) {
-        toast.success('تمت إعادة الاتصال بالإنترنت - أنت أونلاين الآن 🌐');
+        toast.success('تمت استعادة الاتصال بالسيرفر والإنترنت بنجاح 🌐');
       } else {
-        toast.error('انقطع الاتصال بالإنترنت - تعمل الآن في وضع الأوفلاين 📡');
+        toast.error('انقطع الاتصال بالسيرفر - تم التحويل إلى وضع الأوفلاين 📡');
       }
     }
     setPrevStatus(isOnline);
@@ -118,7 +158,7 @@ export default function PwaStatusManager() {
 }
 
 /**
- * Dynamic Network Status Badge component (Online 🟢 / Offline 🔴)
+ * Dynamic Real Network & Server Status Badge component (Online 🟢 / Offline 🔴)
  */
 export function NetworkStatusBadge({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const isOnline = useNetworkStatus();
@@ -139,12 +179,12 @@ export function NetworkStatusBadge({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' 
       {isOnline ? (
         <>
           <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>النظام متصل (أونلاين) 🟢</span>
+          <span>النظام متصل بالسيرفر 🟢</span>
         </>
       ) : (
         <>
           <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-          <span>وضع الأوفلاين (غير متصل) 🔴</span>
+          <span>غير متصل بالسيرفر (أوفلاين) 🔴</span>
         </>
       )}
     </motion.div>
@@ -178,7 +218,7 @@ export function PwaInstallButton({ className = '' }: { className?: string }) {
     return (
       <button
         onClick={() => {
-          toast.info('لتثبيت التطبيق على جهازك: افتح خيارات المتصفح (⋮) واضغط "التثبيت كـ تطبيق" أو "Install App" 📲');
+          toast.info('التطبيق مثبت بالفعل أو يمكنك تثبيته من خيارات المتصفح (⋮) -> "التثبيت كـ تطبيق" 📲');
         }}
         className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer ${className}`}
         title="تثبيت التطبيق على جهازك"
