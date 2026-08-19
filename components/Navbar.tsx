@@ -18,6 +18,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useSidebar } from '@/components/SidebarContext';
+import { NetworkStatusBadge, PwaInstallButton } from '@/components/PwaStatusManager';
 
 
 export default function Navbar() {
@@ -29,7 +30,6 @@ export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toggleMobileOpen } = useSidebar();
-
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -223,8 +223,18 @@ export default function Navbar() {
       </div>
 
 
-      {/* Action Icons & Time */}
+      {/* Action Icons, PWA Install & Network Status */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Network Status Badge */}
+        <div className="hidden sm:flex">
+          <NetworkStatusBadge size="sm" />
+        </div>
+
+        {/* PWA Install Button */}
+        <div className="hidden sm:flex">
+          <PwaInstallButton />
+        </div>
+
         {/* Live clock */}
         {currentTime && (
           <div

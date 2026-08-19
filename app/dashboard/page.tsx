@@ -38,6 +38,7 @@ import {
 import AttendanceHeatmap from '@/components/AttendanceHeatmap';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
+import { NetworkStatusBadge, PwaInstallButton } from '@/components/PwaStatusManager';
 import StatusIndicator from '@/components/StatusIndicator';
 import Timeline from '@/components/Timeline';
 
@@ -165,71 +166,73 @@ export default function DashboardPage() {
         <div className="absolute -top-20 -left-20 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          {/* Greeting & Info */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
-                لوحة المتابعة الذكية
-              </span>
-              <StatusIndicator status="success" label="النظام متصل 🟢" size="sm" />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            {/* Greeting & Info */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
+                  لوحة المتابعة الذكية
+                </span>
+                <NetworkStatusBadge size="sm" />
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight gradient-heading">
+                أهلاً بك، أستاذ أحمد راضي كحلة 👋
+              </h1>
+
+              <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2 flex-wrap">
+                <span>إجمالي الطلاب: <b className="text-white font-mono">{stats.totalStudents}</b> طالب</span>
+                <span>·</span>
+                <span>المجموعات النشطة: <b className="text-purple-300 font-mono">{stats.activeGroups}</b> مجموعة</span>
+                <span>·</span>
+                <span>حضور اليوم: <b className="text-emerald-400 font-mono">{stats.todayAttendanceRate}</b></span>
+              </p>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight gradient-heading">
-              أهلاً بك، أستاذ أحمد راضي كحلة 👋
-            </h1>
 
-            <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2 flex-wrap">
-              <span>إجمالي الطلاب: <b className="text-white font-mono">{stats.totalStudents}</b> طالب</span>
-              <span>·</span>
-              <span>المجموعات النشطة: <b className="text-purple-300 font-mono">{stats.activeGroups}</b> مجموعة</span>
-              <span>·</span>
-              <span>حضور اليوم: <b className="text-emerald-400 font-mono">{stats.todayAttendanceRate}</b></span>
-            </p>
-          </div>
+            {/* Compact Clock & Quick Action Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start lg:self-center">
+              {/* Sleek Clock Pill */}
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-lg">
+                <Clock className="w-4 h-4 text-purple-400 animate-pulse flex-shrink-0" />
+                <div className="text-right leading-tight">
+                  <p className="text-sm font-black text-white font-mono tracking-wider" dir="ltr">
+                    {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {currentTime.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </p>
+                </div>
+              </div>
 
-          {/* Compact Clock & Quick Action Buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start lg:self-center">
-            {/* Sleek Clock Pill */}
-            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-slate-900/80 border border-white/10 shadow-lg">
-              <Clock className="w-4 h-4 text-purple-400 animate-pulse flex-shrink-0" />
-              <div className="text-right leading-tight">
-                <p className="text-sm font-black text-white font-mono tracking-wider" dir="ltr">
-                  {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  {currentTime.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
-                </p>
+              {/* Quick Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <PwaInstallButton />
+
+                <Link href="/attendance">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>ماسح الـ QR</span>
+                  </motion.button>
+                </Link>
+
+                <Link href="/students">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-2xl text-xs font-bold transition cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>إضافة طالب</span>
+                  </motion.button>
+                </Link>
               </div>
             </div>
-
-            {/* Quick Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Link href="/attendance">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer"
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span>ماسح الـ QR</span>
-                </motion.button>
-              </Link>
-
-              <Link href="/students">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30 rounded-2xl text-xs font-bold transition cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>إضافة طالب</span>
-                </motion.button>
-              </Link>
-            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
       {/* 📊 High-Density Metric KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">

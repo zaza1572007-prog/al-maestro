@@ -1,0 +1,25 @@
+{
+  "name": "منصة المايسترو - الأستاذ أحمد راضي كحلة",
+  "short_name": "المايسترو",
+  "description": "نظام إدارة تعليمي وحضور وماليات مخصص للأستاذ أحمد راضي كحلة - دعم العمل أونلاين وأوفلاين",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/teacher.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/teacher.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
