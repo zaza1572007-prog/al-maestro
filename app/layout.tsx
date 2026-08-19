@@ -9,6 +9,7 @@ import ThemeProvider from "@/components/ThemeProvider";
 import PageTransition from "@/components/PageTransition";
 import CommandPalette from "@/components/CommandPalette";
 import PwaStatusManager from "@/components/PwaStatusManager";
+import OfflineSyncWidget from "@/components/OfflineSyncWidget";
 
 export const metadata: Metadata = {
   title: "منصة المايسترو - الأستاذ أحمد راضي كحلة",
@@ -44,6 +45,7 @@ export default function RootLayout({
         <TeacherOverlay />
         <ToastProvider>
           <PwaStatusManager />
+          <OfflineSyncWidget />
           <SidebarProvider>
             <Sidebar />
             {/* Global Command Palette - available on all pages */}

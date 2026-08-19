@@ -8,6 +8,7 @@ import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen } from 'lucide-r
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import StatusIndicator from '@/components/StatusIndicator';
+import { addOfflineStudent } from '@/lib/offlineSync';
 import SplitView from '@/components/SplitView';
 import ResizableTable from '@/components/ResizableTable';
 import CollapsibleSection from '@/components/CollapsibleSection';
@@ -178,7 +179,28 @@ function StudentsContent() {
         toast.error(data.error || 'حدث خطأ أثناء إضافة الطالب');
       }
     } catch (err) {
-      toast.error('حدث خطأ بالاتصال');
+      // Offline fallback: save student to offline queue & cache
+      try {
+        const studentPayload = {
+          name: newStudent.name.trim(),
+          phone: newStudent.phone.trim(),
+          parentName: newStudent.parentName.trim(),
+          parentPhone: newStudent.parentPhone.trim(),
+          parentRelation: newStudent.parentRelation,
+          parentWhatsapp: newStudent.parentWhatsapp.trim() || undefined,
+          parentExtraPhone: newStudent.parentExtraPhone.trim() || undefined,
+          academicStageId: actualStageId,
+          groupId: actualGroupId,
+        };
+
+        const { student: addedOffline } = await addOfflineStudent(studentPayload);
+        setStudents((prev) => [addedOffline, ...prev]);
+        setIsAddingStudent(false);
+        setNewStudent({ name: '', phone: '', parentName: '', parentPhone: '', parentRelation: 'Father', parentWhatsapp: '', parentExtraPhone: '', stageId: '', groupId: '' });
+        toast.success(`[أوفلاين] تم حفظ الطالب (${newStudent.name.trim()}) محلياً في جهازك! 📲 وسينرفع فور توفر النت.`);
+      } catch (offlineErr) {
+        toast.error('حدث خطأ أثناء الحفظ المحلي للطالب');
+      }
     } finally {
       setIsSaving(false);
     }

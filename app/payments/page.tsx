@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Plus, User, CreditCard, Banknote, Search } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import { addOfflinePayment } from '@/lib/offlineSync';
 
 interface Payment {
   id: string;
@@ -157,7 +158,25 @@ export default function PaymentsPage() {
         toast.error(data.error || 'حدث خطأ أثناء حفظ الدفعة.');
       }
     } catch (err) {
-      toast.error('تعذّر الاتصال بالخادم.');
+      try {
+        const paymentPayload = {
+          ...newPayment,
+          studentName: selectedStudent?.name || 'طالب',
+          paidAt: payDate,
+          notes: payNotes,
+        };
+
+        const { payment: addedOffline } = await addOfflinePayment(paymentPayload);
+        setPayments((prev) => [addedOffline, ...prev]);
+        setIsAdding(false);
+        setNewPayment({ studentId: '', subscriptionId: '', totalAmount: 0, paidAmount: 0, paymentMethod: 'CASH' });
+        setSearchStudentQuery('');
+        setPayNotes('');
+        setPayDate(new Date().toISOString().split('T')[0]);
+        toast.success(`[أوفلاين] تم تسجيل دفعة الطالب (${selectedStudent?.name}) محلياً! 📲 وستنرفع فور توفر النت.`);
+      } catch (offlineErr) {
+        toast.error('حدث خطأ أثناء حفظ الدفعة محلياً');
+      }
     } finally {
       setIsSaving(false);
     }

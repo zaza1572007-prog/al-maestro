@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { addOfflineGroup } from '@/lib/offlineSync';
 
 interface ScheduleSlot {
   day: string;
@@ -206,20 +207,20 @@ function GroupsContent() {
     }
 
     setIsSaving(true);
-    try {
-      let payloadSchedule: ScheduleSlot[] = [];
-      if (newGroup.timingMode === 'DIFFERENT' && newGroup.slots.length > 0) {
-        payloadSchedule = newGroup.slots;
-      } else {
-        const parsedDays = parseDaysFromText(newGroup.days);
-        const daysToUse = parsedDays.length > 0 ? parsedDays : ['السبت', 'الثلاثاء'];
-        payloadSchedule = daysToUse.map((day) => ({
-          day,
-          startTime: newGroup.startTime,
-          endTime: newGroup.endTime,
-        }));
-      }
+    let payloadSchedule: ScheduleSlot[] = [];
+    if (newGroup.timingMode === 'DIFFERENT' && newGroup.slots.length > 0) {
+      payloadSchedule = newGroup.slots;
+    } else {
+      const parsedDays = parseDaysFromText(newGroup.days);
+      const daysToUse = parsedDays.length > 0 ? parsedDays : ['السبت', 'الثلاثاء'];
+      payloadSchedule = daysToUse.map((day) => ({
+        day,
+        startTime: newGroup.startTime,
+        endTime: newGroup.endTime,
+      }));
+    }
 
+    try {
       const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,7 +254,36 @@ function GroupsContent() {
         alert(data.error || 'حدث خطأ أثناء إنشاء المجموعة');
       }
     } catch (err) {
-      alert('حدث خطأ بالاتصال بالخادم');
+      try {
+        const groupPayload = {
+          name: newGroup.name.trim(),
+          academicStageId: actualStageId,
+          scheduleDays: payloadSchedule.map((s: any) => s.day),
+          startTime: payloadSchedule[0]?.startTime || '16:00',
+          endTime: payloadSchedule[0]?.endTime || '18:00',
+          schedule: payloadSchedule,
+        };
+
+        const { group: addedOffline } = await addOfflineGroup(groupPayload);
+        setGroupsList((prev) => [addedOffline, ...prev]);
+        setIsAddingGroup(false);
+        setNewGroup({
+          name: '',
+          stageId: '',
+          days: 'السبت والثلاثاء',
+          timingMode: 'UNIFIED',
+          startTime: '16:00',
+          endTime: '18:00',
+          slots: [
+            { day: 'السبت', startTime: '16:00', endTime: '18:00' },
+            { day: 'الثلاثاء', startTime: '16:00', endTime: '18:00' },
+          ],
+          maxCapacity: 30,
+        });
+        alert(`[أوفلاين] تم حفظ المجموعة (${newGroup.name.trim()}) محلياً بجهازك! 📲 وستنرفع فور توفر النت.`);
+      } catch (offlineErr) {
+        alert('حدث خطأ في الحفظ المحلي للمجموعة');
+      }
     } finally {
       setIsSaving(false);
     }
