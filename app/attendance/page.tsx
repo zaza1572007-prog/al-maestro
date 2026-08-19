@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { RefreshCw, QrCode, UserCheck, UserX, Clock } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import { get, set } from 'idb-keyval';
 
 interface AttendanceRecord {
   id: string;
@@ -215,9 +216,23 @@ export default function AttendancePage() {
       const url = activeGroup ? `/api/attendance?groupId=${activeGroup}` : '/api/attendance';
       const attRes = await fetch(url);
       const attData = await attRes.json();
-      if (attData.success) setRecentAttendances(attData.attendances || []);
+      if (attData.success && Array.isArray(attData.attendances)) {
+        setRecentAttendances(attData.attendances);
+        await set('almaestro_cached_attendances', attData.attendances);
+        setLoadingHistory(false);
+        return;
+      }
     } catch (err) {
-      console.error(err);
+      console.warn('Offline: Loading attendances from IndexedDB cache');
+    }
+
+    try {
+      const cached = await get('almaestro_cached_attendances');
+      if (cached && Array.isArray(cached)) {
+        setRecentAttendances(cached);
+      }
+    } catch (err) {
+      console.error('Failed to load cached attendances:', err);
     } finally {
       setLoadingHistory(false);
     }
@@ -239,20 +254,113 @@ export default function AttendancePage() {
     try {
       const res = await fetch('/api/attendance/today-groups');
       const data = await res.json();
-      if (data.success) {
-        setTodayGroups(data.groups || []);
-        // Update selectedGroupSheet if it's currently open to reflect real-time changes
+      if (data.success && Array.isArray(data.groups) && data.groups.length > 0) {
+        setTodayGroups(data.groups);
+        await set('almaestro_cached_today_groups', data.groups);
         if (selectedGroupSheet) {
           const updated = data.groups.find((g: any) => g.id === selectedGroupSheet.id);
           if (updated) setSelectedGroupSheet(updated);
         }
+        setLoadingGroups(false);
+        return;
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Offline: Loading groups from IndexedDB cache');
+    }
+
+    // Offline fallback: load cached groups from IndexedDB
+    try {
+      const cachedToday = await get('almaestro_cached_today_groups');
+      if (cachedToday && Array.isArray(cachedToday) && cachedToday.length > 0) {
+        setTodayGroups(cachedToday);
+        setLoadingGroups(false);
+        return;
+      }
+
+      const cachedAllGroups = await get('almaestro_cached_groups');
+      if (cachedAllGroups && Array.isArray(cachedAllGroups) && cachedAllGroups.length > 0) {
+        setTodayGroups(cachedAllGroups);
+        setLoadingGroups(false);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to load offline groups from IndexedDB:', err);
     } finally {
       setLoadingGroups(false);
     }
   };
+
+  // Background caching of all groups & students when online
+  useEffect(() => {
+    async function cacheOfflineData() {
+      if (typeof window === 'undefined' || !navigator.onLine) return;
+      try {
+        const [groupsRes, studentsRes] = await Promise.all([
+          fetch('/api/groups'),
+          fetch('/api/students?limit=2000'),
+        ]);
+
+        if (groupsRes.ok) {
+          const gData = await groupsRes.json();
+          if (gData.groups) {
+            await set('almaestro_cached_groups', gData.groups);
+          }
+        }
+
+        if (studentsRes.ok) {
+          const sData = await studentsRes.json();
+          if (sData.students) {
+            await set('almaestro_cached_students', sData.students);
+          }
+        }
+      } catch (err) {
+        console.warn('Background caching failed:', err);
+      }
+    }
+
+    cacheOfflineData();
+  }, []);
+
+  // Auto-sync offline queued attendances when internet returns
+  useEffect(() => {
+    async function syncOfflineQueue() {
+      if (typeof window === 'undefined' || !navigator.onLine) return;
+      try {
+        const queue: any[] = (await get('almaestro_offline_queue')) || [];
+        if (queue.length === 0) return;
+
+        toast.info(`جارٍ رفع ${queue.length} سجل حضور تم تسجيلهم في وضع الأوفلاين... 🔄`);
+
+        for (const item of queue) {
+          try {
+            await fetch('/api/attendance/scan', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                studentCode: item.studentCode,
+                status: item.status,
+                homeworkStatus: item.homeworkStatus,
+              }),
+            });
+          } catch (e) {
+            console.error('Failed to sync offline attendance item:', e);
+          }
+        }
+
+        await set('almaestro_offline_queue', []);
+        toast.success('تمت مزامنة جميع سجلات الحضور الأوفلاين مع السيرفر بنجاح! ✅');
+        fetchHistory();
+        fetchTodayGroups();
+      } catch (err) {
+        console.error('Error syncing offline queue:', err);
+      }
+    }
+
+    window.addEventListener('online', syncOfflineQueue);
+    syncOfflineQueue();
+
+    return () => window.removeEventListener('online', syncOfflineQueue);
+  }, []);
 
   const handleOpenGroupEarly = async (groupId: string) => {
     try {
@@ -339,8 +447,58 @@ export default function AttendancePage() {
         toast.error(data.error || 'فشل تسجيل الحضور');
       }
     } catch (err: any) {
-      setLastScan({ success: false, error: err.message });
-      toast.error('حدث خطأ بالاتصال');
+      // 📡 OFFLINE SCAN FALLBACK
+      console.warn('Network offline, performing offline scan fallback');
+      try {
+        const cachedStudents: any[] = (await get('almaestro_cached_students')) || [];
+        const cleanCode = scanCode.trim().toLowerCase();
+
+        const student = cachedStudents.find(
+          (s: any) =>
+            s.code?.toLowerCase() === cleanCode ||
+            s.qrCode?.toLowerCase() === cleanCode ||
+            s.name?.toLowerCase().includes(cleanCode) ||
+            s.id === cleanCode
+        );
+
+        if (student) {
+          const offlineRecord: AttendanceRecord = {
+            id: `OFFLINE-${Date.now()}`,
+            student: { name: student.name, code: student.code || student.id },
+            session: {
+              title: 'حضور أوفلاين',
+              group: { id: student.groupId || '', name: student.group?.name || 'المجموعة الحالية' },
+            },
+            status: manualStatus,
+            checkInTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          };
+
+          const updatedAttendances = [offlineRecord, ...recentAttendances];
+          setRecentAttendances(updatedAttendances);
+          await set('almaestro_cached_attendances', updatedAttendances);
+
+          // Queue offline attendance for background sync
+          const queue: any[] = (await get('almaestro_offline_queue')) || [];
+          queue.push({
+            studentCode: student.code || scanCode,
+            status: manualStatus,
+            homeworkStatus,
+            scannedAt: new Date().toISOString(),
+          });
+          await set('almaestro_offline_queue', queue);
+
+          setLastScan({ success: true, message: `[أوفلاين] تم تسجيل حضور الطالب: ${student.name}` });
+          toast.success(`تم تسجيل حضور الطالب (${student.name}) محلياً في وضع الأوفلاين 📲`);
+          setCode('');
+        } else {
+          setLastScan({ success: false, error: `[أوفلاين] الطالب برقم (${scanCode}) غير موجود في الحافظة المحلية` });
+          toast.error(`الكود (${scanCode}) غير موجود في الحافظة المحلية للأوفلاين`);
+        }
+      } catch (offlineErr: any) {
+        setLastScan({ success: false, error: offlineErr.message });
+        toast.error('حدث خطأ في التسجيل المحلي');
+      }
     } finally {
       setLoading(false);
     }
