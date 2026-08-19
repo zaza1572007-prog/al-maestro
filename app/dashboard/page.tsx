@@ -206,8 +206,6 @@ export default function DashboardPage() {
 
               {/* Quick Action Buttons */}
               <div className="flex items-center gap-2 flex-wrap">
-                <PwaInstallButton />
-
                 <Link href="/attendance">
                   <motion.button
                     whileHover={{ scale: 1.02 }}

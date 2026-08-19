@@ -223,16 +223,11 @@ export default function Navbar() {
       </div>
 
 
-      {/* Action Icons, PWA Install & Network Status */}
+      {/* Action Icons & Network Status */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Network Status Badge */}
         <div className="hidden sm:flex">
           <NetworkStatusBadge size="sm" />
-        </div>
-
-        {/* PWA Install Button */}
-        <div className="hidden sm:flex">
-          <PwaInstallButton />
         </div>
 
         {/* Live clock */}
