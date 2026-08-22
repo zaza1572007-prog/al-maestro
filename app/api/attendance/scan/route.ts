@@ -303,6 +303,7 @@ export async function POST(req: Request) {
         where: {
           studentId: student.id,
           createdAt: { gte: twoHoursAgo },
+          status: { in: ['PRESENT', 'LATE'] },
         },
         include: {
           session: {
@@ -330,105 +331,160 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Smart Group & Stage Matching Logic based on Open Sessions
-    const openSessions = await prisma.lessonSession.findMany({
+    // 3. Smart Group & Session Matching Logic
+    let targetSession: any = null;
+    let targetGroup: any = null;
+    let isDifferentGroup = false;
+
+    // A. First check if a session exists for the student's own group today (even if completed or open)
+    const studentGroupTodaySession = await prisma.lessonSession.findFirst({
       where: {
+        groupId: student.groupId,
         date: {
           gte: todayStart,
           lt: todayEnd,
         },
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
       },
       include: {
         group: { include: { academicStage: true } },
       },
+      orderBy: { createdAt: 'desc' }
     });
 
-    // Check if the student's own group has an open session today
-    const studentOwnOpenSession = openSessions.find(s => s.groupId === student.groupId);
-
-    let targetSession = null;
-    let targetGroup = null;
-    let isDifferentGroup = false;
-
-    if (studentOwnOpenSession) {
-      targetSession = studentOwnOpenSession;
-      targetGroup = student.group;
+    if (studentGroupTodaySession) {
+      targetSession = studentGroupTodaySession;
+      targetGroup = studentGroupTodaySession.group || student.group;
     } else {
-      // Find if there is any other open session
+      // B. Check if there are open sessions for other groups today
+      const openSessions = await prisma.lessonSession.findMany({
+        where: {
+          date: {
+            gte: todayStart,
+            lt: todayEnd,
+          },
+          status: { in: ['OPEN', 'IN_PROGRESS'] },
+        },
+        include: {
+          group: { include: { academicStage: true } },
+        },
+      });
+
       if (openSessions.length > 0) {
-        // Pick the first open session as target
         const otherOpenSession = openSessions[0];
         targetSession = otherOpenSession;
         targetGroup = otherOpenSession.group;
         isDifferentGroup = true;
+      } else if (student.groupId && student.group) {
+        // C. Auto-create session for student's group for today if none exists
+        const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayDay = weekdays[now.getDay()];
+        const weekdaysArabic: Record<string, string> = {
+          'Sunday': 'الأحد', 'Monday': 'الاثنين', 'Tuesday': 'الثلاثاء',
+          'Wednesday': 'الأربعاء', 'Thursday': 'الخميس', 'Friday': 'الجمعة', 'Saturday': 'السبت'
+        };
+        const todayDayArabic = weekdaysArabic[todayDay] || 'اليوم';
+        const slot = parseTimeToMinutes(student.group.startTime) ? { startTime: student.group.startTime, endTime: student.group.endTime } : { startTime: '16:00', endTime: '18:00' };
+
+        targetSession = await prisma.lessonSession.create({
+          data: {
+            title: `جلسة ${student.group.name}`,
+            groupId: student.groupId,
+            date: new Date(egyptTimeStr),
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: 'OPEN',
+            type: 'LECTURE',
+          },
+          include: {
+            group: { include: { academicStage: true } }
+          }
+        });
+        targetGroup = student.group;
       }
     }
 
-     // If no group is open at all
-     if (!targetSession || !targetGroup) {
-       return NextResponse.json({
-         success: false,
-         error: 'عذراً، لا توجد أي مجموعة مفتوحة حالياً لتسجيل الحضور.',
-         student: {
-           id: student.id,
-           name: student.name,
-           code: student.code,
-           groupName: student.group?.name || 'بدون مجموعة',
-           hasActiveSub,
-         }
-       }, { status: 400 });
-     }
- 
-     if (isDifferentGroup) {
-       // Stage mismatch check: student is from a different stage AND their group is not open
-       if (student.academicStageId !== targetGroup.academicStageId) {
-         return NextResponse.json({
-           success: false,
-           error: `تنبيه: الطالب ليس من هذه المرحلة الدراسية (${student.academicStage?.name || 'مرحلة أخرى'}) والمجموعة الخاصة به مغلقة.`,
-           student: {
-             id: student.id,
-             name: student.name,
-             code: student.code,
-             groupName: student.group?.name || 'بدون مجموعة',
-             hasActiveSub,
-           }
-         }, { status: 400 });
-       }
- 
-       // Group mismatch check (prompt the master for approval)
-       if (!forceDifferentGroup) {
-         return NextResponse.json({
-           success: false,
-           warningType: 'DIFFERENT_GROUP',
-           error: `الطالب مسجل في مجموعة (${student.group.name}) وهي مغلقة الآن. المجموعة المفتوحة حالياً هي (${targetGroup.name}). هل تريد تسجيل حضوره في هذه المجموعة؟`,
-           targetGroupId: targetGroup.id,
-           student: {
-             id: student.id,
-             name: student.name,
-             code: student.code,
-             groupName: student.group.name,
-             hasActiveSub,
-           }
-         }, { status: 200 });
-       }
-     }
+    if (!targetSession || !targetGroup) {
+      return NextResponse.json({
+        success: false,
+        error: 'عذراً، لم يتم العثور على مجموعة مناسبة لتسجيل الحضور.',
+        student: {
+          id: student.id,
+          name: student.name,
+          code: student.code,
+          groupName: student.group?.name || 'بدون مجموعة',
+          hasActiveSub,
+        }
+      }, { status: 400 });
+    }
+
+    if (isDifferentGroup) {
+      // Stage mismatch check: student is from a different stage AND their group is not open
+      if (student.academicStageId !== targetGroup.academicStageId) {
+        return NextResponse.json({
+          success: false,
+          error: `تنبيه: الطالب ليس من هذه المرحلة الدراسية (${student.academicStage?.name || 'مرحلة أخرى'}) والمجموعة الخاصة به مغلقة.`,
+          student: {
+            id: student.id,
+            name: student.name,
+            code: student.code,
+            groupName: student.group?.name || 'بدون مجموعة',
+            hasActiveSub,
+          }
+        }, { status: 400 });
+      }
+
+      // Group mismatch check (prompt the master for approval)
+      if (!forceDifferentGroup) {
+        return NextResponse.json({
+          success: false,
+          warningType: 'DIFFERENT_GROUP',
+          error: `الطالب مسجل في مجموعة (${student.group.name}) وهي مغلقة الآن. المجموعة المفتوحة حالياً هي (${targetGroup.name}). هل تريد تسجيل حضوره في هذه المجموعة؟`,
+          targetGroupId: targetGroup.id,
+          student: {
+            id: student.id,
+            name: student.name,
+            code: student.code,
+            groupName: student.group.name,
+            hasActiveSub,
+          }
+        }, { status: 200 });
+      }
+    }
 
     // 5. Determine homework notes
     let homeworkNotes = '';
     if (homeworkStatus === 'DONE') homeworkNotes = 'الواجب: مكتمل ✅';
     else if (homeworkStatus === 'NOT_DONE') homeworkNotes = 'الواجب: لم يتم ❌';
 
-    // 6. Create attendance record
-    const attendance = await prisma.attendance.create({
-      data: {
+    // 6. Create or update attendance record
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: {
         studentId: student.id,
         sessionId: targetSession.id,
-        status: status || 'PRESENT',
-        checkInTime: new Date(),
-        notes: homeworkNotes || null,
       },
     });
+
+    let attendance;
+    if (existingAttendance) {
+      attendance = await prisma.attendance.update({
+        where: { id: existingAttendance.id },
+        data: {
+          status: status || 'PRESENT',
+          checkInTime: new Date(),
+          notes: homeworkNotes || null,
+        },
+      });
+    } else {
+      attendance = await prisma.attendance.create({
+        data: {
+          studentId: student.id,
+          sessionId: targetSession.id,
+          status: status || 'PRESENT',
+          checkInTime: new Date(),
+          notes: homeworkNotes || null,
+        },
+      });
+    }
 
     // Auto-Pay Month Logic
     let paidMessageSuffix = '';

@@ -70,9 +70,11 @@ export default function ParentExamsPage() {
                 <h4 className="font-bold text-white text-sm">{exam.title}</h4>
                 <p className="text-xs text-slate-400 mt-1">تاريخ الامتحان: {exam.date}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 flex items-center gap-1">
-                    <Trophy className="w-3 h-3" /> {exam.rank}
-                  </span>
+                  {exam.rank && (
+                    <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30 flex items-center gap-1">
+                      <Trophy className="w-3 h-3" /> {exam.rank}
+                    </span>
+                  )}
                   <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
                     {exam.evaluation}
                   </span>

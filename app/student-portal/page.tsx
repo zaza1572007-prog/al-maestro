@@ -153,7 +153,11 @@ export default function StudentPortalDashboard() {
               <Award className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-blue-400 mt-4 font-semibold">المركز الأول على المجموعة 🥇</p>
+          {studentInfo.latestExamRank ? (
+            <p className="text-xs text-blue-400 mt-4 font-semibold">{studentInfo.latestExamRank}</p>
+          ) : (
+            <p className="text-xs text-slate-500 mt-4 font-normal">أحدث تقييم للامتحان</p>
+          )}
         </motion.div>
 
         <motion.div
@@ -236,7 +240,9 @@ export default function StudentPortalDashboard() {
               >
                 <div>
                   <h4 className="font-bold text-white text-sm">{ex.title}</h4>
-                  <p className="text-xs text-slate-400 mt-1">{ex.date} • {ex.rank}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {ex.date} {ex.rank ? `• ${ex.rank}` : ''}
+                  </p>
                 </div>
                 <span className="text-lg font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-2xl">
                   {ex.score}
