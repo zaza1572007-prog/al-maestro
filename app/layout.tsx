@@ -8,6 +8,8 @@ import TeacherOverlay from "@/components/TeacherOverlay";
 import ThemeProvider from "@/components/ThemeProvider";
 import PageTransition from "@/components/PageTransition";
 import CommandPalette from "@/components/CommandPalette";
+import CommandMenu from "@/components/CommandMenu";
+import OfflineBanner from "@/components/OfflineBanner";
 import PwaStatusManager from "@/components/PwaStatusManager";
 import OfflineSyncWidget from "@/components/OfflineSyncWidget";
 
@@ -46,6 +48,8 @@ export default function RootLayout({
         <ToastProvider>
           <PwaStatusManager />
           <OfflineSyncWidget />
+          <OfflineBanner />
+          <CommandMenu />
           <SidebarProvider>
             <Sidebar />
             {/* Global Command Palette - available on all pages */}

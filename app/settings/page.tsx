@@ -910,6 +910,7 @@ export default function SettingsPage() {
     { id: 'whatsapp', label: '💬 إعدادات الواتساب' },
     { id: 'backup', label: '📦 النسخ الاحتياطي' },
     { id: 'cleanup', label: '🧹 تنظيف البيانات' },
+    { id: 'audit', label: '🛡️ سجل تدقيق العمليات (Audit Logs)' },
   ];
 
   return (
@@ -925,8 +926,14 @@ export default function SettingsPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border ${
+            onClick={() => {
+              if (tab.id === 'audit') {
+                window.location.href = '/settings/audit-logs';
+                return;
+              }
+              setActiveTab(tab.id);
+            }}
+            className={`px-5 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
               activeTab === tab.id
                 ? 'bg-purple-600/30 border-purple-500 text-white shadow-lg shadow-purple-500/20'
                 : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'

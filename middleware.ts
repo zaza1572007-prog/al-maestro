@@ -8,6 +8,17 @@ function getJwtSecret() {
   return new TextEncoder().encode(secret);
 }
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
 
@@ -29,23 +40,23 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/settings/whatsapp/update-tunnel';
 
   if (isPublicPath) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   if (!token) {
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Unauthorized)' }, { status: 401 });
+      return addSecurityHeaders(NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Unauthorized)' }, { status: 401 }));
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return addSecurityHeaders(NextResponse.redirect(new URL('/login', request.url)));
   }
 
   try {
     const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ success: false, error: 'جلسة الدخول غير صالحة' }, { status: 401 });
+        return addSecurityHeaders(NextResponse.json({ success: false, error: 'جلسة الدخول غير صالحة' }, { status: 401 }));
       }
-      return NextResponse.redirect(new URL('/login', request.url));
+      return addSecurityHeaders(NextResponse.redirect(new URL('/login', request.url)));
     }
 
     const role = payload.role as string;
@@ -57,26 +68,26 @@ export async function middleware(request: NextRequest) {
 
     if (role === 'STUDENT' && !isStudentPath && !isCommonApi) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 });
+        return addSecurityHeaders(NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 }));
       }
-      return NextResponse.redirect(new URL('/student-portal', request.url));
+      return addSecurityHeaders(NextResponse.redirect(new URL('/student-portal', request.url)));
     }
 
     if (role === 'PARENT' && !isParentPath && !isCommonApi) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 });
+        return addSecurityHeaders(NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول إلى هذا المسار' }, { status: 403 }));
       }
-      return NextResponse.redirect(new URL('/parent-portal', request.url));
+      return addSecurityHeaders(NextResponse.redirect(new URL('/parent-portal', request.url)));
     }
 
   } catch (err) {
     if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ success: false, error: 'جلسة الدخول منتهية أو غير صالحة' }, { status: 401 });
+      return addSecurityHeaders(NextResponse.json({ success: false, error: 'جلسة الدخول منتهية أو غير صالحة' }, { status: 401 }));
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return addSecurityHeaders(NextResponse.redirect(new URL('/login', request.url)));
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {

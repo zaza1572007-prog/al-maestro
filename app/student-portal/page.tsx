@@ -64,13 +64,13 @@ export default function StudentPortalDashboard() {
         ]}
       />
 
-      {/* Student Profile Card with Barcode */}
+      {/* Student Profile Card with Barcode & Touch Actions */}
       <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-900/40 text-right">
-        <div className="space-y-2 text-right w-full">
+        <div className="space-y-3 text-right w-full">
           <p className="text-xs font-semibold text-purple-400">الرمز الشريطي للبطاقة التعريفية (Barcode)</p>
-          <div className="flex items-center gap-4 justify-start direction-rtl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-start direction-rtl">
             {/* Real Barcode representation using CSS flex columns */}
-            <div className="bg-white p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-inner">
+            <div className="bg-white p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-inner w-full sm:w-auto">
               <div className="h-10 flex items-stretch gap-[1.5px] bg-white px-2">
                 {(studentInfo.qrCode || studentInfo.code || "STU-0000").split('').map((char: string, i: number) => {
                   const width = (char.charCodeAt(0) % 3) + 1;
@@ -91,10 +91,28 @@ export default function StudentPortalDashboard() {
                 {studentInfo.qrCode || studentInfo.code}
               </span>
             </div>
-            <div>
+            <div className="space-y-1">
               <h2 className="text-lg font-black text-white">{studentInfo.name}</h2>
-              <p className="text-xs text-slate-400 mt-1">كود الحساب: <strong className="text-blue-400 font-mono">{studentInfo.code}</strong></p>
+              <p className="text-xs text-slate-400">كود الحساب: <strong className="text-blue-400 font-mono">{studentInfo.code}</strong></p>
               <p className="text-xs text-slate-400">الرمز الشريطي: <strong className="text-purple-400 font-mono">{studentInfo.qrCode || studentInfo.code}</strong></p>
+              
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(studentInfo.code);
+                    alert('تم نسخ كود الطالب بنجاح! 📋');
+                  }}
+                  className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 hover:bg-purple-500/30 text-[11px] font-bold rounded-xl transition cursor-pointer"
+                >
+                  📋 نسخ كود الطالب
+                </button>
+                <Link
+                  href="/student-portal/exams"
+                  className="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 text-[11px] font-bold rounded-xl transition inline-flex items-center gap-1"
+                >
+                  📊 نتائج الامتحانات <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

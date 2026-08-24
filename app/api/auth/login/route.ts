@@ -3,8 +3,20 @@ import { prisma } from '@/lib/prisma';
 import { signToken } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { logAuditAction } from '@/lib/audit-logger';
+
 export async function POST(req: Request) {
   try {
+    const clientIp = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(clientIp, 'auth_login', 'STRICT');
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: `تجاوزت عدد محاولات الدخول المسموحة. يرجى الانتظار ${rateLimit.resetSeconds} ثانية.` },
+        { status: 429 }
+      );
+    }
+
     const { phone, studentName, password, role, rememberMe } = await req.json();
     let userRole = role || 'TEACHER';
 
@@ -163,6 +175,15 @@ export async function POST(req: Request) {
     if (rememberMe === true) {
       cookieOptions.maxAge = 60 * 60 * 24 * 7;
     }
+
+    logAuditAction({
+      userId: targetUser.id,
+      action: 'USER_LOGIN_SUCCESS',
+      entity: userRole === 'STUDENT' ? 'Student' : userRole === 'PARENT' ? 'Parent' : 'User',
+      entityId: targetUser.id,
+      changes: { role: userRole, name: targetUser.name },
+      ipAddress: clientIp,
+    });
 
     res.cookies.set('auth-token', token, cookieOptions);
     return res;

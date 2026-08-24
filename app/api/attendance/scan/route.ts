@@ -65,9 +65,22 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 import { verifyStaff } from '@/lib/auth';
+import { verifyStudentQR } from '@/lib/qr-signer';
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { logAuditAction } from '@/lib/audit-logger';
+import { whatsappQueue } from '@/lib/message-queue';
 
 export async function POST(req: Request) {
   try {
+    const clientIp = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(clientIp, 'attendance_scan', 'TURBO');
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: `تم تجاوز حد المسح السريع، يرجى الانتظار ${rateLimit.resetSeconds} ثانية` },
+        { status: 429 }
+      );
+    }
+
     const staff = await verifyStaff(req);
     if (!staff) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -80,11 +93,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'الرجاء تمرير كود الطالب أو الباركود' }, { status: 400 });
     }
 
+    // Dynamic HMAC-SHA256 QR Verification
+    const qrVerification = verifyStudentQR(studentCode);
+    if (!qrVerification.valid) {
+      return NextResponse.json({ success: false, error: qrVerification.reason || 'كود الـ QR غير صالح' }, { status: 400 });
+    }
+    const resolvedCode = qrVerification.studentId;
+
     // Maintain session states matching Cairo timezone
     await syncTodaySessionsState();
 
     // Normalize code in case of Arabic keyboard layout translations (e.g. STU-4371 typed as لإا-4371)
-    let searchCodes = [studentCode];
+    let searchCodes = [resolvedCode, studentCode];
     
     // 1. Translate Arabic keyboard layout characters back to English
     const arabicMap: Record<string, string> = {
@@ -485,6 +505,16 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    // Log to Audit System asynchronously
+    logAuditAction({
+      userId: staff.userId,
+      action: existingAttendance ? 'ATTENDANCE_UPDATED' : 'ATTENDANCE_RECORDED',
+      entity: 'Attendance',
+      entityId: attendance.id,
+      changes: { studentName: student.name, studentCode: student.code, status: attendance.status, sessionId: targetSession.id },
+      ipAddress: clientIp,
+    });
 
     // Auto-Pay Month Logic
     let paidMessageSuffix = '';

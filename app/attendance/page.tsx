@@ -1,9 +1,42 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, QrCode, UserCheck, UserX, Clock } from 'lucide-react';
+import { RefreshCw, QrCode, UserCheck, UserX, Clock, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { get, set } from 'idb-keyval';
+import { generateDirectWhatsAppLink } from '@/lib/whatsapp-direct';
+
+function playBeepSuccess() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 high beep
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {}
+}
+
+function playBeepWarning() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(320, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {}
+}
 
 interface AttendanceRecord {
   id: string;
@@ -430,6 +463,7 @@ export default function AttendancePage() {
       const data = await res.json();
       setLastScan(data);
       if (data.success) {
+        playBeepSuccess();
         toast.success(data.message || 'تم تسجيل الحضور بنجاح');
         setWarningData(null);
         await fetchHistory();
@@ -437,6 +471,7 @@ export default function AttendancePage() {
         if (absenteesGroup) fetchAbsentees(absenteesGroup);
         setCode('');
       } else if (data.warningType) {
+        playBeepWarning();
         setWarningData({
           warningType: data.warningType,
           error: data.error,
@@ -444,6 +479,7 @@ export default function AttendancePage() {
           targetGroupId: data.targetGroupId,
         });
       } else {
+        playBeepWarning();
         toast.error(data.error || 'فشل تسجيل الحضور');
       }
     } catch (err: any) {
@@ -731,41 +767,59 @@ export default function AttendancePage() {
                     <p className="opacity-90">الطالب: <span className="font-bold text-white text-sm">{lastScan.student.name}</span> ({lastScan.student.code})</p>
                     <p className="opacity-85">المرحلة: <span className="text-slate-200 font-medium">{lastScan.student.stageName || '—'}</span> (الاشتراك: <span className="text-amber-400 font-bold">{lastScan.student.monthlyPrice || 350} ج.م</span>)</p>
                     <p className="opacity-80">المجموعة: {lastScan.student.groupName}</p>
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/40">
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-800/40">
                       <span className="font-semibold">{lastScan.student.hasActiveSub ? '✅ اشتراك نشط' : '⚠️ لا يوجد اشتراك نشط'}</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (confirm(`هل أنت متأكد من تسجيل دفع الاشتراك الشهري بقيمة ${lastScan.student.monthlyPrice || 350} ج.م للطالب (${lastScan.student.name}) وإرسال رسالة لولي أمره؟`)) {
-                            try {
-                              const response = await fetch('/api/attendance/pay-month', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ studentId: lastScan.student.id }),
-                              });
-                              const result = await response.json();
-                              if (result.success) {
-                                toast.success(result.message);
-                                setLastScan((prev: any) => ({
-                                  ...prev,
-                                  student: {
-                                    ...prev.student,
-                                    hasActiveSub: true
-                                  }
-                                }));
-                                await fetchTodayGroups();
-                              } else {
-                                toast.error(result.error || 'فشل تسجيل الدفع');
+                      <div className="flex items-center gap-2">
+                        {lastScan.student.phone && (
+                          <a
+                            href={generateDirectWhatsAppLink({
+                              phone: lastScan.student.phone,
+                              studentName: lastScan.student.name,
+                              type: 'ATTENDANCE',
+                              details: { status: statusLabels[manualStatus] || 'حاضر ✅' },
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 text-[11px] font-bold rounded-lg transition flex items-center gap-1"
+                            title="تواصل مباشر عبر الواتساب"
+                          >
+                            <MessageSquare className="w-3 h-3" /> واتساب ولي الأمر
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (confirm(`هل أنت متأكد من تسجيل دفع الاشتراك الشهري بقيمة ${lastScan.student.monthlyPrice || 350} ج.م للطالب (${lastScan.student.name}) وإرسال رسالة لولي أمره؟`)) {
+                              try {
+                                const response = await fetch('/api/attendance/pay-month', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ studentId: lastScan.student.id }),
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                  toast.success(result.message);
+                                  setLastScan((prev: any) => ({
+                                    ...prev,
+                                    student: {
+                                      ...prev.student,
+                                      hasActiveSub: true
+                                    }
+                                  }));
+                                  await fetchTodayGroups();
+                                } else {
+                                  toast.error(result.error || 'فشل تسجيل الدفع');
+                                }
+                              } catch {
+                                toast.error('حدث خطأ في الاتصال بالخادم');
                               }
-                            } catch {
-                              toast.error('حدث خطأ في الاتصال بالخادم');
                             }
-                          }
-                        }}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition cursor-pointer"
-                      >
-                        💰 دفع الشهر وتنبيه ولي الأمر
-                      </button>
+                          }}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition cursor-pointer"
+                        >
+                          💰 دفع الشهر
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
