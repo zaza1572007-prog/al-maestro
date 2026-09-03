@@ -103,16 +103,17 @@ export async function GET(req: Request) {
         group: student.group?.name || 'مجموعة',
         attendanceRate: `${attendanceRate}%`,
         homeworkSubmissions: `${student.submissions.length}`,
-        latestExamScore: latestResult ? `${latestResult.score} من ${latestResult.exam.maxScore}` : 'لا يوجد',
+        latestExamScore: latestResult ? `${latestResult.score} / ${latestResult.exam.maxScore}` : 'لا يوجد',
         latestExamRank: latestExamRank,
-        subscriptionStatus: activeSub ? `نشط (ينتهي ${new Date(activeSub.endDate).toLocaleDateString('ar-EG')})` : 'غير نشط',
+        subscriptionStatus: activeSub ? 'نشط 🟢' : 'غير نشط 🔴',
+        subscriptionEndDate: activeSub ? new Date(activeSub.endDate).toLocaleDateString('ar-EG') : null,
       },
       recentExams: student.examResults.map((r) => {
         const rankText = rankTextMap.get(r.examId)?.(r.score) || null;
         return {
           id: r.id,
           title: r.exam.title,
-          score: `${r.score} من ${r.exam.maxScore}`,
+          score: `${r.score} / ${r.exam.maxScore}`,
           date: new Date(r.gradedAt).toLocaleDateString('ar-EG'),
           rank: rankText,
         };

@@ -59,7 +59,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
         id: r.id,
         title: r.exam.title,
         date: new Date(r.exam.examDate).toLocaleDateString('ar-EG'),
-        score: `${r.score} من ${r.exam.maxScore}`,
+        score: `${r.score} / ${r.exam.maxScore}`,
         rank: rankLabel,
         evaluation: r.percentage >= 90 ? 'ممتاز' : r.percentage >= 75 ? 'جيد جداً' : r.percentage >= 60 ? 'جيد' : 'بحاجة لمتابعة',
       };

@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { handleApiError } from '@/lib/error-handler';
 import { syncTodaySessionsState } from '@/lib/session-sync';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { verifyStaff } from '@/lib/auth';
+import { verifyStudentQR } from '@/lib/qr-signer';
+import { checkRateLimit } from '@/lib/rate-limiter';
+import { logAuditAction } from '@/lib/audit-logger';
+import { calculateStudentDueMonths, ARABIC_MONTH_NAMES, getCairoNow } from '@/lib/due-months';
 
 function fillTemplate(template: string, vars: Record<string, string>): string {
   let result = template;
@@ -64,12 +69,6 @@ function parseTimeToMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
-import { verifyStaff } from '@/lib/auth';
-import { verifyStudentQR } from '@/lib/qr-signer';
-import { checkRateLimit } from '@/lib/rate-limiter';
-import { logAuditAction } from '@/lib/audit-logger';
-import { whatsappQueue } from '@/lib/message-queue';
-
 export async function POST(req: Request) {
   try {
     const clientIp = req.headers.get('x-forwarded-for') || '127.0.0.1';
@@ -86,8 +85,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { studentCode, status, homeworkStatus, forceDuplicate, forceDifferentGroup, payMonth, scanMode } = await req.json();
-    const actualPayMonth = payMonth || scanMode === 'BOTH';
+    const {
+      studentCode,
+      status,
+      homeworkStatus,
+      forceDuplicate,
+      forceDifferentGroup,
+      payMonth,
+      scanMode,
+      selectedMonth,
+      selectedYear,
+      skipPayment,
+    } = await req.json();
+
+    const actualPayMonth = (payMonth || scanMode === 'PAY_ONLY' || scanMode === 'BOTH') && !skipPayment;
 
     if (!studentCode) {
       return NextResponse.json({ success: false, error: 'الرجاء تمرير كود الطالب أو الباركود' }, { status: 400 });
@@ -103,10 +114,9 @@ export async function POST(req: Request) {
     // Maintain session states matching Cairo timezone
     await syncTodaySessionsState();
 
-    // Normalize code in case of Arabic keyboard layout translations (e.g. STU-4371 typed as لإا-4371)
+    // Normalize code in case of Arabic keyboard layout translations
     let searchCodes = [resolvedCode, studentCode];
     
-    // 1. Translate Arabic keyboard layout characters back to English
     const arabicMap: Record<string, string> = {
       'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p',
       'ج': '[', 'د': ']', 'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k',
@@ -131,7 +141,7 @@ export async function POST(req: Request) {
       searchCodes.push(translated.toUpperCase());
     }
 
-    // 2. Extract digits as a fallback and check standard code formats
+    // Extract digits as a fallback and check standard code formats
     const digitMatch = studentCode.match(/\d+/);
     if (digitMatch) {
       const digits = digitMatch[0];
@@ -157,8 +167,9 @@ export async function POST(req: Request) {
         academicStage: true,
         parent: true,
         subscriptions: {
-          where: { status: 'ACTIVE' },
-          take: 1,
+          include: {
+            payments: true,
+          },
         },
       },
     });
@@ -167,28 +178,69 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'لم يتم العثور على الطالب بهذا الباركود أو الاسم' }, { status: 404 });
     }
 
-    const hasActiveSub = student.subscriptions.length > 0;
+    const now = getCairoNow();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const hasActiveSub = student.subscriptions.some(
+      (s) =>
+        (s.month === currentMonth && s.year === currentYear && (s.status === 'PAID' || s.status === 'ACTIVE' || s.isExempt)) ||
+        (s.status === 'ACTIVE' && s.endDate >= now)
+    );
     
     // Maintain timezone date boundaries in Egypt local time
-    const egyptTimeStr = new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' });
-    const now = new Date(egyptTimeStr);
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
-    // PAY_ONLY Interceptor
+    // ─────────────────────────────────────────────────────────────────
+    // CHECK UNPAID PREVIOUS MONTHS INTERCEPTOR (Rule 1, 2, 3, 4)
+    // ─────────────────────────────────────────────────────────────────
+    if (actualPayMonth && (!selectedMonth || !selectedYear)) {
+      const dueInfo = calculateStudentDueMonths(student);
+      if (dueInfo.hasUnpaidPreviousMonths) {
+        return NextResponse.json({
+          success: false,
+          warningType: 'UNPAID_PREVIOUS_MONTHS',
+          error: 'توجد متأخرات سابقة على الطالب لم تسدد بعد',
+          student: {
+            id: student.id,
+            name: student.name,
+            code: student.code,
+            groupName: student.group?.name || 'بدون مجموعة',
+            stageName: student.academicStage?.name,
+            monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+            phone: student.phone || student.parent?.phone,
+            hasActiveSub,
+          },
+          dueMonths: dueInfo.dueMonths,
+          scanMode,
+          status: status || 'PRESENT',
+          homeworkStatus,
+          targetGroupId: student.groupId,
+        }, { status: 200 });
+      }
+    }
+
+    // Determine target month and year for payment
+    const targetMonth = selectedMonth ? parseInt(selectedMonth, 10) : currentMonth;
+    const targetYear = selectedYear ? parseInt(selectedYear, 10) : currentYear;
+    const targetMonthName = ARABIC_MONTH_NAMES[targetMonth] || `شهر ${targetMonth}`;
+
+    // ─────────────────────────────────────────────────────────────────
+    // PAY_ONLY INTERCEPTOR
+    // ─────────────────────────────────────────────────────────────────
     if (scanMode === 'PAY_ONLY') {
       try {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+        const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
 
         let subscription = await prisma.subscription.findFirst({
           where: {
             studentId: student.id,
-            groupId: student.groupId,
-            endDate: { gte: startOfMonth },
+            month: targetMonth,
+            year: targetYear,
           },
-          orderBy: { endDate: 'desc' },
         });
 
         const price = student.academicStage?.monthlyPrice ?? 350;
@@ -197,17 +249,28 @@ export async function POST(req: Request) {
             data: {
               studentId: student.id,
               groupId: student.groupId,
-              startDate: now,
+              startDate: startOfMonth,
               endDate: endOfMonth,
               totalSessions: 8,
               price: price,
-              status: 'ACTIVE',
+              status: 'PAID',
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
+            },
+          });
+        } else {
+          await prisma.subscription.update({
+            where: { id: subscription.id },
+            data: {
+              status: 'PAID',
+              paidAt: now,
             },
           });
         }
 
         const owner = await prisma.user.findFirst();
-        const recorderId = owner?.id || '';
+        const recorderId = owner?.id || staff.userId || '';
 
         const existingPayment = await prisma.payment.findFirst({
           where: { subscriptionId: subscription.id },
@@ -219,6 +282,9 @@ export async function POST(req: Request) {
             data: {
               paidAmount: subscription.price,
               remainingAmount: 0,
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
             },
           });
         } else {
@@ -230,7 +296,10 @@ export async function POST(req: Request) {
               paidAmount: subscription.price,
               remainingAmount: 0,
               recordedById: recorderId,
-              notes: 'دفع اشتراك شهري فقط من مسح الباركود',
+              notes: `دفع اشتراك (${targetMonthName} ${targetYear}) فقط من مسح الباركود`,
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
             },
           });
         }
@@ -238,23 +307,10 @@ export async function POST(req: Request) {
         // WhatsApp notification to parent
         const parentPhone = student.parent?.phone || student.phone;
         const parentName = student.parent?.name || 'ولي الأمر';
-        const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
+        const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك (${targetMonthName} ${targetYear}) للطالب: ${student.name} بنجاح 🟢💵\nمنصة المايسترو 🏫`;
         
-        const settings = await prisma.systemSettings.findFirst({
-          select: {
-            enableWhatsApp: true,
-            waGatewayUrl: true,
-            waApiToken: true,
-          }
-        });
-        if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
-          fetch(settings.waGatewayUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
-            body: JSON.stringify({ token: settings.waApiToken, to: parentPhone, body: messageBody }),
-          }).catch((err) => {
-            console.error('Failed to dispatch auto-pay WhatsApp gateway notification:', err);
-          });
+        if (parentPhone) {
+          tryDispatchWA(parentPhone, messageBody);
         }
 
         return NextResponse.json({
@@ -268,14 +324,16 @@ export async function POST(req: Request) {
             stageName: student.academicStage?.name,
             monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
           },
-          message: `تم سداد اشتراك الشهر وتنبيه ولي الأمر للطالب (${student.name}) بنجاح 💵 (بدون تسجيل حضور)`,
+          message: `تم سداد اشتراك (${targetMonthName} ${targetYear}) وتنبيه ولي الأمر للطالب (${student.name}) بنجاح 💵 (بدون تسجيل حضور)`,
         });
       } catch (err: any) {
         return NextResponse.json({ success: false, error: err.message || 'فشل سداد الاشتراك' }, { status: 500 });
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────
     // 1. LEFT_EARLY Check-out logic
+    // ─────────────────────────────────────────────────────────────────
     if (status === 'LEFT_EARLY') {
       const todayAttendance = await prisma.attendance.findFirst({
         where: {
@@ -316,7 +374,9 @@ export async function POST(req: Request) {
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────
     // 2. Double Scan Check (within 2 hours)
+    // ─────────────────────────────────────────────────────────────────
     if (status !== 'LEFT_EARLY') {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       const recentAttendance = await prisma.attendance.findFirst({
@@ -351,12 +411,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────
     // 3. Smart Group & Session Matching Logic
+    // ─────────────────────────────────────────────────────────────────
     let targetSession: any = null;
     let targetGroup: any = null;
     let isDifferentGroup = false;
 
-    // A. First check if a session exists for the student's own group today (even if completed or open)
+    // A. First check if a session exists for the student's own group today
     const studentGroupTodaySession = await prisma.lessonSession.findFirst({
       where: {
         groupId: student.groupId,
@@ -396,20 +458,15 @@ export async function POST(req: Request) {
         isDifferentGroup = true;
       } else if (student.groupId && student.group) {
         // C. Auto-create session for student's group for today if none exists
-        const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const todayDay = weekdays[now.getDay()];
-        const weekdaysArabic: Record<string, string> = {
-          'Sunday': 'الأحد', 'Monday': 'الاثنين', 'Tuesday': 'الثلاثاء',
-          'Wednesday': 'الأربعاء', 'Thursday': 'الخميس', 'Friday': 'الجمعة', 'Saturday': 'السبت'
-        };
-        const todayDayArabic = weekdaysArabic[todayDay] || 'اليوم';
-        const slot = parseTimeToMinutes(student.group.startTime) ? { startTime: student.group.startTime, endTime: student.group.endTime } : { startTime: '16:00', endTime: '18:00' };
+        const slot = parseTimeToMinutes(student.group.startTime)
+          ? { startTime: student.group.startTime, endTime: student.group.endTime }
+          : { startTime: '16:00', endTime: '18:00' };
 
         targetSession = await prisma.lessonSession.create({
           data: {
             title: `جلسة ${student.group.name}`,
             groupId: student.groupId,
-            date: new Date(egyptTimeStr),
+            date: now,
             startTime: slot.startTime,
             endTime: slot.endTime,
             status: 'OPEN',
@@ -438,7 +495,7 @@ export async function POST(req: Request) {
     }
 
     if (isDifferentGroup) {
-      // Stage mismatch check: student is from a different stage AND their group is not open
+      // Stage mismatch check
       if (student.academicStageId !== targetGroup.academicStageId) {
         return NextResponse.json({
           success: false,
@@ -453,7 +510,7 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // Group mismatch check (prompt the master for approval)
+      // Group mismatch check
       if (!forceDifferentGroup) {
         return NextResponse.json({
           success: false,
@@ -471,12 +528,16 @@ export async function POST(req: Request) {
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────
     // 5. Determine homework notes
+    // ─────────────────────────────────────────────────────────────────
     let homeworkNotes = '';
     if (homeworkStatus === 'DONE') homeworkNotes = 'الواجب: مكتمل ✅';
     else if (homeworkStatus === 'NOT_DONE') homeworkNotes = 'الواجب: لم يتم ❌';
 
+    // ─────────────────────────────────────────────────────────────────
     // 6. Create or update attendance record
+    // ─────────────────────────────────────────────────────────────────
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
         studentId: student.id,
@@ -516,20 +577,21 @@ export async function POST(req: Request) {
       ipAddress: clientIp,
     });
 
-    // Auto-Pay Month Logic
+    // ─────────────────────────────────────────────────────────────────
+    // 7. Auto-Pay Month Logic (Specific month or Current month)
+    // ─────────────────────────────────────────────────────────────────
     let paidMessageSuffix = '';
     if (actualPayMonth) {
       try {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+        const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
 
         let subscription = await prisma.subscription.findFirst({
           where: {
             studentId: student.id,
-            groupId: student.groupId,
-            endDate: { gte: startOfMonth },
+            month: targetMonth,
+            year: targetYear,
           },
-          orderBy: { endDate: 'desc' },
         });
 
         const price = student.academicStage?.monthlyPrice ?? 350;
@@ -538,17 +600,28 @@ export async function POST(req: Request) {
             data: {
               studentId: student.id,
               groupId: student.groupId,
-              startDate: now,
+              startDate: startOfMonth,
               endDate: endOfMonth,
               totalSessions: 8,
               price: price,
-              status: 'ACTIVE',
+              status: 'PAID',
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
+            },
+          });
+        } else {
+          await prisma.subscription.update({
+            where: { id: subscription.id },
+            data: {
+              status: 'PAID',
+              paidAt: now,
             },
           });
         }
 
         const owner = await prisma.user.findFirst();
-        const recorderId = owner?.id || '';
+        const recorderId = owner?.id || staff.userId || '';
 
         const existingPayment = await prisma.payment.findFirst({
           where: { subscriptionId: subscription.id },
@@ -560,6 +633,9 @@ export async function POST(req: Request) {
             data: {
               paidAmount: subscription.price,
               remainingAmount: 0,
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
             },
           });
         } else {
@@ -571,7 +647,10 @@ export async function POST(req: Request) {
               paidAmount: subscription.price,
               remainingAmount: 0,
               recordedById: recorderId,
-              notes: 'دفع تلقائي من ماسح الباركود',
+              notes: `دفع اشتراك (${targetMonthName} ${targetYear}) من ماسح الباركود`,
+              month: targetMonth,
+              year: targetYear,
+              paidAt: now,
             },
           });
         }
@@ -579,31 +658,20 @@ export async function POST(req: Request) {
         // WhatsApp notification to parent
         const parentPhone = student.parent?.phone || student.phone;
         const parentName = student.parent?.name || 'ولي الأمر';
-        const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك الشهر للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢\nمنصة المايسترو 🏫`;
+        const messageBody = `👨‍👩‍👦 أهلاً ${parentName}،\nتم دفع اشتراك (${targetMonthName} ${targetYear}) للطالب: ${student.name} وصحح الواجب الخاص به بنجاح 🟢💵\nمنصة المايسترو 🏫`;
         
-        const settings = await prisma.systemSettings.findFirst({
-          select: {
-            enableWhatsApp: true,
-            waGatewayUrl: true,
-            waApiToken: true,
-          }
-        });
-        if (settings?.enableWhatsApp && settings?.waGatewayUrl && settings?.waApiToken) {
-          fetch(settings.waGatewayUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.waApiToken}` },
-            body: JSON.stringify({ token: settings.waApiToken, to: parentPhone, body: messageBody }),
-          }).catch((err) => {
-            console.error('Failed to dispatch auto-pay WhatsApp gateway notification:', err);
-          });
+        if (parentPhone) {
+          tryDispatchWA(parentPhone, messageBody);
         }
-        paidMessageSuffix = ' وتم سداد اشتراك الشهر وتنبيه ولي الأمر 💵';
+        paidMessageSuffix = ` وتم سداد اشتراك (${targetMonthName} ${targetYear}) وتنبيه ولي الأمر 💵`;
       } catch (err) {
         console.error('Auto pay error:', err);
       }
     }
 
-    // 7. In-app notifications
+    // ─────────────────────────────────────────────────────────────────
+    // 8. In-app notifications
+    // ─────────────────────────────────────────────────────────────────
     if (status === 'ABSENT') {
       await prisma.notification.create({
         data: {
@@ -626,13 +694,15 @@ export async function POST(req: Request) {
       });
     }
 
-    // 8. Deduct from subscription if PRESENT
+    // ─────────────────────────────────────────────────────────────────
+    // 9. Deduct from subscription if PRESENT
+    // ─────────────────────────────────────────────────────────────────
     if ((hasActiveSub || actualPayMonth) && (status === 'PRESENT' || !status)) {
       try {
         const activeSub = await prisma.subscription.findFirst({
           where: {
             studentId: student.id,
-            status: 'ACTIVE',
+            status: { in: ['ACTIVE', 'PAID'] },
           },
         });
         if (activeSub) {
@@ -646,7 +716,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 9. WhatsApp Attendance Notification (fire-and-forget)
+    // ─────────────────────────────────────────────────────────────────
+    // 10. WhatsApp Attendance Notification (fire-and-forget)
+    // ─────────────────────────────────────────────────────────────────
     const settings = await prisma.systemSettings.findFirst({
       select: {
         enableWhatsApp: true,

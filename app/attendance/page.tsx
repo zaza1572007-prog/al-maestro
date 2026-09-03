@@ -108,6 +108,41 @@ export default function AttendancePage() {
     targetGroupId?: string;
   } | null>(null);
 
+  // Unpaid previous months modal state (Sequential payments)
+  const [unpaidModalData, setUnpaidModalData] = useState<{
+    student: {
+      id: string;
+      name: string;
+      code: string;
+      groupName: string;
+      stageName?: string;
+      monthlyPrice?: number;
+      phone?: string;
+      hasActiveSub?: boolean;
+    };
+    dueMonths: Array<{
+      month: number;
+      year: number;
+      name: string;
+      monthLabel: string;
+      price: number;
+      isPast: boolean;
+      isCurrent: boolean;
+      status: string;
+      paidAmount: number;
+      remainingAmount: number;
+      subscriptionId?: string;
+    }>;
+    scanMode: 'ATTENDANCE_ONLY' | 'PAY_ONLY' | 'BOTH';
+    status: string;
+    homeworkStatus: string;
+    studentCode: string;
+    targetGroupId?: string;
+    isManualPay?: boolean;
+  } | null>(null);
+  const [selectedDueMonthIndex, setSelectedDueMonthIndex] = useState<number>(0);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
   // Scanner status: starts RED 🔴 only goes GREEN when barcode input is focused
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -442,7 +477,7 @@ export default function AttendancePage() {
     fetchHistory(historyGroup);
   }, [historyGroup]);
 
-  const handleScan = async (e?: React.FormEvent, bypassFlags?: { forceDuplicate?: boolean; forceDifferentGroup?: boolean; targetCode?: string }) => {
+  const handleScan = async (e?: React.FormEvent, bypassFlags?: { forceDuplicate?: boolean; forceDifferentGroup?: boolean; targetCode?: string; selectedMonth?: number; selectedYear?: number; skipPayment?: boolean }) => {
     if (e) e.preventDefault();
     const scanCode = bypassFlags?.targetCode || code;
     if (!scanCode.trim()) return;
@@ -457,7 +492,10 @@ export default function AttendancePage() {
           homeworkStatus,
           forceDuplicate: bypassFlags?.forceDuplicate || false,
           forceDifferentGroup: bypassFlags?.forceDifferentGroup || false,
-          scanMode,
+          scanMode: bypassFlags?.skipPayment ? 'ATTENDANCE_ONLY' : scanMode,
+          selectedMonth: bypassFlags?.selectedMonth,
+          selectedYear: bypassFlags?.selectedYear,
+          skipPayment: bypassFlags?.skipPayment || false,
         }),
       });
       const data = await res.json();
@@ -466,10 +504,23 @@ export default function AttendancePage() {
         playBeepSuccess();
         toast.success(data.message || 'تم تسجيل الحضور بنجاح');
         setWarningData(null);
+        setUnpaidModalData(null);
         await fetchHistory();
         await fetchTodayGroups();
         if (absenteesGroup) fetchAbsentees(absenteesGroup);
         setCode('');
+      } else if (data.warningType === 'UNPAID_PREVIOUS_MONTHS') {
+        playBeepWarning();
+        setUnpaidModalData({
+          student: data.student,
+          dueMonths: data.dueMonths,
+          scanMode: data.scanMode || scanMode,
+          status: data.status || manualStatus,
+          homeworkStatus: data.homeworkStatus || homeworkStatus,
+          studentCode: scanCode,
+          targetGroupId: data.targetGroupId,
+        });
+        setSelectedDueMonthIndex(0);
       } else if (data.warningType) {
         playBeepWarning();
         setWarningData({
@@ -548,6 +599,116 @@ export default function AttendancePage() {
       targetCode: warningData.studentCode,
     };
     await handleScan(undefined, bypassFlags);
+  };
+
+  const handleConfirmDueMonthPayment = async () => {
+    if (!unpaidModalData) return;
+    const selectedMonthObj = unpaidModalData.dueMonths[selectedDueMonthIndex];
+    if (!selectedMonthObj) return;
+
+    setProcessingPayment(true);
+    try {
+      if (unpaidModalData.isManualPay) {
+        const response = await fetch('/api/attendance/pay-month', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId: unpaidModalData.student.id,
+            month: selectedMonthObj.month,
+            year: selectedMonthObj.year,
+            force: true,
+          }),
+        });
+        const result = await response.json();
+        if (result.success) {
+          playBeepSuccess();
+          toast.success(result.message || 'تم سداد الاشتراك بنجاح 💵');
+          setUnpaidModalData(null);
+          setLastScan((prev: any) => ({
+            ...prev,
+            student: {
+              ...prev?.student,
+              hasActiveSub: true,
+            },
+          }));
+          await fetchTodayGroups();
+          await fetchHistory();
+        } else {
+          playBeepWarning();
+          toast.error(result.error || 'فشل سداد الاشتراك');
+        }
+      } else {
+        const res = await fetch('/api/attendance/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentCode: unpaidModalData.studentCode,
+            status: unpaidModalData.status,
+            homeworkStatus: unpaidModalData.homeworkStatus,
+            scanMode: unpaidModalData.scanMode,
+            payMonth: true,
+            selectedMonth: selectedMonthObj.month,
+            selectedYear: selectedMonthObj.year,
+            forceDuplicate: true,
+          }),
+        });
+        const data = await res.json();
+        setLastScan(data);
+        if (data.success) {
+          playBeepSuccess();
+          toast.success(data.message || 'تم سداد الاشتراك وتسجيل الحضور بنجاح 🟢');
+          setUnpaidModalData(null);
+          setCode('');
+          await fetchHistory();
+          await fetchTodayGroups();
+          if (absenteesGroup) fetchAbsentees(absenteesGroup);
+        } else {
+          playBeepWarning();
+          toast.error(data.error || 'فشل إتمام العملية');
+        }
+      }
+    } catch {
+      toast.error('حدث خطأ في الاتصال بالخادم');
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleSkipPaymentRecordAttendance = async () => {
+    if (!unpaidModalData) return;
+    setProcessingPayment(true);
+    try {
+      const res = await fetch('/api/attendance/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentCode: unpaidModalData.studentCode,
+          status: unpaidModalData.status,
+          homeworkStatus: unpaidModalData.homeworkStatus,
+          scanMode: 'ATTENDANCE_ONLY',
+          skipPayment: true,
+          forceDuplicate: true,
+        }),
+      });
+      const data = await res.json();
+      setLastScan(data);
+      if (data.success) {
+        playBeepSuccess();
+        toast.info('تم تسجيل الحضور وتأجيل سداد الاشتراك ⚠️');
+        setUnpaidModalData(null);
+        setCode('');
+        await fetchHistory();
+        await fetchTodayGroups();
+        if (absenteesGroup) fetchAbsentees(absenteesGroup);
+      } else {
+        playBeepWarning();
+        toast.error(data.error || 'فشل تسجيل الحضور');
+      }
+    } catch {
+      toast.error('حدث خطأ في الاتصال بالخادم');
+    } finally {
+      setProcessingPayment(false);
+    }
   };
 
   const todayStr = new Date().toLocaleDateString('ar-EG');
@@ -789,30 +950,45 @@ export default function AttendancePage() {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (confirm(`هل أنت متأكد من تسجيل دفع الاشتراك الشهري بقيمة ${lastScan.student.monthlyPrice || 350} ج.م للطالب (${lastScan.student.name}) وإرسال رسالة لولي أمره؟`)) {
-                              try {
-                                const response = await fetch('/api/attendance/pay-month', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ studentId: lastScan.student.id }),
+                            try {
+                              const response = await fetch('/api/attendance/pay-month', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ studentId: lastScan.student.id }),
+                              });
+                              const result = await response.json();
+                              if (result.warningType === 'UNPAID_PREVIOUS_MONTHS') {
+                                playBeepWarning();
+                                setUnpaidModalData({
+                                  student: result.student || lastScan.student,
+                                  dueMonths: result.dueMonths,
+                                  scanMode: 'PAY_ONLY',
+                                  status: manualStatus,
+                                  homeworkStatus,
+                                  studentCode: lastScan.student.code,
+                                  isManualPay: true,
                                 });
-                                const result = await response.json();
-                                if (result.success) {
-                                  toast.success(result.message);
-                                  setLastScan((prev: any) => ({
-                                    ...prev,
-                                    student: {
-                                      ...prev.student,
-                                      hasActiveSub: true
-                                    }
-                                  }));
-                                  await fetchTodayGroups();
-                                } else {
-                                  toast.error(result.error || 'فشل تسجيل الدفع');
-                                }
-                              } catch {
-                                toast.error('حدث خطأ في الاتصال بالخادم');
+                                setSelectedDueMonthIndex(0);
+                                return;
                               }
+                              if (result.success) {
+                                playBeepSuccess();
+                                toast.success(result.message);
+                                setLastScan((prev: any) => ({
+                                  ...prev,
+                                  student: {
+                                    ...prev.student,
+                                    hasActiveSub: true
+                                  }
+                                }));
+                                await fetchTodayGroups();
+                                await fetchHistory();
+                              } else {
+                                playBeepWarning();
+                                toast.error(result.error || 'فشل تسجيل الدفع');
+                              }
+                            } catch {
+                              toast.error('حدث خطأ في الاتصال بالخادم');
                             }
                           }}
                           className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition cursor-pointer"
@@ -1072,6 +1248,183 @@ export default function AttendancePage() {
           )}
         </div>
       </div>
+
+      {/* Unpaid Months / Sequential Payment Modal */}
+      {unpaidModalData && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl">
+                  💳
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">تسوية الاشتراكات والشهور السابقة</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">توجد شهور غير مسددة مستحقة على الطالب</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnpaidModalData(null)}
+                className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Student Info Summary */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">الطالب</span>
+                    <h4 className="text-base font-black text-white">{unpaidModalData.student.name}</h4>
+                  </div>
+                  <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">
+                    {unpaidModalData.student.code}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/60 text-xs text-slate-300">
+                  <span className="bg-slate-800/70 px-2.5 py-1 rounded-lg">
+                    المجموعة: <strong className="text-white">{unpaidModalData.student.groupName}</strong>
+                  </span>
+                  {unpaidModalData.student.stageName && (
+                    <span className="bg-slate-800/70 px-2.5 py-1 rounded-lg">
+                      المرحلة: <strong className="text-white">{unpaidModalData.student.stageName}</strong>
+                    </span>
+                  )}
+                  <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2.5 py-1 rounded-lg font-bold">
+                    الاشتراك: {unpaidModalData.student.monthlyPrice || 350} ج.م
+                  </span>
+                </div>
+              </div>
+
+              {/* Due Months List */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <span>📅 الشهور المستحقة على الطالب ({unpaidModalData.dueMonths.length}):</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">اختر الشهر المراد سداده الآن</span>
+                </div>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {unpaidModalData.dueMonths.map((m, idx) => {
+                    const isSelected = selectedDueMonthIndex === idx;
+                    const isOldest = idx === 0;
+
+                    return (
+                      <div
+                        key={`${m.year}-${m.month}`}
+                        onClick={() => setSelectedDueMonthIndex(idx)}
+                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                            : 'bg-slate-950/50 border-slate-800 hover:border-slate-700 hover:bg-slate-800/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-500 text-white'
+                                : 'border-slate-600 bg-slate-900'
+                            }`}
+                          >
+                            {isSelected && <span className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-white text-sm">{m.name}</p>
+                              {isOldest && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                                  ✨ الأقدم (موصى به)
+                                </span>
+                              )}
+                              {m.isPast && !isOldest && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                                  متأخر ⚠️
+                                </span>
+                              )}
+                              {m.isCurrent && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                                  الشهر الحالي 📅
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              الحالة: {m.isPast ? 'متأخرات من شهور سابقة' : 'اشتراك الشهر الجاري'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-left">
+                          <span className="font-black text-amber-400 text-sm font-mono">
+                            {m.price} ج.م
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Warning Alert if a newer month is selected, skipping older months */}
+              {selectedDueMonthIndex > 0 && (
+                <div className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-4 text-amber-300 text-xs flex items-start gap-3 animate-in fade-in duration-200">
+                  <span className="text-xl shrink-0">⚠️</span>
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-200">تنبيه تخطي الشهور السابقة:</p>
+                    <p className="leading-relaxed text-amber-300/90">
+                      سيظل شهر{' '}
+                      <strong className="text-amber-100 font-bold underline decoration-amber-400/80">
+                        {unpaidModalData.dueMonths.slice(0, selectedDueMonthIndex).map(m => m.name).join(' و ')}
+                      </strong>{' '}
+                      معلقاً كمديونية على الطالب.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-5 border-t border-slate-800 bg-slate-950/60 flex flex-col sm:flex-row gap-2.5">
+              <button
+                type="button"
+                disabled={processingPayment}
+                onClick={handleConfirmDueMonthPayment}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer disabled:opacity-50"
+              >
+                {processingPayment ? 'جارٍ السداد...' : `✓ تأكيد وسداد (${unpaidModalData.dueMonths[selectedDueMonthIndex]?.name})`}
+              </button>
+
+              {unpaidModalData.scanMode !== 'PAY_ONLY' && !unpaidModalData.isManualPay && (
+                <button
+                  type="button"
+                  disabled={processingPayment}
+                  onClick={handleSkipPaymentRecordAttendance}
+                  className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-amber-300 border border-slate-700 font-bold rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  📋 تسجيل حضور فقط وتأجيل الدفع
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={processingPayment}
+                onClick={() => setUnpaidModalData(null)}
+                className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition cursor-pointer disabled:opacity-50"
+              >
+                إلغاء ❌
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Warning confirmation Modal */}
       {warningData && (

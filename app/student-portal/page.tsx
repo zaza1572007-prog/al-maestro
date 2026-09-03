@@ -165,7 +165,9 @@ export default function StudentPortalDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400">أحدث نتيجة امتحان</p>
-              <h3 className="text-3xl font-black text-blue-300 mt-1">{studentInfo.latestExamScore}</h3>
+              <h3 className="text-3xl font-black text-blue-300 mt-1 font-mono tracking-tight" dir="ltr">
+                {studentInfo.latestExamScore}
+              </h3>
             </div>
             <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300">
               <Award className="w-7 h-7" />
@@ -187,13 +189,17 @@ export default function StudentPortalDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400">حالة الاشتراك</p>
-              <h3 className="text-xl font-bold text-emerald-300 mt-2">{studentInfo.subscriptionStatus}</h3>
+              <h3 className={`text-xl font-bold mt-2 ${studentInfo.subscriptionStatus?.includes('نشط 🟢') ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {studentInfo.subscriptionStatus}
+              </h3>
             </div>
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+            <div className={`p-4 rounded-2xl border ${studentInfo.subscriptionStatus?.includes('نشط 🟢') ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
               <CreditCard className="w-7 h-7" />
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-3">الاشتراك ساري</p>
+          <p className="text-xs text-slate-400 mt-3">
+            {studentInfo.subscriptionEndDate ? `ساري حتى: ${studentInfo.subscriptionEndDate}` : 'يرجى مراجعة إدارة السنتر لتجديد الاشتراك'}
+          </p>
         </motion.div>
       </div>
 
@@ -262,7 +268,7 @@ export default function StudentPortalDashboard() {
                     {ex.date} {ex.rank ? `• ${ex.rank}` : ''}
                   </p>
                 </div>
-                <span className="text-lg font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-2xl">
+                <span className="text-lg font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 rounded-2xl font-mono tracking-tight" dir="ltr">
                   {ex.score}
                 </span>
               </div>

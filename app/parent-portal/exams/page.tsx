@@ -81,7 +81,7 @@ export default function ParentExamsPage() {
                 </div>
               </div>
               <div className="flex items-center">
-                <span className="text-2xl font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-2xl shadow-inner">
+                <span className="text-2xl font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-2xl shadow-inner font-mono tracking-tight" dir="ltr">
                   {exam.score}
                 </span>
               </div>
