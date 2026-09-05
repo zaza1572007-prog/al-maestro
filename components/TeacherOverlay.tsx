@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 
 export interface DevicePortraitConfig {
   opacity: number;
@@ -174,6 +175,11 @@ export default function TeacherOverlay() {
       window.removeEventListener('maestro-portrait-live-preview', handleLivePreview);
     };
   }, [fetchConfigAndImage, device]);
+
+  const pathname = usePathname();
+
+  // Hide on pages other than dashboard / root / login (e.g. /groups, /students)
+  if (pathname !== '/dashboard' && pathname !== '/' && pathname !== '/login') return null;
 
   if (!hasCustomImage) return null;
 

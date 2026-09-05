@@ -413,10 +413,13 @@ function GroupsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">👥 إدارة المجموعات (Groups Module)</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-2xl font-black text-zinc-950 dark:text-white flex items-center gap-2">
+            <span>👥</span>
+            <span>إدارة المجموعات (Groups Module)</span>
+          </h1>
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm mt-1">
             {gradeFilter ? `عرض مجموعات الصف الدراسي: ${gradeFilter}` : 'عرض وإدارة مجموعات الدروس وجداول المواعيد اليومية'}
           </p>
         </div>
@@ -428,14 +431,14 @@ function GroupsContent() {
             }
             setIsAddingGroup(true);
           }}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-600/20"
+          className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-98"
         >
           <span>➕</span> إضافة مجموعة جديدة
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 overflow-x-auto no-scrollbar scrollbar-none">
         {[
           { id: 'overview', label: 'نظرة عامة (Overview)' },
           { id: 'students', label: 'الطلاب (Students)' },
@@ -449,10 +452,10 @@ function GroupsContent() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-blue-600 text-white shadow'
-                : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                ? 'bg-primary text-primary-foreground font-bold shadow-md'
+                : 'bg-zinc-100 dark:bg-zinc-900/80 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800'
             }`}
           >
             {tab.label}
@@ -462,26 +465,26 @@ function GroupsContent() {
 
       {/* Groups List Grid */}
       {loading ? (
-        <div className="text-center py-12 text-slate-400">جارٍ تحميل المجموعات الحقيقية من قاعدة البيانات...</div>
+        <div className="text-center py-12 text-zinc-500 dark:text-zinc-400 font-medium">جارٍ تحميل المجموعات الحقيقية من قاعدة البيانات...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {groups.map((grp) => (
-            <div key={grp.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div key={grp.id} className="bg-white dark:bg-zinc-900/95 border border-zinc-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-4 transition-all hover:border-primary/40">
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-white">{grp.name}</h3>
-                  <p className="text-xs text-blue-400 font-medium mt-0.5">{grp.stage}</p>
+                  <h3 className="text-lg font-bold text-zinc-950 dark:text-white">{grp.name}</h3>
+                  <p className="text-xs text-primary font-semibold mt-0.5">{grp.stage}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleEditClick(grp)}
-                    className="px-2.5 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white dark:text-amber-400 dark:hover:text-white border border-amber-500/20 rounded-xl text-xs font-semibold transition cursor-pointer"
                   >
                     ✏️ تعديل
                   </button>
                   <button
                     onClick={() => handleDeleteGroup(grp.id, grp.name)}
-                    className="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                    className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white border border-rose-500/20 rounded-xl text-xs font-semibold transition cursor-pointer"
                   >
                     🗑️ حذف
                   </button>
@@ -489,63 +492,65 @@ function GroupsContent() {
               </div>
 
               {/* Schedule timing section */}
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5 text-xs">
+              <div className="bg-zinc-50 dark:bg-zinc-950/70 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-1">
+                  <span className="text-zinc-600 dark:text-zinc-400 flex items-center gap-1 font-medium">
                     <span>🗓️</span> مواعيد الحصص:
                   </span>
                   {grp.isDifferentSchedule ? (
-                    <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded text-[10px] font-bold border border-purple-500/30">
+                    <span className="px-2 py-0.5 bg-purple-500/15 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold border border-purple-500/30">
                       مواعيد مختلفة لكل يوم
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded text-[10px] font-bold border border-blue-500/30">
+                    <span className="px-2 py-0.5 bg-primary/15 text-primary rounded text-[10px] font-bold border border-primary/30">
                       موعد موحد
                     </span>
                   )}
                 </div>
                 {grp.schedule && grp.schedule.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {grp.schedule.map((slot, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 text-xs border border-slate-700 font-medium"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-xs border border-zinc-200 dark:border-zinc-700/80 font-medium shadow-xs"
                       >
-                        <strong className="text-blue-400">{slot.day}:</strong>
-                        <span>{to12h(slot.startTime)} - {to12h(slot.endTime)}</span>
+                        <strong className="text-primary font-bold">{slot.day}:</strong>
+                        <span dir="ltr">{to12h(slot.startTime)} - {to12h(slot.endTime)}</span>
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-300 font-semibold">{grp.time}</p>
+                  <p className="text-zinc-800 dark:text-zinc-200 font-semibold" dir="ltr">{grp.time}</p>
                 )}
               </div>
 
+              {/* 3-column stats grid */}
               <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                  <p className="text-slate-400">عدد الطلاب</p>
-                  <p className="text-sm font-bold text-white mt-1">{grp.studentsCount}</p>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
+                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">عدد الطلاب</p>
+                  <p className="text-base font-black text-primary mt-1 font-mono tabular-nums">{grp.studentsCount}</p>
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                  <p className="text-slate-400">متوسط الحضور</p>
-                  <p className="text-sm font-bold text-emerald-400 mt-1">{grp.attendanceAvg}</p>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
+                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">متوسط الحضور</p>
+                  <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono tabular-nums">{grp.attendanceAvg}</p>
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                  <p className="text-slate-400">المساعد</p>
-                  <p className="text-sm font-bold text-slate-300 mt-1">{grp.assistant}</p>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
+                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">المساعد</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 mt-1 truncate">{grp.assistant || 'غير محدد'}</p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-2">
-                <span className="text-slate-400">أيام الدراسة: <strong className="text-slate-200">{grp.days}</strong></span>
-                <Link href={`/students?groupId=${grp.id}`} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded-lg transition text-xs">
-                  إدارة الطلاب والمجموعة ←
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+                <span className="text-zinc-600 dark:text-zinc-400">أيام الدراسة: <strong className="text-zinc-900 dark:text-zinc-200 font-bold">{grp.days}</strong></span>
+                <Link href={`/students?groupId=${grp.id}`} className="px-3.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground dark:text-primary dark:hover:text-primary-foreground font-bold rounded-xl transition text-xs border border-primary/20 shadow-xs flex items-center gap-1">
+                  <span>إدارة الطلاب والمجموعة</span>
+                  <span>←</span>
                 </Link>
               </div>
             </div>
           ))}
           {groups.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
+            <div className="col-span-2 text-center py-12 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
               لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً
             </div>
           )}
@@ -555,29 +560,29 @@ function GroupsContent() {
       {/* Add Group Modal */}
       {isAddingGroup && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">➕ إضافة مجموعة تعليمية جديدة</h3>
-              <button onClick={() => setIsAddingGroup(false)} className="text-slate-400 hover:text-white text-lg cursor-pointer">✕</button>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white">➕ إضافة مجموعة تعليمية جديدة</h3>
+              <button onClick={() => setIsAddingGroup(false)} className="text-zinc-400 hover:text-zinc-950 dark:hover:text-white text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleCreateGroup} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">اسم المجموعة *</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">اسم المجموعة *</label>
                 <input
                   type="text"
                   required
                   placeholder="مثال: مجموعة التفوق (السبت والثلاثاء)"
                   value={newGroup.name}
                   onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">المرحلة الدراسية *</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">المرحلة الدراسية *</label>
                 <select
                   value={newGroup.stageId}
                   onChange={(e) => setNewGroup({ ...newGroup, stageId: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 >
                   {stagesList.map((stg) => (
                     <option key={stg.id} value={stg.id}>{stg.name}</option>
@@ -587,29 +592,29 @@ function GroupsContent() {
 
               {/* Days of Attendance input */}
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">أيام الحضور</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">أيام الحضور</label>
                 <input
                   type="text"
                   placeholder="مثال: السبت والثلاثاء أو الخميس"
                   value={newGroup.days}
                   onChange={(e) => handleNewGroupDaysChange(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
+                <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
               </div>
 
               {/* Timing Mode Switch */}
-              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-                  <span className="font-bold text-white text-xs">نوع التوقيت للمجموعة:</span>
-                  <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700/60">
+              <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800/80 pb-2.5">
+                  <span className="font-bold text-zinc-950 dark:text-white text-xs">نوع التوقيت للمجموعة:</span>
+                  <div className="flex items-center gap-1.5 bg-zinc-200/80 dark:bg-zinc-900 p-1 rounded-xl border border-zinc-300 dark:border-zinc-700/60">
                     <button
                       type="button"
                       onClick={() => setNewGroup({ ...newGroup, timingMode: 'UNIFIED' })}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                         newGroup.timingMode === 'UNIFIED'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-primary text-primary-foreground shadow'
+                          : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-slate-200'
                       }`}
                     >
                       ⏱️ توقيت موحد
@@ -620,7 +625,7 @@ function GroupsContent() {
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                         newGroup.timingMode === 'DIFFERENT'
                           ? 'bg-purple-600 text-white shadow'
-                          : 'text-slate-400 hover:text-slate-200'
+                          : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-slate-200'
                       }`}
                     >
                       🔀 توقيت مختلف لكل يوم
@@ -631,28 +636,28 @@ function GroupsContent() {
                 {/* Case 1: Unified Timing */}
                 {newGroup.timingMode === 'UNIFIED' && (
                   <div className="space-y-1.5 pt-1">
-                    <label className="block text-slate-300 font-medium">مواعيد التوقيت (يطبق على كل الأيام)</label>
+                    <label className="block text-zinc-700 dark:text-zinc-300 font-medium">مواعيد التوقيت (يطبق على كل الأيام)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="text-[11px] text-slate-400 block mb-1">وقت البدء</span>
+                        <span className="text-[11px] text-zinc-500 dark:text-slate-400 block mb-1">وقت البدء</span>
                         <input
                           type="time"
                           value={newGroup.startTime}
                           onChange={(e) => setNewGroup({ ...newGroup, startTime: e.target.value })}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-bold"
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-bold"
                         />
                       </div>
                       <div>
-                        <span className="text-[11px] text-slate-400 block mb-1">وقت الانتهاء</span>
+                        <span className="text-[11px] text-zinc-500 dark:text-slate-400 block mb-1">وقت الانتهاء</span>
                         <input
                           type="time"
                           value={newGroup.endTime}
                           onChange={(e) => setNewGroup({ ...newGroup, endTime: e.target.value })}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-bold"
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-bold"
                         />
                       </div>
                     </div>
-                    <p className="text-[11px] text-emerald-400 pt-1">
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 pt-1 font-semibold">
                       ✅ المعاد الموحد: {to12h(newGroup.startTime)} إلى {to12h(newGroup.endTime)}
                     </p>
                   </div>
@@ -662,7 +667,7 @@ function GroupsContent() {
                 {newGroup.timingMode === 'DIFFERENT' && (
                   <div className="space-y-2.5 pt-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-300 font-medium">مواعيد كل يوم على حدة:</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">مواعيد كل يوم على حدة:</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -672,7 +677,7 @@ function GroupsContent() {
                             slots: [...newGroup.slots, { day: available, startTime: '16:00', endTime: '18:00' }],
                           });
                         }}
-                        className="text-[11px] text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer"
+                        className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                       >
                         ➕ إضافة يوم آخر
                       </button>
@@ -680,7 +685,7 @@ function GroupsContent() {
 
                     <div className="space-y-2">
                       {newGroup.slots.map((slot, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                        <div key={idx} className="flex items-center gap-2 bg-white dark:bg-zinc-900/90 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
                           {/* Day selector */}
                           <div className="w-1/3 min-w-[100px]">
                             <select
@@ -690,7 +695,7 @@ function GroupsContent() {
                                 nextSlots[idx].day = e.target.value;
                                 setNewGroup({ ...newGroup, slots: nextSlots });
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-bold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-bold"
                             >
                               {ALL_WEEK_DAYS.map((d) => (
                                 <option key={d} value={d}>{d}</option>
@@ -708,11 +713,11 @@ function GroupsContent() {
                                 nextSlots[idx].startTime = e.target.value;
                                 setNewGroup({ ...newGroup, slots: nextSlots });
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-semibold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-semibold"
                             />
                           </div>
 
-                          <span className="text-slate-500 text-xs">إلى</span>
+                          <span className="text-zinc-500 text-xs">إلى</span>
 
                           {/* End time */}
                           <div className="flex-1">
@@ -724,7 +729,7 @@ function GroupsContent() {
                                 nextSlots[idx].endTime = e.target.value;
                                 setNewGroup({ ...newGroup, slots: nextSlots });
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-semibold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-semibold"
                             />
                           </div>
 
@@ -736,7 +741,7 @@ function GroupsContent() {
                                 const nextSlots = newGroup.slots.filter((_, i) => i !== idx);
                                 setNewGroup({ ...newGroup, slots: nextSlots });
                               }}
-                              className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                               title="حذف اليوم"
                             >
                               🗑️
@@ -753,14 +758,14 @@ function GroupsContent() {
                 <button
                   type="button"
                   onClick={() => setIsAddingGroup(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer"
+                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg cursor-pointer disabled:opacity-50"
                 >
                   {isSaving ? 'جاري الحفظ...' : 'إضافة المجموعة ➕'}
                 </button>
@@ -773,47 +778,47 @@ function GroupsContent() {
       {/* Edit Group Modal */}
       {editingGroup && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">✏️ تعديل بيانات المجموعة: {editingGroup.name}</h3>
-              <button onClick={() => setEditingGroup(null)} className="text-slate-400 hover:text-white text-lg cursor-pointer">✕</button>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white">✏️ تعديل بيانات المجموعة: {editingGroup.name}</h3>
+              <button onClick={() => setEditingGroup(null)} className="text-zinc-400 hover:text-zinc-950 dark:hover:text-white text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">اسم المجموعة</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">اسم المجموعة</label>
                 <input
                   type="text"
                   required
                   value={editingGroup.name}
                   onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
               </div>
 
               {/* Days of Attendance */}
               <div>
-                <label className="block text-slate-300 mb-1 font-semibold">أيام الحضور</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">أيام الحضور</label>
                 <input
                   type="text"
                   value={editingGroup.days}
                   onChange={(e) => handleEditDaysChange(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
+                <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
               </div>
 
               {/* Timing Mode Selector */}
-              <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-                  <span className="font-bold text-white text-xs">نوع التوقيت للمجموعة:</span>
-                  <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700/60">
+              <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800/80 pb-2.5">
+                  <span className="font-bold text-zinc-950 dark:text-white text-xs">نوع التوقيت للمجموعة:</span>
+                  <div className="flex items-center gap-1.5 bg-zinc-200/80 dark:bg-zinc-900 p-1 rounded-xl border border-zinc-300 dark:border-zinc-700/60">
                     <button
                       type="button"
                       onClick={() => setEditTimingMode('UNIFIED')}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                         editTimingMode === 'UNIFIED'
-                          ? 'bg-blue-600 text-white shadow'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-primary text-primary-foreground shadow'
+                          : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-slate-200'
                       }`}
                     >
                       ⏱️ توقيت موحد
@@ -831,7 +836,7 @@ function GroupsContent() {
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                         editTimingMode === 'DIFFERENT'
                           ? 'bg-purple-600 text-white shadow'
-                          : 'text-slate-400 hover:text-slate-200'
+                          : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-slate-200'
                       }`}
                     >
                       🔀 توقيت مختلف لكل يوم
@@ -842,28 +847,28 @@ function GroupsContent() {
                 {/* Case 1: Unified Timing */}
                 {editTimingMode === 'UNIFIED' && (
                   <div className="space-y-1.5 pt-1">
-                    <label className="block text-slate-300 font-medium">مواعيد التوقيت (يطبق على كل الأيام)</label>
+                    <label className="block text-zinc-700 dark:text-zinc-300 font-medium">مواعيد التوقيت (يطبق على كل الأيام)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="text-[11px] text-slate-400 block mb-1">وقت البدء</span>
+                        <span className="text-[11px] text-zinc-500 dark:text-slate-400 block mb-1">وقت البدء</span>
                         <input
                           type="time"
                           value={editStartTime}
                           onChange={(e) => setEditStartTime(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-bold"
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-bold"
                         />
                       </div>
                       <div>
-                        <span className="text-[11px] text-slate-400 block mb-1">وقت الانتهاء</span>
+                        <span className="text-[11px] text-zinc-500 dark:text-slate-400 block mb-1">وقت الانتهاء</span>
                         <input
                           type="time"
                           value={editEndTime}
                           onChange={(e) => setEditEndTime(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-bold"
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-bold"
                         />
                       </div>
                     </div>
-                    <p className="text-[11px] text-emerald-400 pt-1">
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 pt-1 font-semibold">
                       ✅ المعاد الموحد: {to12h(editStartTime)} إلى {to12h(editEndTime)}
                     </p>
                   </div>
@@ -873,14 +878,14 @@ function GroupsContent() {
                 {editTimingMode === 'DIFFERENT' && (
                   <div className="space-y-2.5 pt-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-300 font-medium">مواعيد كل يوم على حدة:</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">مواعيد كل يوم على حدة:</span>
                       <button
                         type="button"
                         onClick={() => {
                           const available = ALL_WEEK_DAYS.find((d) => !editSlots.some((s) => s.day === d)) || 'الخميس';
                           setEditSlots([...editSlots, { day: available, startTime: '16:00', endTime: '18:00' }]);
                         }}
-                        className="text-[11px] text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer"
+                        className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
                       >
                         ➕ إضافة يوم آخر
                       </button>
@@ -888,7 +893,7 @@ function GroupsContent() {
 
                     <div className="space-y-2">
                       {editSlots.map((slot, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+                        <div key={idx} className="flex items-center gap-2 bg-white dark:bg-zinc-900/90 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
                           {/* Day selector */}
                           <div className="w-1/3 min-w-[100px]">
                             <select
@@ -898,7 +903,7 @@ function GroupsContent() {
                                 nextSlots[idx].day = e.target.value;
                                 setEditSlots(nextSlots);
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-bold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-bold"
                             >
                               {ALL_WEEK_DAYS.map((d) => (
                                 <option key={d} value={d}>{d}</option>
@@ -916,11 +921,11 @@ function GroupsContent() {
                                 nextSlots[idx].startTime = e.target.value;
                                 setEditSlots(nextSlots);
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-semibold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-semibold"
                             />
                           </div>
 
-                          <span className="text-slate-500 text-xs">إلى</span>
+                          <span className="text-zinc-500 text-xs">إلى</span>
 
                           {/* End time */}
                           <div className="flex-1">
@@ -932,7 +937,7 @@ function GroupsContent() {
                                 nextSlots[idx].endTime = e.target.value;
                                 setEditSlots(nextSlots);
                               }}
-                              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs font-semibold"
+                              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg p-2 text-zinc-950 dark:text-white text-xs font-semibold"
                             />
                           </div>
 
@@ -944,7 +949,7 @@ function GroupsContent() {
                                 const nextSlots = editSlots.filter((_, i) => i !== idx);
                                 setEditSlots(nextSlots);
                               }}
-                              className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                               title="حذف اليوم"
                             >
                               🗑️
@@ -961,14 +966,14 @@ function GroupsContent() {
                 <button
                   type="button"
                   onClick={() => setEditingGroup(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold cursor-pointer"
+                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold cursor-pointer"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg cursor-pointer disabled:opacity-50"
                 >
                   {isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}
                 </button>
