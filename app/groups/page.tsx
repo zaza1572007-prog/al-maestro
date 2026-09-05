@@ -469,22 +469,30 @@ function GroupsContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {groups.map((grp) => (
-            <div key={grp.id} className="bg-white dark:bg-zinc-900/95 border border-zinc-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-4 transition-all hover:border-primary/40">
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
-                <div>
-                  <h3 className="text-lg font-bold text-zinc-950 dark:text-white">{grp.name}</h3>
-                  <p className="text-xs text-primary font-semibold mt-0.5">{grp.stage}</p>
+            <div
+              key={grp.id}
+              className="glass-card bg-gradient-to-br from-white/95 via-white/85 to-purple-50/40 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-indigo-950/30 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-md dark:shadow-2xl space-y-4 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/15 relative overflow-hidden backdrop-blur-xl"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-200/70 dark:border-white/10 pb-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)] flex items-center justify-center font-black text-base">
+                    🎓
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-zinc-950 dark:text-white tracking-tight">{grp.name}</h3>
+                    <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5">{grp.stage}</p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleEditClick(grp)}
-                    className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-600 hover:text-white dark:text-amber-400 dark:hover:text-white border border-amber-500/20 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500 text-amber-700 hover:text-white dark:text-amber-300 dark:hover:text-white border border-amber-500/30 shadow-xs hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
                     ✏️ تعديل
                   </button>
                   <button
                     onClick={() => handleDeleteGroup(grp.id, grp.name)}
-                    className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white border border-rose-500/20 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500 text-rose-700 hover:text-white dark:text-rose-300 dark:hover:text-white border border-rose-500/30 shadow-xs hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
                     🗑️ حذف
                   </button>
@@ -492,17 +500,17 @@ function GroupsContent() {
               </div>
 
               {/* Schedule timing section */}
-              <div className="bg-zinc-50 dark:bg-zinc-950/70 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-2 text-xs">
+              <div className="bg-white/60 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-zinc-200/80 dark:border-white/10 space-y-2 text-xs backdrop-blur-md">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400 flex items-center gap-1 font-medium">
-                    <span>🗓️</span> مواعيد الحصص:
+                  <span className="text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 font-semibold">
+                    <span className="text-sm">🗓️</span> مواعيد الحصص:
                   </span>
                   {grp.isDifferentSchedule ? (
-                    <span className="px-2 py-0.5 bg-purple-500/15 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold border border-purple-500/30">
+                    <span className="px-2.5 py-0.5 bg-purple-500/15 text-purple-700 dark:text-purple-300 rounded-full text-[10px] font-black border border-purple-500/30 shadow-xs">
                       مواعيد مختلفة لكل يوم
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 bg-primary/15 text-primary rounded text-[10px] font-bold border border-primary/30">
+                    <span className="px-2.5 py-0.5 bg-primary/15 text-primary dark:text-purple-300 rounded-full text-[10px] font-black border border-primary/30 shadow-xs">
                       موعد موحد
                     </span>
                   )}
@@ -512,37 +520,45 @@ function GroupsContent() {
                     {grp.schedule.map((slot, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 text-xs border border-zinc-200 dark:border-zinc-700/80 font-medium shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-slate-900 text-zinc-800 dark:text-zinc-200 text-xs border border-zinc-200/90 dark:border-white/10 font-medium shadow-xs"
                       >
                         <strong className="text-primary font-bold">{slot.day}:</strong>
-                        <span dir="ltr">{to12h(slot.startTime)} - {to12h(slot.endTime)}</span>
+                        <span dir="ltr" className="font-mono tabular-nums">{to12h(slot.startTime)} - {to12h(slot.endTime)}</span>
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-zinc-800 dark:text-zinc-200 font-semibold" dir="ltr">{grp.time}</p>
+                  <p className="text-zinc-800 dark:text-zinc-200 font-bold font-mono" dir="ltr">{grp.time}</p>
                 )}
               </div>
 
-              {/* 3-column stats grid */}
-              <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
-                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">عدد الطلاب</p>
-                  <p className="text-base font-black text-primary mt-1 font-mono tabular-nums">{grp.studentsCount}</p>
+              {/* 3-column stats grid with Vibrant Glowing Colored Glass Pills */}
+              <div className="grid grid-cols-3 gap-2.5 text-center text-xs">
+                {/* Column 1: Students (Purple Glass) */}
+                <div className="bg-gradient-to-br from-purple-500/15 to-purple-600/5 dark:from-purple-500/20 dark:to-purple-900/10 p-3 rounded-2xl border border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.12)]">
+                  <p className="text-purple-700 dark:text-purple-300 text-[11px] font-bold">عدد الطلاب</p>
+                  <p className="text-lg font-black text-purple-700 dark:text-white mt-1 font-mono tabular-nums">{grp.studentsCount}</p>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
-                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">متوسط الحضور</p>
-                  <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono tabular-nums">{grp.attendanceAvg}</p>
+
+                {/* Column 2: Attendance Avg (Emerald Glass) */}
+                <div className="bg-gradient-to-br from-emerald-500/15 to-teal-600/5 dark:from-emerald-500/20 dark:to-teal-900/10 p-3 rounded-2xl border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.12)]">
+                  <p className="text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">متوسط الحضور</p>
+                  <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 mt-1 font-mono tabular-nums">{grp.attendanceAvg}</p>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80">
-                  <p className="text-zinc-500 dark:text-zinc-400 text-[11px] font-medium">المساعد</p>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 mt-1 truncate">{grp.assistant || 'غير محدد'}</p>
+
+                {/* Column 3: Assistant (Blue Glass) */}
+                <div className="bg-gradient-to-br from-blue-500/15 to-cyan-600/5 dark:from-blue-500/20 dark:to-cyan-900/10 p-3 rounded-2xl border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.12)]">
+                  <p className="text-blue-700 dark:text-blue-300 text-[11px] font-bold">المساعد</p>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-zinc-200 mt-1.5 truncate">{grp.assistant || 'غير محدد'}</p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
-                <span className="text-zinc-600 dark:text-zinc-400">أيام الدراسة: <strong className="text-zinc-900 dark:text-zinc-200 font-bold">{grp.days}</strong></span>
-                <Link href={`/students?groupId=${grp.id}`} className="px-3.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground dark:text-primary dark:hover:text-primary-foreground font-bold rounded-xl transition text-xs border border-primary/20 shadow-xs flex items-center gap-1">
+              <div className="flex items-center justify-between text-xs pt-2.5 border-t border-zinc-200/70 dark:border-white/10">
+                <span className="text-zinc-600 dark:text-zinc-300">أيام الدراسة: <strong className="text-zinc-950 dark:text-white font-bold">{grp.days}</strong></span>
+                <Link
+                  href={`/students?groupId=${grp.id}`}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl transition text-xs shadow-md shadow-purple-600/20 flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-98"
+                >
                   <span>إدارة الطلاب والمجموعة</span>
                   <span>←</span>
                 </Link>
@@ -550,7 +566,7 @@ function GroupsContent() {
             </div>
           ))}
           {groups.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+            <div className="col-span-2 text-center py-12 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-zinc-200 dark:border-zinc-800">
               لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً
             </div>
           )}

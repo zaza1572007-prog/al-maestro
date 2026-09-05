@@ -401,7 +401,7 @@ function StudentsContent() {
                     <Link
                       href={`/students/${stu.id}`}
                       title="سجل الامتحانات والدرجات"
-                      className="px-2.5 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                      className="px-2.5 py-1.5 bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer"
                     >
                       <span>📝</span>
                       <span>الامتحانات</span>
@@ -409,7 +409,7 @@ function StudentsContent() {
                     <button
                       onClick={() => handleEditClick(stu)}
                       title="تعديل بيانات الطالب"
-                      className="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                      className="px-2.5 py-1.5 bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] flex items-center gap-1 cursor-pointer"
                     >
                       <span>✏️</span>
                       <span>تعديل</span>
@@ -417,7 +417,7 @@ function StudentsContent() {
                     <button
                       onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
                       title="إدارة كلمات المرور وبيانات الدخول"
-                      className="px-2.5 py-1.5 bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                      className="px-2.5 py-1.5 bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(168,85,247,0.3)] flex items-center gap-1 cursor-pointer"
                     >
                       <span>🔑</span>
                       <span>الاعتماديات</span>
@@ -425,7 +425,7 @@ function StudentsContent() {
                     <Link
                       href={`/students/${stu.id}`}
                       title="عرض الملف الشخصي الشامل"
-                      className="px-2.5 py-1.5 bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                      className="px-2.5 py-1.5 bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] flex items-center gap-1 cursor-pointer"
                     >
                       <span>👁️</span>
                       <span>الملف</span>
@@ -433,7 +433,7 @@ function StudentsContent() {
                     <button
                       onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
                       title="حذف الطالب من النظام"
-                      className="px-2.5 py-1.5 bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                      className="px-2.5 py-1.5 bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] flex items-center gap-1 cursor-pointer"
                     >
                       <span>🗑️</span>
                       <span>حذف</span>

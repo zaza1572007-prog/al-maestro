@@ -447,19 +447,19 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* 📊 Clean Interactive Metric KPI Cards */}
+      {/* 📊 Clean Interactive Metric KPI Cards with Rich Glassmorphism & Vibrant Glowing Icons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Card 1: Students */}
+        {/* Card 1: Students (Purple Glow) */}
         <Link href="/students" className="block group">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="glass-card bg-gradient-to-br from-white/90 via-white/80 to-purple-50/50 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-purple-950/30 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-purple-500/60 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">إجمالي الطلاب</span>
-              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/25 transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-300 font-semibold text-xs">إجمالي الطلاب</span>
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-600/10 text-purple-600 dark:text-purple-300 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)] transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                 <GraduationCap className="w-5 h-5" />
               </div>
             </div>
@@ -470,7 +470,7 @@ export default function DashboardPage() {
                 {stats.totalStudents}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/10 text-[11px]">
               <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                 <TrendingUp className="w-3 h-3" /> مسجلين بالقواعد
               </span>
@@ -478,17 +478,17 @@ export default function DashboardPage() {
           </motion.div>
         </Link>
 
-        {/* Card 2: Active Groups */}
+        {/* Card 2: Active Groups (Blue Glow) */}
         <Link href="/groups" className="block group">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="glass-card bg-gradient-to-br from-white/90 via-white/80 to-blue-50/50 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-blue-950/30 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-blue-500/60 hover:shadow-xl hover:shadow-blue-500/20 transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">المجموعات التعليمية</span>
-              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-300 font-semibold text-xs">المجموعات التعليمية</span>
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/10 text-blue-600 dark:text-blue-300 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.2)] transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-300">
                 <Users className="w-5 h-5" />
               </div>
             </div>
@@ -499,23 +499,23 @@ export default function DashboardPage() {
                 {stats.activeGroups}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/10 text-[11px]">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold">مجموعات نشطة</span>
             </div>
           </motion.div>
         </Link>
 
-        {/* Card 3: Today's Attendance */}
+        {/* Card 3: Today's Attendance (Emerald Glow) */}
         <Link href="/attendance" className="block group">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="glass-card bg-gradient-to-br from-white/90 via-white/80 to-emerald-50/50 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-emerald-950/30 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-emerald-500/60 hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">نسبة حضور اليوم</span>
-              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-300 font-semibold text-xs">نسبة حضور اليوم</span>
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-600/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.2)] transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
@@ -526,7 +526,7 @@ export default function DashboardPage() {
                 {stats.todayAttendanceRate}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/10 text-[11px]">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold">
                 {stats.todayAttendancesCount > 0 ? `${stats.todayAttendancesCount} طالب حاضر` : 'بانتظار تسجيل الحضور'}
               </span>
@@ -534,17 +534,17 @@ export default function DashboardPage() {
           </motion.div>
         </Link>
 
-        {/* Card 4: Pending Registrations */}
+        {/* Card 4: Pending Registrations (Amber Glow) */}
         <Link href="/registration-requests" className="block group">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="glass-card bg-gradient-to-br from-white/90 via-white/80 to-amber-50/50 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-amber-950/30 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-amber-500/60 hover:shadow-xl hover:shadow-amber-500/20 transition-all duration-300 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">طلبات الحجز المعلقة</span>
-              <div className={`p-2.5 rounded-2xl border transform group-hover:scale-110 transition-transform duration-300 ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse' : 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'}`}>
+              <span className="text-zinc-600 dark:text-zinc-300 font-semibold text-xs">طلبات الحجز المعلقة</span>
+              <div className={`p-2.5 rounded-2xl border transform group-hover:scale-110 transition-transform duration-300 ${stats.pendingRegistrations > 0 ? 'bg-gradient-to-br from-amber-500/25 to-yellow-600/15 text-amber-500 dark:text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)] animate-pulse' : 'bg-gradient-to-br from-slate-500/10 to-slate-600/5 text-zinc-500 dark:text-slate-400 border-zinc-200 dark:border-slate-700/60'}`}>
                 <AlertTriangle className="w-5 h-5" />
               </div>
             </div>
@@ -555,7 +555,7 @@ export default function DashboardPage() {
                 {stats.pendingRegistrations}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/10 text-[11px]">
               <span className={stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-zinc-600 dark:text-zinc-400 font-semibold'}>
                 {stats.pendingRegistrations > 0 ? 'مطلوب المراجعة والقبول' : 'لا توجد طلبات معلقة'}
               </span>
@@ -859,56 +859,56 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-2 gap-2.5">
               <Link href="/attendance" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <QrCode className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">ماسح الحضور</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">ماسح الحضور</p>
                 </div>
               </Link>
 
               <Link href="/students" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-purple-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <UserPlus className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">إضافة طالب</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">إضافة طالب</p>
                 </div>
               </Link>
 
               <Link href="/exams" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-blue-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/10 text-blue-600 dark:text-blue-300 border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
                     <Award className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">الامتحانات والنتائج</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">الامتحانات والنتائج</p>
                 </div>
               </Link>
 
               <Link href="/subscriptions" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-amber-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <CreditCard className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">الاشتراكات</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">الاشتراكات</p>
                 </div>
               </Link>
 
               <Link href="/cards" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-teal-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-teal-500/50 hover:shadow-lg hover:shadow-teal-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500/20 to-emerald-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30 shadow-[0_0_12px_rgba(20,184,166,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <Printer className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">طباعة الكروت</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">طباعة الكروت</p>
                 </div>
               </Link>
 
               <Link href="/reports" className="block">
-                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-pink-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
-                  <div className="w-9 h-9 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
+                <div className="p-3 bg-white/80 hover:bg-white dark:bg-slate-900/60 dark:hover:bg-slate-900/90 border border-zinc-200/90 dark:border-white/10 hover:border-pink-500/50 hover:shadow-lg hover:shadow-pink-500/10 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm backdrop-blur-md">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500/20 to-rose-500/10 text-pink-600 dark:text-pink-300 border border-pink-500/30 shadow-[0_0_12px_rgba(236,72,153,0.2)] flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <BarChart2 className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-zinc-950 dark:group-hover:text-white">التقارير الشاملة</p>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-slate-200 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">التقارير الشاملة</p>
                 </div>
               </Link>
             </div>

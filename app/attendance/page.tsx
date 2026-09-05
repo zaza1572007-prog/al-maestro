@@ -1072,27 +1072,32 @@ export default function AttendancePage() {
         {/* Today Stats & History */}
         <div className="space-y-4">
           {/* Today Summary */}
-          <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-white/10 rounded-3xl p-5 shadow-xl">
-            <h2 className="font-bold text-zinc-950 dark:text-white mb-4 flex items-center gap-2">
+          <div className="glass-card bg-gradient-to-br from-white/95 via-white/85 to-purple-50/40 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-indigo-950/30 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 shadow-xl backdrop-blur-xl">
+            <h2 className="font-black text-zinc-950 dark:text-white mb-4 flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-primary" />
-              إحصائيات اليوم
+              إحصائيات اليوم (حضور مباشر)
             </h2>
             <div className="grid grid-cols-3 gap-3 text-center text-sm">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl">
-                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{presentCount}</p>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 font-semibold">حاضر</p>
+              {/* حاضر */}
+              <div className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/5 dark:from-emerald-500/25 dark:via-emerald-950/40 dark:to-slate-900/60 border border-emerald-500/40 p-3.5 rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums font-mono">{presentCount}</p>
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1 font-bold">حاضر 🟢</p>
               </div>
-              <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl">
-                <p className="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
+
+              {/* غائب */}
+              <div className="bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/5 dark:from-rose-500/25 dark:via-rose-950/40 dark:to-slate-900/60 border border-rose-500/40 p-3.5 rounded-2xl shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                <p className="text-2xl font-black text-rose-700 dark:text-rose-400 tabular-nums font-mono">
                   {todayAttendances.filter((a) => a.status === 'ABSENT').length}
                 </p>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 font-semibold">غائب</p>
+                <p className="text-xs text-rose-800 dark:text-rose-300 mt-1 font-bold">غائب 🔴</p>
               </div>
-              <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl">
-                <p className="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+
+              {/* متأخر */}
+              <div className="bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-yellow-500/5 dark:from-amber-500/25 dark:via-amber-950/40 dark:to-slate-900/60 border border-amber-500/40 p-3.5 rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+                <p className="text-2xl font-black text-amber-700 dark:text-amber-400 tabular-nums font-mono">
                   {todayAttendances.filter((a) => a.status === 'LATE').length}
                 </p>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 font-semibold">متأخر</p>
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 font-bold">متأخر 🟡</p>
               </div>
             </div>
           </div>
