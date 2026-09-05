@@ -241,7 +241,7 @@ export default function TeacherOverlay() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none select-none overflow-hidden"
+      className="hidden md:block pointer-events-none select-none overflow-hidden"
       style={containerStyle}
     >
       <div

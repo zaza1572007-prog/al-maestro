@@ -191,8 +191,8 @@ export default function Navbar() {
         boxShadow: '0 1px 30px rgba(0,0,0,0.4)',
       }}
     >
-      {/* Right side: Hamburger + Search */}
-      <div className="flex items-center gap-3">
+      {/* Right side: Hamburger + Mobile Avatar + Search */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -203,6 +203,31 @@ export default function Navbar() {
         >
           <Menu className="w-5 h-5" />
         </motion.button>
+
+        {/* Highlighted Mobile Personal Avatar */}
+        <Link
+          href="/settings"
+          className="lg:hidden flex items-center justify-center relative group shrink-0"
+          title="الملف الشخصي والإعدادات"
+        >
+          <div className="w-8 h-8 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 to-indigo-500 shadow-md shadow-purple-500/25 ring-2 ring-purple-500/40 group-hover:ring-purple-400 transition-all overflow-hidden flex items-center justify-center">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt="الملف الشخصي"
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <span className="text-[11px] font-black text-white">
+                {currentUser?.name ? currentUser.name.charAt(0) : 'م'}
+              </span>
+            )}
+          </div>
+        </Link>
 
         {/* Command Palette Trigger Button */}
         <motion.button
@@ -229,14 +254,14 @@ export default function Navbar() {
       {/* Action Icons & Network Status */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Network Status Badge */}
-        <div className="hidden sm:flex">
+        <div className="flex">
           <NetworkStatusBadge size="sm" />
         </div>
 
         {/* Live clock */}
         {currentTime && (
           <div
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tabular-nums font-mono"
             style={{
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.07)',
@@ -244,7 +269,7 @@ export default function Navbar() {
             }}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>{currentTime}</span>
+            <span className="tabular-nums">{currentTime}</span>
           </div>
         )}
         {/* Notification Bell */}

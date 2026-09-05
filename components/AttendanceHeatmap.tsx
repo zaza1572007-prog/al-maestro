@@ -85,6 +85,7 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
   const [monthsCount, setMonthsCount] = useState<number>(3);
   const [hoveredDay, setHoveredDay] = useState<HeatmapDay | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectedModalDay, setSelectedModalDay] = useState<HeatmapDay | null>(null);
 
   const fetchHeatmap = useCallback(async () => {
     setLoading(true);
@@ -169,6 +170,21 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
     return { totalSessions, totalPresent, totalAbsent, avgRate, maxRateDay };
   }, [dataMap]);
 
+  const formatArabicDate = (dateStr: string) => {
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('ar-EG', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <div
       className={`glass-panel border border-zinc-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden ${className}`}
@@ -212,29 +228,62 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
         </div>
       </div>
 
+      {/* KPI Summary Pills with Tabular Numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div className="bg-white/60 dark:bg-slate-900/60 border border-zinc-200/80 dark:border-slate-800/80 p-3 rounded-2xl shadow-sm">
           <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">أيام النشاط</p>
-          <p className="text-lg font-extrabold text-zinc-950 dark:text-white">{Object.keys(dataMap).length} يوم</p>
+          <p className="text-lg font-extrabold text-zinc-950 dark:text-white tabular-nums font-mono">
+            {loading ? '...' : `${Object.keys(dataMap).length} يوم`}
+          </p>
         </div>
         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl">
           <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">متوسط نسبة الحضور</p>
-          <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{metrics.avgRate}%</p>
+          <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+            {loading ? '...' : `${metrics.avgRate}%`}
+          </p>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-2xl">
           <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">إجمالي الحضور</p>
-          <p className="text-lg font-extrabold text-blue-600 dark:text-blue-400">{metrics.totalPresent} طالب</p>
+          <p className="text-lg font-extrabold text-blue-600 dark:text-blue-400 tabular-nums font-mono">
+            {loading ? '...' : `${metrics.totalPresent} طالب`}
+          </p>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-2xl">
           <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">عدد الجلسات المنفذة</p>
-          <p className="text-lg font-extrabold text-purple-600 dark:text-purple-400">{metrics.totalSessions} جلسة</p>
+          <p className="text-lg font-extrabold text-purple-600 dark:text-purple-400 tabular-nums font-mono">
+            {loading ? '...' : `${metrics.totalSessions} جلسة`}
+          </p>
         </div>
       </div>
 
+      {/* Heatmap Grid & Shimmer Loading Skeleton */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 gap-3 text-zinc-500 dark:text-slate-400">
-          <RefreshCw className="w-5 h-5 animate-spin text-purple-600 dark:text-purple-400" />
-          <span className="text-sm font-semibold animate-pulse">جارٍ بناء الخريطة الحرارية...</span>
+        <div className="space-y-3 py-4">
+          <div className="flex items-center gap-2 justify-center text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+            <RefreshCw className="w-4 h-4 animate-spin text-purple-600 dark:text-purple-400" />
+            <span className="font-semibold">جارٍ تحميل الخريطة الحرارية...</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex flex-col justify-between py-1 text-[11px] font-bold text-zinc-400 dark:text-zinc-600 pl-2 border-l border-zinc-200 dark:border-zinc-800 select-none">
+              {ARABIC_DAYS.map((day, i) => (
+                <span key={i} className="h-5 flex items-center">
+                  {i % 2 === 0 ? day : ''}
+                </span>
+              ))}
+            </div>
+            <div className="flex-1 flex gap-1.5">
+              {Array.from({ length: 14 }).map((_, colIdx) => (
+                <div key={colIdx} className="flex flex-col gap-1.5">
+                  {Array.from({ length: 7 }).map((_, rowIdx) => (
+                    <div
+                      key={rowIdx}
+                      className="w-5 h-5 rounded-md bg-zinc-200/80 dark:bg-zinc-800/80 animate-pulse border border-zinc-300/40 dark:border-zinc-700/40"
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto pb-2 scrollbar-thin">
@@ -260,24 +309,42 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
                       <motion.div
                         key={cell.dateStr}
                         whileHover={{ scale: 1.25, zIndex: 30 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => {
-                          if (dayData && dayData.sessionCount > 0) {
-                            router.push(`/daily-attendance?date=${cell.dateStr}`);
-                          }
+                          const targetData: HeatmapDay = dayData || {
+                            date: cell.dateStr,
+                            present: 0,
+                            absent: 0,
+                            total: 0,
+                            sessionCount: 0,
+                            rate: 0,
+                            level: 0,
+                          };
+                          setSelectedModalDay(targetData);
                         }}
                         onMouseEnter={(e) => {
-                          if (dayData) {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setHoverPos({ x: rect.left + rect.width / 2, y: rect.top });
-                            setHoveredDay(dayData);
-                          }
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoverPos({ x: rect.left + rect.width / 2, y: rect.top });
+                          setHoveredDay(
+                            dayData || {
+                              date: cell.dateStr,
+                              present: 0,
+                              absent: 0,
+                              total: 0,
+                              sessionCount: 0,
+                              rate: 0,
+                              level: 0,
+                            }
+                          );
                         }}
                         onMouseLeave={() => {
                           setHoveredDay(null);
                         }}
                         className={`w-5 h-5 rounded-md border transition-all cursor-pointer relative ${
                           styleConfig.bg
-                        } ${styleConfig.border} ${isToday ? 'ring-2 ring-purple-500 ring-offset-1 ring-offset-white dark:ring-offset-slate-950' : ''}`}
+                        } ${styleConfig.border} ${
+                          isToday ? 'ring-2 ring-purple-500 ring-offset-1 ring-offset-white dark:ring-offset-slate-950' : ''
+                        }`}
                         style={{ boxShadow: styleConfig.glow }}
                       />
                     );
@@ -289,56 +356,184 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
         </div>
       )}
 
+      {/* Legend & Hint */}
       <div className="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-zinc-200 dark:border-slate-800/80 text-xs text-zinc-500 dark:text-slate-400">
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-semibold ml-1">نسبة الحضور:</span>
+          <div className="w-3.5 h-3.5 rounded bg-zinc-200/80 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700" title="بدون نشاط (0%)" />
           <div className="w-3.5 h-3.5 rounded bg-amber-500/30 border border-amber-500/40" title="متوسط (50-70%)" />
           <div className="w-3.5 h-3.5 rounded bg-blue-500/35 border border-blue-500/50" title="جيد (70-85%)" />
           <div className="w-3.5 h-3.5 rounded bg-emerald-500/50 border border-emerald-400/60" title="ممتاز (>85%)" />
-          <span className="text-[10px] text-slate-500">أعلى</span>
+          <span className="text-[10px] text-zinc-400 dark:text-slate-500">أعلى</span>
         </div>
 
-        <p className="text-[10px] text-slate-500 flex items-center gap-1">
-          <Info className="w-3.5 h-3.5 text-purple-400 inline" />
-          انقر على أي يوم للانتقال مباشرة لكشف الحضور الخاص به
+        <p className="text-[10px] text-zinc-500 dark:text-slate-400 flex items-center gap-1">
+          <Info className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 inline shrink-0" />
+          انقر فوق أي مربع لعرض تفاصيل اليوم والانتقال لكشف الحضور
         </p>
       </div>
 
-      {/* Hover Tooltip */}
+      {/* 🎈 Floating Tooltip on Hover */}
       <AnimatePresence>
         {hoveredDay && hoverPos && (
           <motion.div
-            initial={{ opacity: 0, y: 5, scale: 0.95 }}
+            initial={{ opacity: 0, y: 6, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="fixed z-[100] pointer-events-none p-3 rounded-2xl glass-panel border border-white/20 shadow-2xl bg-slate-950/95 text-xs w-48 -translate-x-1/2 -translate-y-full mb-2"
+            exit={{ opacity: 0, y: 6, scale: 0.94 }}
+            transition={{ duration: 0.12 }}
+            className="fixed z-[100] pointer-events-none p-3 rounded-2xl glass-panel border border-zinc-300 dark:border-white/20 shadow-2xl bg-white/95 dark:bg-zinc-950/95 text-xs w-52 -translate-x-1/2 -translate-y-full mb-2"
             style={{
               left: hoverPos.x,
               top: hoverPos.y,
             }}
           >
-            <p className="font-bold text-white mb-1.5 flex items-center justify-between border-b border-white/10 pb-1">
-              <span>{hoveredDay.date}</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${LEVEL_CLASSES[hoveredDay.level].bg} ${LEVEL_CLASSES[hoveredDay.level].text}`}>
-                {hoveredDay.rate}% حضور
+            <p className="font-bold text-zinc-900 dark:text-white mb-1.5 flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-1.5">
+              <span className="text-[11px]">{formatArabicDate(hoveredDay.date)}</span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums font-mono ${
+                  LEVEL_CLASSES[hoveredDay.level].bg
+                } ${LEVEL_CLASSES[hoveredDay.level].text}`}
+              >
+                {hoveredDay.rate}%
               </span>
             </p>
-            <div className="space-y-1 text-[11px]">
-              <div className="flex justify-between text-slate-300">
-                <span>إجمالي الحضور:</span>
-                <span className="font-bold text-emerald-400">{hoveredDay.present} طالب</span>
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between text-zinc-700 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>الحاضرين:</span>
+                </span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+                  {hoveredDay.present} طالب
+                </span>
               </div>
-              <div className="flex justify-between text-slate-300">
-                <span>إجمالي الغياب:</span>
-                <span className="font-bold text-rose-400">{hoveredDay.absent} طالب</span>
+              <div className="flex justify-between text-zinc-700 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                  <span>الغائبين:</span>
+                </span>
+                <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums font-mono">
+                  {hoveredDay.absent} طالب
+                </span>
               </div>
-              <div className="flex justify-between text-slate-400 text-[10px] pt-1 border-t border-white/5">
-                <span>عدد الحصص/المجموعات:</span>
-                <span className="font-bold text-purple-300">{hoveredDay.sessionCount}</span>
+              <div className="flex justify-between text-zinc-500 dark:text-slate-400 text-[10px] pt-1.5 border-t border-zinc-200 dark:border-white/5">
+                <span>الجلسات المنفذة:</span>
+                <span className="font-bold text-purple-600 dark:text-purple-300 tabular-nums font-mono">
+                  {hoveredDay.sessionCount} جلسة
+                </span>
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 📱 Mobile Slide-up BottomSheet Drawer on Click */}
+      <AnimatePresence>
+        {selectedModalDay && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedModalDay(null)}
+              className="absolute inset-0"
+            />
+            <motion.div
+              initial={{ y: '100%', opacity: 0.8 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+              className="relative w-full max-w-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/15 rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 z-10 space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Top Handle Bar for Touch */}
+              <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-700 rounded-full mx-auto sm:hidden" />
+
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/25">
+                    <CalendarDays className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+                      تفاصيل حضور {formatArabicDate(selectedModalDay.date)}
+                    </h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      التاريخ الفعلي: <span className="font-mono tabular-nums">{selectedModalDay.date}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedModalDay(null)}
+                  className="p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">الحاضرين</span>
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+                    {selectedModalDay.present} <span className="text-xs font-medium">طالب</span>
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 space-y-1">
+                  <span className="text-xs font-semibold text-rose-700 dark:text-rose-400">الغائبين</span>
+                  <p className="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums font-mono">
+                    {selectedModalDay.absent} <span className="text-xs font-medium">طالب</span>
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                  <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">نسبة الحضور</span>
+                  <p className="text-2xl font-black text-purple-600 dark:text-purple-300 tabular-nums font-mono">
+                    {selectedModalDay.rate}%
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-1">
+                  <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">عدد الحصص</span>
+                  <p className="text-2xl font-black text-zinc-950 dark:text-white tabular-nums font-mono">
+                    {selectedModalDay.sessionCount} <span className="text-xs font-medium">جلسة</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Attendance Progress Bar */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 font-semibold">
+                  <span>مستوى الحضور العام</span>
+                  <span className="tabular-nums font-mono">{selectedModalDay.rate}%</span>
+                </div>
+                <div className="h-3 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden p-0.5 border border-zinc-200 dark:border-zinc-700">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-purple-600 to-emerald-500 transition-all duration-500"
+                    style={{ width: `${selectedModalDay.rate}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    const targetDate = selectedModalDay.date;
+                    setSelectedModalDay(null);
+                    router.push(`/daily-attendance?date=${targetDate}`);
+                  }}
+                  className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20 transition cursor-pointer"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  <span>فتح كشف الحضور لهذا اليوم</span>
+                </button>
+                <button
+                  onClick={() => setSelectedModalDay(null)}
+                  className="py-3 px-5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs transition cursor-pointer"
+                >
+                  إغلاق
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -125,6 +125,46 @@ export function usePwaInstallPrompt() {
 }
 
 /**
+ * Synthesizes a soft, harmonic notification chime when connection returns
+ */
+function playSoftOnlineChime() {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(523.25, now); // C5
+    osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(659.25, now + 0.04); // E5
+    osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.16); // C6
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now + 0.04);
+    osc1.stop(now + 0.45);
+    osc2.stop(now + 0.45);
+  } catch {
+    // AudioContext autoplay restriction safeguard
+  }
+}
+
+/**
  * Global PWA Status Manager component that registers the Service Worker
  * and shows online/offline toast notifications based on real server connection.
  */
@@ -146,9 +186,14 @@ export default function PwaStatusManager() {
   useEffect(() => {
     if (prevStatus !== null && prevStatus !== isOnline) {
       if (isOnline) {
-        toast.success('تمت استعادة الاتصال بالسيرفر والإنترنت بنجاح 🌐');
+        playSoftOnlineChime();
+        toast.success('تمت استعادة الاتصال بالسيرفر 🌐 - جاري مزامنة البيانات');
+        // Dispatch event for offline sync queue if listeners exist
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('maestro-sync-offline-queue'));
+        }
       } else {
-        toast.error('انقطع الاتصال بالسيرفر - تم التحويل إلى وضع الأوفلاين 📡');
+        toast.info('وضع عدم الاتصال ⚡ - يتم الحفظ محلياً تلقائياً');
       }
     }
     setPrevStatus(isOnline);
@@ -158,7 +203,7 @@ export default function PwaStatusManager() {
 }
 
 /**
- * Dynamic Real Network & Server Status Badge component (Online 🟢 / Offline 🔴)
+ * Dynamic Real Network & Server Status Badge component (Online 🟢 / Offline ⚡)
  */
 export function NetworkStatusBadge({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const isOnline = useNetworkStatus();
@@ -170,21 +215,23 @@ export function NetworkStatusBadge({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' 
       transition={{ duration: 0.2 }}
       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold transition-all border shadow-sm ${
         isOnline
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-emerald-500/10'
-          : 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-rose-500/10 animate-pulse'
+          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-emerald-500/10'
+          : 'bg-amber-500/15 border-amber-500/35 text-amber-600 dark:text-amber-400 shadow-amber-500/10 animate-pulse'
       } ${
         size === 'sm' ? 'text-[10px] py-0.5 px-2' : size === 'lg' ? 'text-sm py-1.5 px-4' : 'text-xs'
       }`}
     >
       {isOnline ? (
         <>
-          <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>النظام متصل بالسيرفر 🟢</span>
         </>
       ) : (
         <>
-          <WifiOff className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-          <span>غير متصل بالسيرفر (أوفلاين) 🔴</span>
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+          <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>وضع عدم الاتصال ⚡ - يتم الحفظ محلياً</span>
         </>
       )}
     </motion.div>
