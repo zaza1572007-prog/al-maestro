@@ -84,7 +84,7 @@ export function extractCodeCandidates(rawInput: string): string[] {
   if (!rawInput) return [];
   const candidates = new Set<string>();
 
-  // Convert Arabic-Indic digits (٠-٩) first
+  // Convert Arabic-Indic digits (٠-٩) to standard English digits (0-9)
   const arabicIndicDigits: Record<string, string> = {
     '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
     '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
@@ -169,35 +169,37 @@ export function extractCodeCandidates(rawInput: string): string[] {
   parseUrlToken(cleanInput);
   parseUrlToken(translated);
 
-  // 3. Regex match all codes like STU-XXXX, QR-STU-XXXX, QR-XXXX from anywhere in the string
+  // 3. Regex match specific student code patterns: STU-XXXX, QR-STU-XXXX, QR-XXXX
   const allTexts = Array.from(candidates);
   for (const text of allTexts) {
-    // Match patterns like QR-STU-1445 or STU-1445
-    const fullMatches = text.match(/(?:QR-)?(?:STU-)?\d{2,8}/gi);
-    if (fullMatches) {
-      for (const m of fullMatches) {
-        candidates.add(m);
-        candidates.add(m.toUpperCase());
-        candidates.add(m.toLowerCase());
+    // Match explicit patterns like STU-1445 or QR-STU-1445
+    const codeMatches = text.match(/(?:QR-)?STU-\d{2,8}/gi);
+    if (codeMatches) {
+      for (const m of codeMatches) {
+        const upper = m.toUpperCase();
+        candidates.add(upper);
+        candidates.add(upper.toLowerCase());
+        const digitMatch = upper.match(/\d+/);
+        if (digitMatch) {
+          const d = digitMatch[0];
+          candidates.add(`STU-${d}`);
+          candidates.add(`QR-STU-${d}`);
+          candidates.add(d);
+        }
       }
     }
 
-    // Match all isolated or embedded numbers (e.g. 1445)
-    const digits = text.match(/\d{2,8}/g);
-    if (digits) {
-      for (const d of digits) {
-        candidates.add(d);
-        candidates.add(`STU-${d}`);
-        candidates.add(`stu-${d}`);
-        candidates.add(`QR-STU-${d}`);
-        candidates.add(`qr-stu-${d}`);
-        candidates.add(`QR-${d}`);
-        candidates.add(`qr-${d}`);
-      }
+    // If the entire text is strictly digits between 3 and 7 digits (e.g. "1445")
+    const cleanDigitsOnly = text.trim();
+    if (/^\d{3,7}$/.test(cleanDigitsOnly)) {
+      candidates.add(cleanDigitsOnly);
+      candidates.add(`STU-${cleanDigitsOnly}`);
+      candidates.add(`QR-STU-${cleanDigitsOnly}`);
+      candidates.add(`QR-${cleanDigitsOnly}`);
     }
   }
 
-  // 4. For every candidate gathered so far, expand prefixes and cases
+  // 4. For every candidate gathered so far, expand standard prefixes and case variations
   const expanded = new Set<string>();
   for (const item of candidates) {
     if (!item) continue;
@@ -210,14 +212,12 @@ export function extractCodeCandidates(rawInput: string): string[] {
 
     const upper = itemTrimmed.toUpperCase();
     if (upper.startsWith('QR-')) {
-      const withoutQR = itemTrimmed.substring(3);
+      const withoutQR = upper.substring(3);
       expanded.add(withoutQR);
-      expanded.add(withoutQR.toUpperCase());
       expanded.add(withoutQR.toLowerCase());
     } else {
-      expanded.add(`QR-${itemTrimmed}`);
       expanded.add(`QR-${upper}`);
-      expanded.add(`qr-${itemTrimmed.toLowerCase()}`);
+      expanded.add(`QR-${itemTrimmed}`);
     }
   }
 

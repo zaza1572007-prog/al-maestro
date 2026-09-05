@@ -116,12 +116,6 @@ export async function POST(req: Request) {
 
     // Extract all candidate codes (handles URLs like /qr-login?token=..., Arabic keyboard translations, prefixes QR-, etc.)
     const searchCodes = extractCodeCandidates(resolvedCode || studentCode);
-    const numericDigits = extractNumericDigits(resolvedCode || studentCode);
-
-    const digitFilters = numericDigits.flatMap(d => [
-      { code: { endsWith: d } },
-      { qrCode: { endsWith: d } },
-    ]);
 
     const student = await prisma.student.findFirst({
       where: {
@@ -132,7 +126,6 @@ export async function POST(req: Request) {
           { phone: { in: searchCodes } },
           { name: { in: searchCodes } },
           { name: studentCode.trim() },
-          ...digitFilters,
           { parent: { qrCode: { in: searchCodes } } },
           { parent: { phone: { in: searchCodes } } },
         ],
