@@ -32,17 +32,17 @@ export const DEFAULT_PORTRAIT_CONFIG: MultiDevicePortraitConfig = {
     fit: 'contain',
   },
   tablet: {
-    opacity: 0.16,
+    opacity: 0.18,
     scale: 1.0,
-    position: 'side',
+    position: 'center',
     posX: 0,
     posY: 0,
     visible: true,
     fit: 'contain',
   },
   mobile: {
-    opacity: 0.12,
-    scale: 0.95,
+    opacity: 0.18,
+    scale: 1.0,
     position: 'center',
     posX: 0,
     posY: 0,
@@ -189,68 +189,47 @@ export default function TeacherOverlay() {
   const imageType = isMobile ? 'portrait-mobile' : isTablet ? 'portrait-tablet' : 'portrait';
   const imgSrc = `/api/settings/branding?type=${imageType}&t=${imageTimestamp}`;
 
-  // Smart unconstrained dimensions allowing image to fill screen as large as desired
+  // Smart unconstrained dimensions allowing image to fill entire screen height behind hero & cards
   let containerStyle: React.CSSProperties = {
     position: 'fixed',
+    top: 0,
     bottom: 0,
+    left: 0,
+    right: 0,
+    width: '100vw',
+    height: '100vh',
     zIndex: 0,
     pointerEvents: 'none',
     userSelect: 'none',
     display: 'flex',
-    alignItems: 'flex-end',
-    justifyContent: isCenter || isFullscreen ? 'center' : 'flex-start',
+    alignItems: isFullscreen ? 'center' : isMobile ? 'center' : (isCenter ? 'center' : 'flex-end'),
+    justifyContent: isCenter || isFullscreen || isMobile ? 'center' : 'flex-start',
     transition: 'all 0.3s ease-out',
   };
 
-  if (isFullscreen) {
-    // Full Screen Hero Coverage (fills 100% of viewport)
+  if (!isFullscreen && !isMobile && !isCenter) {
+    // Desktop / Tablet side placement
     containerStyle = {
       ...containerStyle,
-      top: 0,
       left: 0,
-      right: 0,
-      width: '100vw',
-      height: '100vh',
-      justifyContent: 'center',
-      alignItems: 'center',
-    };
-  } else if (isMobile) {
-    // Smartphone layout
-    containerStyle = {
-      ...containerStyle,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100vw',
-      height: 'clamp(260px, 50vh, 450px)',
-    };
-  } else if (isTablet) {
-    // Tablet layout
-    containerStyle = {
-      ...containerStyle,
-      left: isCenter ? '50%' : 0,
-      transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? '100vw' : 'clamp(450px, 60vw, 850px)',
-      height: 'clamp(380px, 75vh, 700px)',
-    };
-  } else {
-    // Desktop layout (Spacious corner or center)
-    containerStyle = {
-      ...containerStyle,
-      left: isCenter ? '50%' : 0,
-      transform: isCenter ? 'translateX(-50%)' : 'none',
-      width: isCenter ? '100vw' : 'clamp(600px, 65vw, 1200px)',
-      height: 'clamp(480px, 90vh, 1000px)',
+      right: 'auto',
+      width: isTablet ? 'clamp(450px, 60vw, 850px)' : 'clamp(600px, 65vw, 1200px)',
+      justifyContent: 'flex-start',
+      alignItems: 'flex-end',
     };
   }
 
   // Smooth feathering mask based on placement mode
   let maskImageStyle = '';
   if (isFullscreen) {
-    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 50%, black 30%, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.2) 85%, transparent 100%)';
+    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 50%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.2) 90%, transparent 100%)';
+  } else if (isMobile) {
+    // Mobile mask: spans entire screen gracefully so face/head at top is fully visible behind hero section
+    maskImageStyle = 'radial-gradient(ellipse 100% 95% at 50% 45%, black 45%, rgba(0,0,0,0.85) 72%, rgba(0,0,0,0.2) 95%, transparent 100%)';
   } else if (isCenter) {
-    maskImageStyle = 'radial-gradient(ellipse 90% 85% at 50% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 60%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.3) 85%, transparent 100%)';
   } else {
-    maskImageStyle = 'radial-gradient(ellipse 95% 88% at 25% 85%, black 25%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.3) 75%, transparent 100%)';
+    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 25% 65%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.3) 85%, transparent 100%)';
   }
 
   const scale = currentConfig.scale ?? 1.0;
@@ -265,10 +244,10 @@ export default function TeacherOverlay() {
       style={containerStyle}
     >
       <div
-        className="w-full h-full flex items-end justify-center overflow-hidden transition-all duration-200"
+        className="w-full h-full flex items-center justify-center overflow-hidden transition-all duration-200"
         style={{
           transform: imageTransform,
-          transformOrigin: isFullscreen ? 'center center' : isCenter ? 'center bottom' : 'left bottom',
+          transformOrigin: isFullscreen || isMobile ? 'center center' : isCenter ? 'center bottom' : 'left bottom',
           maskImage: maskImageStyle,
           WebkitMaskImage: maskImageStyle,
         }}
@@ -277,10 +256,11 @@ export default function TeacherOverlay() {
         <img
           src={imgSrc}
           alt="صورة المستر"
-          className="w-full h-full object-contain object-bottom pointer-events-none transition-opacity duration-300"
+          className="w-full h-full pointer-events-none transition-opacity duration-300"
           style={{
             opacity: currentConfig.opacity,
-            objectFit: isFullscreen ? 'cover' : 'contain',
+            objectFit: isFullscreen ? 'cover' : (currentConfig.fit || 'contain'),
+            objectPosition: isMobile ? 'center 35%' : (isFullscreen ? 'center center' : (isCenter ? 'center bottom' : 'left bottom')),
             filter: 'contrast(1.04) saturate(1.04)',
           }}
           onError={() => setHasCustomImage(false)}

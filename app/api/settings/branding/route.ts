@@ -22,9 +22,16 @@ export async function HEAD(request: NextRequest) {
       selectField = 'portraitMobileBase64';
     }
 
+    let condition = `("${selectField}" IS NOT NULL AND "${selectField}" <> '')`;
+    if (type === 'portrait-mobile') {
+      condition = `(("${selectField}" IS NOT NULL AND "${selectField}" <> '') OR ("portraitBase64" IS NOT NULL AND "portraitBase64" <> ''))`;
+    } else if (type === 'portrait-tablet') {
+      condition = `(("${selectField}" IS NOT NULL AND "${selectField}" <> '') OR ("portraitBase64" IS NOT NULL AND "portraitBase64" <> ''))`;
+    }
+
     // Check if the field is not null/empty via a database-side null check query
     const brandingCheck = await prisma.$queryRawUnsafe<Array<Record<string, boolean>>>(
-      `SELECT ("${selectField}" IS NOT NULL AND "${selectField}" <> '') AS "hasImage" FROM "SystemSettings" LIMIT 1`
+      `SELECT (${condition}) AS "hasImage" FROM "SystemSettings" LIMIT 1`
     );
 
     const hasImage = brandingCheck?.[0]?.hasImage ?? false;

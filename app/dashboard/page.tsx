@@ -160,7 +160,7 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-3xl p-5 md:p-6 glass-panel border border-white/10 shadow-2xl overflow-hidden bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-950/70"
+        className="relative rounded-3xl p-5 md:p-6 glass-panel border border-white/15 shadow-2xl overflow-hidden bg-gradient-to-r from-purple-950/30 via-indigo-950/20 to-slate-950/40 backdrop-blur-xl"
       >
         {/* Background Subtle Spotlights */}
         <div className="absolute -top-20 -left-20 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
