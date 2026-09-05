@@ -57,6 +57,77 @@ interface TodayGroup {
   timeSlot?: string;
 }
 
+function formatActivityLog(log: any) {
+  const action = (log.action || '').toUpperCase();
+  const userName = log.userName || (log.details && typeof log.details === 'object' ? log.details.studentName || log.details.userName : '');
+
+  let title = 'إجراء نظامي';
+  let badgeColor = 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
+  let IconComponent = ShieldCheck;
+
+  if (action.includes('LOGIN') || action.includes('AUTH')) {
+    title = action.includes('FAIL') ? 'محاولة دخول غير ناجحة' : 'تسجيل دخول ناجح';
+    badgeColor = action.includes('FAIL')
+      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+      : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+    IconComponent = CheckCircle2;
+  } else if (action.includes('ATTENDANCE')) {
+    title = 'تسجيل حضور طالب';
+    badgeColor = 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+    IconComponent = QrCode;
+  } else if (action.includes('PAYMENT') || action.includes('PAID')) {
+    title = 'استلام دفعة مالية';
+    badgeColor = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+    IconComponent = CreditCard;
+  } else if (action.includes('STUDENT') || action.includes('REGISTER')) {
+    title = action.includes('UPDATE') ? 'تحديث بيانات طالب' : 'إضافة طالب جديد';
+    badgeColor = 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
+    IconComponent = UserPlus;
+  } else if (action.includes('EXAM')) {
+    title = 'تسجيل درجات امتحان';
+    badgeColor = 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30';
+    IconComponent = Award;
+  } else if (action.includes('HOMEWORK')) {
+    title = 'تسليم واجب ومراجعته';
+    badgeColor = 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30';
+    IconComponent = BookOpen;
+  } else if (action.includes('SESSION')) {
+    title = action.includes('START') ? 'بدء حصة دراسية' : 'إنهاء حصة دراسية';
+    badgeColor = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+    IconComponent = Calendar;
+  } else if (log.entityType) {
+    title = `${log.entityType}`;
+  }
+
+  const displayText = userName ? `${title} • ${userName}` : title;
+  return { displayText, badgeColor, IconComponent };
+}
+
+function getRelativeTimeArabic(dateInput: string | Date | undefined): string {
+  if (!dateInput) return '';
+  const now = new Date();
+  const date = new Date(dateInput);
+  const diffMs = Math.max(0, now.getTime() - date.getTime());
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHours = Math.floor(diffMin / 60);
+
+  if (diffSec < 60) return 'الآن';
+  if (diffMin === 1) return 'منذ دقيقة';
+  if (diffMin === 2) return 'منذ دقيقتين';
+  if (diffMin > 2 && diffMin <= 10) return `منذ ${diffMin} دقائق`;
+  if (diffMin > 10 && diffMin < 60) return `منذ ${diffMin} دقيقة`;
+  if (diffHours === 1) return 'منذ ساعة';
+  if (diffHours === 2) return 'منذ ساعتين';
+  if (diffHours > 2 && diffHours < 24) return `منذ ${diffHours} ساعات`;
+
+  const isToday = now.toDateString() === date.toDateString();
+  const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true });
+  if (isToday) return `اليوم ${timeStr}`;
+
+  return date.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -155,7 +226,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 pb-28">
+    <div className="space-y-6 pb-24">
       {/* 🌟 Modern Compact Executive Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -388,24 +459,24 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Tab Switcher */}
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-slate-950 p-1 rounded-2xl border border-zinc-200 dark:border-white/10 self-start sm:self-auto">
+              {/* Tabs */}
+              <div className="flex items-center bg-zinc-100 dark:bg-slate-900 p-1 rounded-2xl border border-zinc-200 dark:border-slate-800 text-xs self-start sm:self-auto">
                 <button
                   onClick={() => setActiveGroupTab('TODAY')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
                     activeGroupTab === 'TODAY'
                       ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                       : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white'
                   }`}
                 >
                   <span>مجموعات اليوم</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-slate-900 text-zinc-800 dark:text-slate-200 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-purple-500/30 text-white text-[10px] font-mono">
                     {todayGroups.length}
                   </span>
                 </button>
                 <button
                   onClick={() => setActiveGroupTab('ALL')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer ${
                     activeGroupTab === 'ALL'
                       ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                       : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white'
@@ -464,7 +535,7 @@ export default function DashboardPage() {
                         key={grp.id}
                         className="bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between shadow-sm"
                       >
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <h3 className="font-bold text-zinc-950 dark:text-white text-sm leading-snug">{grp.name}</h3>
@@ -472,31 +543,35 @@ export default function DashboardPage() {
                                 {grp.stageName || 'مجموعة دراسية'}
                               </p>
                             </div>
-                            <StatusIndicator
-                              status={
-                                grp.sessionStatus === 'OPEN'
-                                  ? 'open'
-                                  : grp.sessionStatus === 'COMPLETED'
-                                  ? 'closed'
-                                  : 'pending'
-                              }
-                              pulse={grp.sessionStatus === 'OPEN'}
-                              size="sm"
-                            />
+                            
+                            {/* High-Contrast Clear Status Badge */}
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                              grp.sessionStatus === 'OPEN'
+                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+                                : grp.sessionStatus === 'COMPLETED'
+                                ? 'bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-300'
+                                : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300'
+                            }`}>
+                              {grp.sessionStatus === 'OPEN'
+                                ? 'جارية الآن 🟢'
+                                : grp.sessionStatus === 'COMPLETED'
+                                ? 'مكتملة ✅'
+                                : 'لم تبدأ بعد ⏳'}
+                            </span>
                           </div>
 
                           <div className="space-y-1">
                             <div className="flex justify-between text-[11px] text-zinc-500 dark:text-slate-400">
                               <span>
-                                الطلاب:{' '}
-                                <b className="text-zinc-950 dark:text-white font-mono">
+                                عدد الطلاب:{' '}
+                                <b className="text-zinc-800 dark:text-zinc-200 font-bold text-xs font-mono tabular-nums">
                                   {activeGroupTab === 'TODAY' ? `${grp.presentCount} / ` : ''}
                                   {grp.studentsCount}
                                 </b>{' '}
                                 طالب
                               </span>
                               {activeGroupTab === 'TODAY' && (
-                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{pct}%</span>
+                                <span className="font-mono tabular-nums text-emerald-600 dark:text-emerald-400 font-bold">{pct}%</span>
                               )}
                             </div>
                             {activeGroupTab === 'TODAY' && (
@@ -511,14 +586,14 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="pt-2 border-t border-zinc-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
-                          <span className="text-[10px] text-zinc-500 dark:text-slate-400 truncate max-w-[130px]">
+                          <span className="text-[10px] text-zinc-500 dark:text-slate-400 truncate max-w-[130px] font-mono tabular-nums">
                             {grp.timeSlot ||
                               (grp.scheduleDays && grp.scheduleDays.length > 0
                                 ? grp.scheduleDays.join(' · ')
                                 : 'مواعيد منتظمة')}
                           </span>
                           <Link href={`/attendance?groupId=${grp.id}`}>
-                            <button className="px-3 py-1 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
+                            <button className="px-3.5 py-1.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm">
                               تسجيل الحضور ←
                             </button>
                           </Link>
@@ -551,24 +626,42 @@ export default function DashboardPage() {
 
             <div className="h-56 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 12, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorAttendanceGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#a855f7" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(150,150,150,0.15)" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={[0, 100]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(150,150,150,0.12)" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#a1a1aa"
+                    fontSize={11}
+                    tickLine={false}
+                    tick={{ fill: '#a1a1aa', fontWeight: 500 }}
+                  />
+                  <YAxis
+                    stroke="#a1a1aa"
+                    fontSize={11}
+                    tickLine={false}
+                    domain={[0, 100]}
+                    tick={{ fill: '#a1a1aa', fontWeight: 500 }}
+                    unit="%"
+                  />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                      borderColor: 'rgba(255, 255, 255, 0.15)',
-                      borderRadius: '16px',
-                      color: '#fff',
-                      backdropFilter: 'blur(12px)',
-                      fontSize: '12px',
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="p-2.5 rounded-2xl glass-panel border border-zinc-200 dark:border-white/15 bg-white/95 dark:bg-zinc-950/95 shadow-xl text-xs space-y-1">
+                            <p className="font-bold text-zinc-950 dark:text-white">{label}</p>
+                            <p className="text-purple-600 dark:text-purple-300 font-bold tabular-nums font-mono">
+                              نسبة الحضور: {payload[0].value}%
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
                     }}
                   />
                   <Area
@@ -578,7 +671,8 @@ export default function DashboardPage() {
                     stroke="#a855f7"
                     strokeWidth={3}
                     fill="url(#colorAttendanceGrad)"
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#a855f7' }}
+                    dot={{ r: 4, fill: '#a855f7', stroke: '#ffffff', strokeWidth: 2 }}
+                    activeDot={{ r: 7, strokeWidth: 2, stroke: '#ffffff', fill: '#9333ea' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -652,7 +746,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ⚡ Live Operations Activity Feed */}
+          {/* ⚡ Live Operations Activity Feed with Translated Arabic Actions & Relative Times */}
           <div className="glass-panel p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-3.5">
             <div className="flex items-center justify-between pb-2.5 border-b border-zinc-200/80 dark:border-white/10">
               <div className="flex items-center gap-2">
@@ -672,20 +766,29 @@ export default function DashboardPage() {
                   description="ستظهر السجلات والعمليات المنفذة هنا تلقائياً."
                 />
               ) : (
-                recentActivities.slice(0, 6).map((act) => (
-                  <div
-                    key={act.id}
-                    className="p-2.5 rounded-xl bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-white/5 flex items-center gap-3 hover:border-purple-500/20 transition-all"
-                  >
-                    <Avatar name={act.text || 'أحد الطلاب'} size="xs" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-zinc-800 dark:text-slate-300 font-medium truncate">{act.text}</p>
-                      <span className="text-[10px] text-zinc-500 dark:text-slate-500 block mt-0.5 font-mono tabular-nums">
-                        {act.time}
-                      </span>
+                recentActivities.slice(0, 6).map((act) => {
+                  const { displayText, badgeColor, IconComponent } = formatActivityLog(act);
+                  const relTime = getRelativeTimeArabic(act.createdAt);
+
+                  return (
+                    <div
+                      key={act.id}
+                      className="p-2.5 rounded-2xl bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-white/5 flex items-center gap-3 hover:border-purple-500/30 transition-all shadow-sm"
+                    >
+                      <div className={`p-2 rounded-xl border ${badgeColor} shrink-0`}>
+                        <IconComponent className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-zinc-800 dark:text-slate-200 font-semibold truncate" title={displayText}>
+                          {displayText}
+                        </p>
+                        <span className="text-[10px] text-zinc-500 dark:text-slate-400 block mt-0.5 font-mono tabular-nums">
+                          {relTime}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 

@@ -22,6 +22,11 @@ export async function GET() {
       }),
       prisma.activityLog.findMany({
         take: 20,
+        include: {
+          user: {
+            select: { name: true, role: true },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.registrationRequest.count({ where: { status: 'PENDING' } }),
@@ -49,12 +54,13 @@ export async function GET() {
         totalCollected: totalPayments._sum.paidAmount || 0,
         todayAttendancesCount: todayAttendances.length,
       },
-      logs: recentLogs.map(l => ({
+      logs: recentLogs.map((l: any) => ({
         id: l.id,
-        text: `${l.action} - ${l.entity}`,
+        action: l.action,
         entityType: l.entity,
+        userName: l.user?.name || (l.details && typeof l.details === 'object' ? l.details.studentName || l.details.userName : null),
+        details: l.details,
         createdAt: l.createdAt,
-        time: new Date(l.createdAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: true }),
       })),
     });
   } catch (error: any) {
