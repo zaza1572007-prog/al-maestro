@@ -15,10 +15,12 @@ import {
   Sparkles,
   ChevronDown,
   Menu,
-  Clock
+  Clock,
+  Palette
 } from 'lucide-react';
 import { useSidebar } from '@/components/SidebarContext';
 import { NetworkStatusBadge, PwaInstallButton } from '@/components/PwaStatusManager';
+import ThemeCustomizerModal from '@/components/ThemeCustomizerModal';
 
 
 export default function Navbar() {
@@ -28,6 +30,7 @@ export default function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCalendarQuick, setShowCalendarQuick] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const { toggleMobileOpen } = useSidebar();
 
@@ -397,7 +400,26 @@ export default function Navbar() {
             )}
           </AnimatePresence>
         </div>
+        {/* Theme Customizer Trigger */}
+        <motion.button
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
+          onClick={() => setIsThemeModalOpen(true)}
+          className="p-2.5 rounded-xl text-purple-400 hover:text-white transition-all cursor-pointer"
+          style={{
+            background: 'rgb(var(--p) / 0.1)',
+            border: '1px solid rgb(var(--p) / 0.25)',
+          }}
+          title="تخصيص المظهر والثيمات (الوضع الليلي والنهاري والألوان)"
+        >
+          <Palette className="w-4.5 h-4.5" />
+        </motion.button>
       </div>
+
+      <ThemeCustomizerModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+      />
     </header>
   );
 }

@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import HeroHeader from '@/components/HeroHeader';
-import { User, Settings, QrCode, Phone, Lock, Save, Printer, Loader2 } from 'lucide-react';
+import { User, Settings, QrCode, Phone, Lock, Save, Printer, Loader2, Palette, Moon, Sun, Sparkles, Check } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
+import { ThemeMode, AccentColor, getThemeState, setThemeMode, setAccentColor } from '@/components/ThemeProvider';
 
 export default function StudentProfilePage() {
   const [student, setStudent] = useState<any>(null);
@@ -12,7 +13,15 @@ export default function StudentProfilePage() {
   const [submitting, setSubmitting] = useState(false);
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [themeState, setThemeState] = useState<{ mode: ThemeMode; accent: AccentColor }>({
+    mode: 'dark',
+    accent: 'purple',
+  });
   const toast = useToast();
+
+  useEffect(() => {
+    setThemeState(getThemeState());
+  }, []);
 
   const fetchProfile = async () => {
     try {
@@ -256,6 +265,93 @@ export default function StudentProfilePage() {
                   <span className="text-slate-400 block mb-1">رقم هاتف ولي الأمر:</span>
                   <span className="text-white font-bold text-sm font-mono">{student.parentPhone}</span>
                 </div>
+              </div>
+            </div>
+            
+            {/* Theme & Appearance Customizer for Student */}
+            <div className="border-t border-white/10 pt-6 mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Palette className="w-5 h-5 text-purple-400" />
+                  <h4 className="text-sm font-bold text-white">تخصيص المظهر ولون التمييز المفضل</h4>
+                </div>
+                <span className="text-[11px] text-slate-400">تخصيص مباشر لحسابك</span>
+              </div>
+
+              {/* Mode Selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemeMode('dark');
+                    setThemeState((prev) => ({ ...prev, mode: 'dark' }));
+                  }}
+                  className={`p-3 rounded-2xl border text-right transition flex items-center justify-between ${
+                    themeState.mode === 'dark'
+                      ? 'border-purple-500 bg-purple-500/15 shadow-md shadow-purple-500/10'
+                      : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Moon className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold text-white">الوضع الليلي الفاخر</span>
+                  </div>
+                  {themeState.mode === 'dark' && <Check className="w-4 h-4 text-purple-400" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemeMode('light');
+                    setThemeState((prev) => ({ ...prev, mode: 'light' }));
+                  }}
+                  className={`p-3 rounded-2xl border text-right transition flex items-center justify-between ${
+                    themeState.mode === 'light'
+                      ? 'border-amber-500 bg-amber-500/15 shadow-md shadow-amber-500/10'
+                      : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold text-white">الوضع النهاري المشرق</span>
+                  </div>
+                  {themeState.mode === 'light' && <Check className="w-4 h-4 text-amber-400" />}
+                </button>
+              </div>
+
+              {/* Accent Palette Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  { id: 'purple', name: 'البنفسجي الإمبراطوري', hex: '#a855f7' },
+                  { id: 'blue', name: 'الأزرق الملكي', hex: '#3b82f6' },
+                  { id: 'gold', name: 'الذهبي الملكي', hex: '#eab308' },
+                ].map((acc) => {
+                  const isSelected = themeState.accent === acc.id;
+                  return (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => {
+                        setAccentColor(acc.id as AccentColor);
+                        setThemeState((prev) => ({ ...prev, accent: acc.id as AccentColor }));
+                      }}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                        isSelected
+                          ? 'border-white/40 bg-white/10 shadow-md'
+                          : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-4 h-4 rounded-full border border-white/20"
+                          style={{ background: acc.hex }}
+                        />
+                        <span className="text-xs font-medium text-slate-200">{acc.name}</span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             

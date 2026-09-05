@@ -3,14 +3,43 @@
 
 @import "tailwindcss";
 
-/* ── Dynamic theme variables ──────────────────────────────────────────────── */
+/* ── Dynamic Theme & Accent Variables ───────────────────────────────────────── */
 :root {
-  --p:  139 92 246;
-  --s:  59 130 246;
-  --a:  236 72 153;
-  --bg-theme: 6 9 19;
-  --background: #060913;
-  --foreground: #f8fafc;
+  /* Default: Obsidian Dark Mode (Anti-OLED Smearing #09090b) */
+  --bg-theme: 9 9 11;
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 4.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 4.9%;
+  --popover-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 263 70% 65%;
+
+  /* Semantic Protection (Locked operational colors across all accents) */
+  --success: 142 70% 50%;
+  --success-foreground: 144 70% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+  --info: 217 91% 60%;
+  --info-foreground: 210 40% 98%;
+
+  /* Default Accent: Imperial Purple (البنفسجي الإمبراطوري) in Dark */
+  --p-h: 263; --p-s: 70%; --p-l: 65%;
+  --p: 168 85 247;
+  --s: 59 130 246;
+  --a: 236 72 153;
+  --primary: 263 70% 65%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217 91% 60%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 330 81% 60%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
 
   /* Easing curves */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -18,27 +47,149 @@
   --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ── Light Mode (Clean Minimalist Light Mode) ────────────────────────────────── */
+:root[data-theme="light"], .light {
+  --bg-theme: 255 255 255;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 98%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 262 83% 58%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+
+  /* Semantic Protection in Light Mode */
+  --success: 142 76% 36%;
+  --success-foreground: 144 70% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+  --info: 221 83% 53%;
+  --info-foreground: 210 40% 98%;
+
+  /* Default Purple Accent in Light Mode */
+  --p: 124 58 237;
+  --s: 37 99 235;
+  --a: 219 39 119;
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 221 83% 53%;
+  --secondary-foreground: 0 0% 100%;
+}
+
+/* ── Dark Mode Explicit Override ─────────────────────────────────────────────── */
+:root[data-theme="dark"], .dark {
+  --bg-theme: 9 9 11;
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 4.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 4.9%;
+  --popover-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+
+  /* Semantic Protection in Dark Mode */
+  --success: 142 70% 50%;
+  --success-foreground: 144 70% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+}
+
+/* ── Accent Color: Imperial Purple (البنفسجي الإمبراطوري) ─────────────────────── */
+[data-accent="purple"]:not([data-theme="light"]):not(.light),
+:root:not([data-theme="light"]):not(.light):not([data-accent="blue"]):not([data-accent="gold"]) {
+  --p: 168 85 247;
+  --s: 59 130 246;
+  --primary: 263 70% 65%; /* Luminous Purple in Dark */
+  --secondary: 217 91% 60%;
+  --ring: 263 70% 65%;
+}
+[data-accent="purple"][data-theme="light"],
+[data-accent="purple"].light,
+:root[data-theme="light"]:not([data-accent="blue"]):not([data-accent="gold"]),
+.light:not([data-accent="blue"]):not([data-accent="gold"]) {
+  --p: 124 58 237;
+  --s: 37 99 235;
+  --primary: 262 83% 58%; /* Deep Vivid Purple in Light */
+  --secondary: 221 83% 53%;
+  --ring: 262 83% 58%;
+}
+
+/* ── Accent Color: Royal Blue (الأزرق الملكي) ─────────────────────────────────── */
+[data-accent="blue"]:not([data-theme="light"]):not(.light) {
+  --p: 59 130 246;
+  --s: 14 165 233;
+  --primary: 217 91% 60%; /* Radiant Electric Blue in Dark */
+  --secondary: 199 89% 48%;
+  --ring: 217 91% 60%;
+}
+[data-accent="blue"][data-theme="light"],
+[data-accent="blue"].light {
+  --p: 37 99 235;
+  --s: 2 132 199;
+  --primary: 221 83% 53%; /* Balanced Royal Blue in Light */
+  --secondary: 199 89% 48%;
+  --ring: 221 83% 53%;
+}
+
+/* ── Accent Color: Luxury Gold (الذهبي الملكي) ────────────────────────────────── */
+[data-accent="gold"]:not([data-theme="light"]):not(.light) {
+  --p: 234 179 8;
+  --s: 245 158 11;
+  --primary: 45 93% 58%; /* Radiant Neon Gold in Dark */
+  --secondary: 38 92% 50%;
+  --ring: 45 93% 58%;
+}
+[data-accent="gold"][data-theme="light"],
+[data-accent="gold"].light {
+  --p: 161 98 7;
+  --s: 180 83 9;
+  --primary: 35 92% 33%; /* Deep Bronze-Amber High WCAG Contrast in Light */
+  --secondary: 35 92% 28%;
+  --ring: 35 92% 33%;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
   --font-sans: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
-html {
-  overscroll-behavior-y: none;
+html, body {
+  overscroll-behavior-y: contain;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
   background-color: rgb(var(--bg-theme));
-  color: #f1f5f9;
+  color: hsl(var(--foreground));
   font-family: 'Cairo', 'Inter', system-ui, sans-serif;
   direction: rtl;
   overflow-x: hidden;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: contain;
   position: relative;
-  transition: background-color 0.6s ease;
+  transition: background-color 0.4s ease, color 0.4s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -46,6 +197,14 @@ body {
 /* ── Gradient Headers ────────────────────────────────────────────────────── */
 .gradient-heading {
   background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, rgb(var(--p)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="light"] .gradient-heading,
+.light .gradient-heading {
+  background: linear-gradient(135deg, #09090b 0%, #334155 50%, rgb(var(--p)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -152,9 +311,10 @@ body {
 .stagger-card:nth-child(5) { animation-delay: 0.25s; }
 .stagger-card:nth-child(n+6){ animation-delay: 0.3s; }
 
-/* ── Glassmorphism ────────────────────────────────────────────────────────── */
+/* ── Glassmorphism & Tinted Surfaces (2%-4% Active Accent Tint) ────────── */
 .glass-panel {
   background: rgba(15, 23, 42, 0.55);
+  background-color: color-mix(in srgb, rgb(var(--bg-theme)) 96%, rgb(var(--p)) 4%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -162,8 +322,17 @@ body {
   border-radius: 20px;
 }
 
+[data-theme="light"] .glass-panel,
+.light .glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  background-color: color-mix(in srgb, #ffffff 97%, rgb(var(--p)) 3%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.06);
+}
+
 .glass-card {
   background: rgba(15, 23, 42, 0.45);
+  background-color: color-mix(in srgb, rgb(var(--bg-theme)) 97%, rgb(var(--p)) 3%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -172,13 +341,31 @@ body {
   transition: all 0.3s var(--ease-out-expo);
 }
 
+[data-theme="light"] .glass-card,
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  background-color: color-mix(in srgb, #ffffff 98%, rgb(var(--p)) 2%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.04);
+}
+
 .glass-card:hover {
   background: rgba(30, 41, 59, 0.6);
+  background-color: color-mix(in srgb, rgb(var(--bg-theme)) 94%, rgb(var(--p)) 6%);
   border-color: rgb(var(--p) / 0.35);
   box-shadow:
     0 12px 40px -10px rgb(var(--p) / 0.25),
     0 0 0 1px rgb(var(--p) / 0.1);
   transform: translateY(-4px) scale(1.005);
+}
+
+[data-theme="light"] .glass-card:hover,
+.light .glass-card:hover {
+  background-color: color-mix(in srgb, #ffffff 95%, rgb(var(--p)) 5%);
+  border-color: rgb(var(--p) / 0.35);
+  box-shadow:
+    0 12px 30px -10px rgb(var(--p) / 0.15),
+    0 0 0 1px rgb(var(--p) / 0.1);
 }
 
 .glass-input {
@@ -190,11 +377,23 @@ body {
   transition: all 0.25s var(--ease-in-out);
 }
 
+[data-theme="light"] .glass-input,
+.light .glass-input {
+  background: rgba(241, 245, 249, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
 .glass-input:focus {
   outline: none;
   border-color: rgb(var(--p) / 0.6);
   box-shadow: 0 0 0 3px rgb(var(--p) / 0.15), 0 0 20px rgb(var(--p) / 0.2);
   background: rgba(15, 23, 42, 0.85);
+}
+
+[data-theme="light"] .glass-input:focus,
+.light .glass-input:focus {
+  background: #ffffff;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
@@ -207,6 +406,12 @@ body {
   transition: all 0.25s var(--ease-out-expo);
   position: relative;
   overflow: hidden;
+}
+
+[data-theme="light"] .glass-button,
+.light .glass-button {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #0f172a;
 }
 
 .glass-button::after {
@@ -323,7 +528,21 @@ body {
   border-radius: 8px;
 }
 
-/* ── Print ────────────────────────────────────────────────────────────────── */
+/* ── Print Media Optimization (Forced Minimalist Clean Light on Paper) ───── */
 @media print {
-  .no-print { display: none !important; }
+  :root, .dark, [data-theme="dark"], [data-theme="light"] {
+    --background: 0 0% 100% !important;
+    --foreground: 0 0% 0% !important;
+    --card: 0 0% 100% !important;
+    --border: 0 0% 88% !important;
+    color-scheme: light !important;
+  }
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    background-image: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
 }
