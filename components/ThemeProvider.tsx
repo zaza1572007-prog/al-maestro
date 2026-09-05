@@ -18,6 +18,57 @@ export interface StoredTheme {
   secondaryHex: string;
 }
 
+export const ACCENT_PALETTES = {
+  purple: {
+    dark: {
+      p: '168 85 247',
+      s: '59 130 246',
+      a: '236 72 153',
+      primaryHex: '#a855f7',
+      secondaryHex: '#3b82f6',
+    },
+    light: {
+      p: '124 58 237',
+      s: '37 99 235',
+      a: '219 39 119',
+      primaryHex: '#7c3aed',
+      secondaryHex: '#2563eb',
+    },
+  },
+  blue: {
+    dark: {
+      p: '59 130 246',
+      s: '14 165 233',
+      a: '168 85 247',
+      primaryHex: '#3b82f6',
+      secondaryHex: '#0ea5e9',
+    },
+    light: {
+      p: '37 99 235',
+      s: '2 132 199',
+      a: '124 58 237',
+      primaryHex: '#2563eb',
+      secondaryHex: '#0284c7',
+    },
+  },
+  gold: {
+    dark: {
+      p: '234 179 8',
+      s: '245 158 11',
+      a: '249 115 22',
+      primaryHex: '#eab308',
+      secondaryHex: '#f59e0b',
+    },
+    light: {
+      p: '161 98 7',
+      s: '180 83 9',
+      a: '194 65 12',
+      primaryHex: '#a16207',
+      secondaryHex: '#b45309',
+    },
+  },
+};
+
 /** Update the browser's top status bar theme-color dynamically */
 export function updateMetaThemeColor(mode: ThemeMode) {
   if (typeof document === 'undefined') return;
@@ -31,19 +82,38 @@ export function updateMetaThemeColor(mode: ThemeMode) {
   meta.setAttribute('content', color);
 }
 
-/** Apply Dark / Light Theme Mode */
-export function applyThemeMode(mode: ThemeMode) {
+/** Synchronize Theme Mode & Accent into DOM and CSS Variables seamlessly */
+export function syncThemeToDom(mode?: ThemeMode, accent?: AccentColor) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.setAttribute('data-theme', mode);
-  if (mode === 'dark') {
-    root.classList.add('dark');
-    root.classList.remove('light');
-  } else {
-    root.classList.add('light');
-    root.classList.remove('dark');
-  }
-  updateMetaThemeColor(mode);
+
+  let savedMode: ThemeMode = 'dark';
+  let savedAccent: AccentColor = 'purple';
+  try {
+    savedMode = (localStorage.getItem(LS_KEY_MODE) as ThemeMode) || 'dark';
+    savedAccent = (localStorage.getItem(LS_KEY_ACCENT) as AccentColor) || 'purple';
+  } catch {}
+
+  const m = mode || (root.getAttribute('data-theme') as ThemeMode) || savedMode;
+  const a = accent || (root.getAttribute('data-accent') as AccentColor) || savedAccent;
+
+  root.setAttribute('data-theme', m);
+  root.setAttribute('data-accent', a);
+  root.classList.toggle('dark', m === 'dark');
+  root.classList.toggle('light', m === 'light');
+
+  const palette = ACCENT_PALETTES[a]?.[m] || ACCENT_PALETTES.purple[m] || ACCENT_PALETTES.purple.dark;
+  root.style.setProperty('--p', palette.p);
+  root.style.setProperty('--s', palette.s);
+  root.style.setProperty('--a', palette.a);
+  root.style.setProperty('--bg-theme', m === 'light' ? '255 255 255' : '9 9 11');
+
+  updateMetaThemeColor(m);
+}
+
+/** Apply Dark / Light Theme Mode */
+export function applyThemeMode(mode: ThemeMode) {
+  syncThemeToDom(mode, undefined);
 }
 
 /** Persist and apply Theme Mode */
@@ -68,9 +138,7 @@ export function toggleThemeMode(): ThemeMode {
 
 /** Apply Accent Color */
 export function applyAccentColor(accent: AccentColor) {
-  if (typeof document === 'undefined') return;
-  const root = document.documentElement;
-  root.setAttribute('data-accent', accent);
+  syncThemeToDom(undefined, accent);
 }
 
 /** Persist and apply Accent Color */
@@ -139,6 +207,12 @@ export default function ThemeProvider() {
     // 2. Fetch the global settings from the database (shared with all users)
     const loadGlobalTheme = async () => {
       try {
+        const hasExplicitAccent = typeof window !== 'undefined' && !!localStorage.getItem(LS_KEY_ACCENT);
+        if (hasExplicitAccent) {
+          syncThemeToDom();
+          return;
+        }
+
         const res = await fetch('/api/settings');
         const data = await res.json();
         if (data.success && data.settings) {
