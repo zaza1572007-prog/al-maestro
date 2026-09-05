@@ -765,144 +765,172 @@ export default function AttendancePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Scanner Card */}
-        <div className="glass-panel bg-white/90 dark:bg-slate-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-6 shadow-2xl space-y-6 backdrop-blur-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-4 gap-2">
-            <h2 className="font-bold text-zinc-950 dark:text-white flex items-center gap-2">
-              <QrCode className="w-5 h-5 text-primary" />
-              الماسح الضوئي (Barcode Terminal)
-            </h2>
+        {/* 🌟 Ultra-Luxury Futuristic Scanner Cockpit */}
+        <div className="glass-panel bg-gradient-to-br from-slate-900/90 via-slate-900/75 to-purple-950/40 border border-white/15 rounded-3xl p-5 sm:p-7 shadow-[0_12px_40px_rgba(0,0,0,0.5)] space-y-5 backdrop-blur-2xl relative overflow-hidden">
+          {/* Ambient Corner Glows */}
+          <div className="absolute -top-16 -right-16 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Terminal Top Control Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-3 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-500/30 to-indigo-600/20 text-purple-400 border border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center justify-center font-bold">
+                <QrCode className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  <span>منصة المسح الذكي</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                    TERMINAL PRO
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-400 font-medium">تسجيل فوري عبر كروت الـ QR أو الباركود الليزري</p>
+              </div>
+            </div>
+
+            {/* Hardware & Camera Status Indicators */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Open Camera Scanner Button */}
               <button
                 type="button"
                 onClick={() => setIsCameraOpen(true)}
-                className="text-[11px] px-3 py-1 rounded-full font-bold border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                className="text-xs px-3.5 py-1.5 rounded-xl font-bold border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 flex items-center gap-1.5 transition shadow-sm hover:shadow-[0_0_15px_rgba(168,85,247,0.25)] cursor-pointer"
                 title="فتح كاميرا الموبايل / الكمبيوتر لمسح كود الـ QR"
               >
-                <Camera className="w-3.5 h-3.5 text-primary" />
+                <Camera className="w-4 h-4 text-purple-400" />
                 <span>مسح بالكاميرا 📷</span>
               </button>
 
-              {/* Hardware Scanner Status Badge */}
               <button
                 type="button"
                 onClick={() => inputRef.current?.focus()}
-                className={`text-[11px] px-2.5 py-1 rounded-full font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`text-xs px-3 py-1.5 rounded-xl font-bold border flex items-center gap-2 transition-all cursor-pointer ${
                   isFocused
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                    : 'bg-rose-500/15 text-rose-300 border-rose-500/40 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
                 }`}
                 title={isFocused ? 'الماسح نشط وجاهز لاستقبال قراءة الكروت' : 'الماسح غير نشط - اضغط للتركيز والتشغيل'}
               >
-                <span className={`w-2 h-2 rounded-full ${isFocused ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                <span>{isFocused ? 'الماسح متصل ونشط 🟢' : 'الماسح غير نشط (اضغط هنا) 🔴'}</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${isFocused ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-rose-400'}`} />
+                <span>{isFocused ? 'الماسح نشط 🟢' : 'اضغط للتنشيط 🔴'}</span>
               </button>
-              <span className="text-[11px] px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                أتمتة الجلسات نشطة
+            </div>
+          </div>
+
+          {/* 🎛️ Segmented Operational Mode Switcher */}
+          <div className="space-y-1.5 relative z-10">
+            <label className="block text-[11px] font-bold text-slate-300">وضع المعالجة والتشغيل</label>
+            <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-slate-950/70 border border-white/10 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setScanMode('ATTENDANCE_ONLY')}
+                className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  scanMode === 'ATTENDANCE_ONLY'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30 border border-purple-400/40'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>📋</span>
+                <span className="truncate">حضور فقط</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('هل تريد تفعيل وضع دفع الاشتراك الشهري فقط للطلاب عند مسح الباركود؟')) {
+                    setScanMode('PAY_ONLY');
+                  }
+                }}
+                className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  scanMode === 'PAY_ONLY'
+                    ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white shadow-lg shadow-amber-600/30 border border-amber-400/40'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>💰</span>
+                <span className="truncate">سداد فقط</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('هل تريد تفعيل وضع تسجيل الحضور وسداد اشتراك الشهر معاً للطلاب عند مسح الباركود؟')) {
+                    setScanMode('BOTH');
+                  }
+                }}
+                className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  scanMode === 'BOTH'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/40'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>✨</span>
+                <span className="truncate">حضور + سداد</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 🏷️ Status Selector Pills Grid */}
+          <div className="space-y-1.5 relative z-10">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-slate-300">حالة حضور الجلسة</label>
+              <span className="text-[10px] text-purple-400 font-semibold font-mono">
+                الحالة المحددة: {statusLabels[manualStatus]}
               </span>
             </div>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-400 mb-1.5">حالة الحضور</label>
-            <div className="flex flex-wrap items-center gap-2">
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <button
-                  key={key}
-                  disabled={scanMode === 'PAY_ONLY'}
-                  onClick={() => setManualStatus(key)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-30 ${
-                    manualStatus === key && scanMode !== 'PAY_ONLY'
-                      ? statusActiveColors[key]
-                      : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700/60 border-zinc-300 dark:border-white/10'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-
-              {/* Divider */}
-              <div className="w-[1px] bg-zinc-200 dark:bg-zinc-800 self-stretch min-h-[28px] my-1 mx-1 hidden sm:block" />
-
-              {/* Scan Mode Segment Selector */}
-              <div className="flex bg-zinc-100 dark:bg-zinc-950 p-1.5 rounded-2xl border border-zinc-200 dark:border-white/10 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setScanMode('ATTENDANCE_ONLY')}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    scanMode === 'ATTENDANCE_ONLY'
-                      ? 'bg-primary text-primary-foreground font-black shadow-md shadow-primary/20 border border-primary'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-                  }`}
-                >
-                  📋 الحضور فقط
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm('هل تريد تفعيل وضع دفع الاشتراك الشهري فقط للطلاب عند مسح الباركود؟ (لن يتم تسجيل الحضور اليوم لهذا الإجراء)')) {
-                      setScanMode('PAY_ONLY');
-                    }
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    scanMode === 'PAY_ONLY'
-                      ? 'bg-amber-600 text-white font-black shadow-md shadow-amber-600/20 border border-amber-500'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-                  }`}
-                >
-                  💰 دفع الاشتراك فقط
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm('هل تريد تفعيل وضع تسجيل الحضور وسداد اشتراك الشهر معاً للطلاب عند مسح الباركود؟')) {
-                      setScanMode('BOTH');
-                    }
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    scanMode === 'BOTH'
-                      ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20 border border-emerald-500'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
-                  }`}
-                >
-                  ✨ الحضور ودفع الشهر معاً
-                </button>
-              </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+              {Object.entries(statusLabels).map(([key, label]) => {
+                const isSelected = manualStatus === key && scanMode !== 'PAY_ONLY';
+                return (
+                  <button
+                    key={key}
+                    disabled={scanMode === 'PAY_ONLY'}
+                    onClick={() => setManualStatus(key)}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer disabled:opacity-20 text-center ${
+                      isSelected
+                        ? `${statusActiveColors[key]} shadow-md transform scale-[1.02]`
+                        : 'bg-slate-950/50 text-slate-300 hover:text-white hover:bg-white/10 border-white/10'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Homework Status */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-400 mb-1.5">حالة الواجب (اختياري)</label>
-            <div className="flex gap-2">
+          {/* 📝 Homework Evaluation Switcher */}
+          <div className="space-y-1.5 relative z-10">
+            <label className="block text-[11px] font-bold text-slate-300">تقييم الواجب المنزلي</label>
+            <div className="grid grid-cols-3 gap-1.5">
               <button
+                type="button"
                 onClick={() => setHomeworkStatus('NONE')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                className={`py-2 px-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                   homeworkStatus === 'NONE'
-                    ? 'bg-zinc-800 dark:bg-zinc-700 text-white border-zinc-600 shadow-sm'
-                    : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700/60 border-zinc-300 dark:border-white/10'
+                    ? 'bg-slate-800 text-white border-slate-600 shadow-sm'
+                    : 'bg-slate-950/50 text-slate-400 hover:text-white border-white/10'
                 }`}
               >
                 بدون تقييم
               </button>
               <button
+                type="button"
                 onClick={() => setHomeworkStatus('DONE')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                className={`py-2 px-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                   homeworkStatus === 'DONE'
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
-                    : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700/60 border-zinc-300 dark:border-white/10'
+                    ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-600/30'
+                    : 'bg-slate-950/50 text-slate-400 hover:text-emerald-300 border-white/10'
                 }`}
               >
                 مكتمل 🟢
               </button>
               <button
+                type="button"
                 onClick={() => setHomeworkStatus('NOT_DONE')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                className={`py-2 px-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                   homeworkStatus === 'NOT_DONE'
-                    ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-500/20'
-                    : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700/60 border-zinc-300 dark:border-white/10'
+                    ? 'bg-rose-600 text-white border-rose-400 shadow-lg shadow-rose-600/30'
+                    : 'bg-slate-950/50 text-slate-400 hover:text-rose-300 border-white/10'
                 }`}
               >
                 غير مكتمل 🔴
@@ -910,12 +938,15 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* Scanner Input */}
-          <form onSubmit={(e) => handleScan(e)} className="space-y-3">
-            <div className="relative">
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-400 mb-1.5">
-                باركود الطالب أو البحث بالاسم (Scanner Terminal)
-              </label>
+          {/* 🎯 High-Tech Laser Viewfinder Terminal Input */}
+          <form onSubmit={(e) => handleScan(e)} className="space-y-3 relative z-10">
+            <div className="relative group">
+              {/* Futuristic Corner Target Brackets */}
+              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-purple-500 rounded-tr-lg pointer-events-none z-20" />
+              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-purple-500 rounded-tl-lg pointer-events-none z-20" />
+              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-purple-500 rounded-br-lg pointer-events-none z-20" />
+              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-purple-500 rounded-bl-lg pointer-events-none z-20" />
+
               <input
                 ref={inputRef}
                 type="text"
@@ -929,13 +960,13 @@ export default function AttendancePage() {
                   setIsFocused(false);
                   setTimeout(() => setShowDropdown(false), 200);
                 }}
-                placeholder="مرر الباركود أو اكتب اسم الطالب للبحث..."
+                placeholder="مرر الباركود أو اكتب اسم الطالب / الكود..."
                 autoFocus
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 rounded-2xl py-3.5 px-4 text-zinc-950 dark:text-white text-lg font-mono placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all shadow-inner"
+                className="w-full bg-slate-950/90 border-2 border-purple-500/40 group-hover:border-purple-500/70 focus:border-purple-400 rounded-2xl py-4 px-5 text-white text-base sm:text-lg font-mono font-bold tracking-wider placeholder:text-slate-500 placeholder:font-sans placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-4 focus:ring-purple-500/20 shadow-[inset_0_2px_10px_rgba(0,0,0,0.6)] transition-all duration-300"
               />
 
               {showDropdown && searchResults.length > 0 && (
-                <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-slate-800 rounded-xl max-h-60 overflow-y-auto shadow-2xl divide-y divide-zinc-100 dark:divide-slate-800">
+                <div className="absolute z-50 left-0 right-0 mt-2 bg-slate-900 border border-white/15 rounded-2xl max-h-64 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-2xl">
                   {searchResults.map((student) => (
                     <button
                       key={student.id}
@@ -945,13 +976,13 @@ export default function AttendancePage() {
                         handleScan(undefined, { targetCode: student.code });
                         setShowDropdown(false);
                       }}
-                      className="w-full text-right p-3 hover:bg-zinc-100 dark:hover:bg-slate-800/80 text-xs text-zinc-700 dark:text-slate-300 hover:text-zinc-950 dark:hover:text-white flex items-center justify-between transition cursor-pointer"
+                      className="w-full text-right p-3.5 hover:bg-purple-600/20 text-xs text-slate-200 hover:text-white flex items-center justify-between transition cursor-pointer"
                     >
                       <div>
-                        <p className="font-bold text-zinc-950 dark:text-white text-sm">{student.name}</p>
-                        <p className="text-zinc-500 text-[10px] mt-0.5">المجموعة: {student.group?.name || 'بدون مجموعة'}</p>
+                        <p className="font-black text-white text-sm">{student.name}</p>
+                        <p className="text-slate-400 text-[11px] mt-0.5 font-medium">المجموعة: {student.group?.name || 'بدون مجموعة'}</p>
                       </div>
-                      <span className="font-mono bg-zinc-100 dark:bg-slate-800 px-2 py-1 rounded text-[10px] text-primary font-bold">
+                      <span className="font-mono bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg text-xs text-purple-300 font-bold">
                         {student.code}
                       </span>
                     </button>
@@ -959,32 +990,36 @@ export default function AttendancePage() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+
+            {/* Glowing Action Buttons Bar */}
+            <div className="flex gap-2.5">
               <button
                 type="submit"
                 disabled={loading || !code.trim()}
-                className="flex-1 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-bold rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-95 cursor-pointer"
+                className="flex-1 py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-white font-black rounded-2xl transition-all shadow-xl shadow-purple-600/30 active:scale-98 cursor-pointer flex items-center justify-center gap-2 text-sm"
               >
-                {loading ? 'جارٍ التسجيل...' : 'تسجيل الحضور 📲'}
+                <span>⚡</span>
+                <span>{loading ? 'جارٍ تسجيل الحضور...' : 'تسجيل الحضور الفوري'}</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setIsCameraOpen(true)}
-                className="px-4 py-3 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                className="px-5 py-3.5 bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold rounded-2xl transition flex items-center gap-2 cursor-pointer shadow-md backdrop-blur-md text-xs"
                 title="فتح كاميرا الموبايل / الكمبيوتر لمسح الكروت"
               >
-                <Camera className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <span>الكاميرا 📷</span>
+                <Camera className="w-4 h-4 text-purple-400" />
+                <span className="hidden sm:inline">كاميرا الـ QR</span>
               </button>
             </div>
           </form>
 
-          {/* Result */}
+          {/* 🟢 Live Scan HUD Response Badge */}
           {lastScan && (
-            <div className={`p-4 rounded-2xl border text-sm ${lastScan.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300'}`}>
+            <div className={`p-4 rounded-2xl border text-sm relative z-10 backdrop-blur-xl ${lastScan.success ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'bg-rose-500/15 border-rose-500/40 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.15)]'}`}>
               <div className="space-y-2">
-                <p className="font-bold flex items-center gap-2">
-                  {lastScan.success ? <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <UserX className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
+                <p className="font-black flex items-center gap-2 text-base">
+                  {lastScan.success ? <UserCheck className="w-5 h-5 text-emerald-400" /> : <UserX className="w-5 h-5 text-rose-400" />}
                   {lastScan.success ? lastScan.message : (lastScan.error || 'لم يتم التعرف على الكود')}
                 </p>
 
@@ -1618,12 +1653,12 @@ export default function AttendancePage() {
                       setSelectedGroupSheet(group);
                     }
                   }}
-                  className={`group cursor-pointer rounded-2xl border p-4 transition-all hover:scale-[1.01] flex flex-col justify-between h-44 ${
+                  className={`glass-card group cursor-pointer rounded-3xl border p-4 sm:p-5 transition-all duration-300 hover:scale-[1.01] flex flex-col justify-between h-48 backdrop-blur-xl ${
                     isOpen
-                      ? 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.05)]'
+                      ? 'bg-gradient-to-br from-emerald-500/15 via-slate-900/80 to-slate-900/90 border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:border-emerald-500/60'
                       : isCompleted
-                      ? 'bg-slate-950/40 border-slate-800 hover:border-slate-700'
-                      : 'bg-slate-900/40 border-slate-800/60 opacity-80 hover:opacity-100'
+                      ? 'bg-slate-900/60 border-white/10 hover:border-white/20'
+                      : 'bg-gradient-to-br from-amber-500/10 via-slate-900/80 to-slate-900/90 border-amber-500/30 hover:border-amber-500/50'
                   }`}
                 >
                   <div>
