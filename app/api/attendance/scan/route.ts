@@ -388,7 +388,7 @@ export async function POST(req: Request) {
     let targetGroup: any = null;
     let isDifferentGroup = false;
 
-    // A. First check if a session exists for the student's own group today
+    // A. Check if an OPEN session exists for the student's own group today
     const studentGroupTodaySession = await prisma.lessonSession.findFirst({
       where: {
         groupId: student.groupId,
@@ -396,6 +396,7 @@ export async function POST(req: Request) {
           gte: todayStart,
           lt: todayEnd,
         },
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
       },
       include: {
         group: { include: { academicStage: true } },
@@ -426,34 +427,13 @@ export async function POST(req: Request) {
         targetSession = otherOpenSession;
         targetGroup = otherOpenSession.group;
         isDifferentGroup = true;
-      } else if (student.groupId && student.group) {
-        // C. Auto-create session for student's group for today if none exists
-        const slot = parseTimeToMinutes(student.group.startTime)
-          ? { startTime: student.group.startTime, endTime: student.group.endTime }
-          : { startTime: '16:00', endTime: '18:00' };
-
-        targetSession = await prisma.lessonSession.create({
-          data: {
-            title: `جلسة ${student.group.name}`,
-            groupId: student.groupId,
-            date: now,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            status: 'OPEN',
-            type: 'LECTURE',
-          },
-          include: {
-            group: { include: { academicStage: true } }
-          }
-        });
-        targetGroup = student.group;
       }
     }
 
     if (!targetSession || !targetGroup) {
       return NextResponse.json({
         success: false,
-        error: 'عذراً، لم يتم العثور على مجموعة مناسبة لتسجيل الحضور.',
+        error: `المجموعة (${student.group?.name || 'الخاصة بالطالب'}) مغلقة حالياً. يرجى فتح المجموعة أولاً من جدول مجموعات اليوم لتسجيل الحضور.`,
         student: {
           id: student.id,
           name: student.name,
