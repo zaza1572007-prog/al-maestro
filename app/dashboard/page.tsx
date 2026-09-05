@@ -240,22 +240,22 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-purple-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-purple-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-purple-500/10"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">إجمالي الطلاب</span>
-              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-400 border border-purple-500/25 transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">إجمالي الطلاب</span>
+              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/25 transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                 <GraduationCap className="w-5 h-5" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-black text-white mt-2 font-mono">
+            <p className="text-2xl md:text-3xl font-black text-zinc-950 dark:text-white mt-2 font-mono">
               {loading ? '...' : stats.totalStudents}
             </p>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
-              <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                 <TrendingUp className="w-3 h-3" /> مسجلين بالقواعد
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-300 transition-transform group-hover:-translate-x-1" />
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -266,20 +266,20 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-blue-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-blue-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-blue-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-blue-500/10"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">المجموعات التعليمية</span>
-              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">المجموعات التعليمية</span>
+              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-300">
                 <Users className="w-5 h-5" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-black text-white mt-2 font-mono">
+            <p className="text-2xl md:text-3xl font-black text-zinc-950 dark:text-white mt-2 font-mono">
               {loading ? '...' : stats.activeGroups}
             </p>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
-              <span className="text-slate-400 font-medium">مجموعات نشطة</span>
-              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-300 transition-transform group-hover:-translate-x-1" />
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+              <span className="text-zinc-500 dark:text-zinc-400 font-medium">مجموعات نشطة</span>
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -290,22 +290,22 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-emerald-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-emerald-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-emerald-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-emerald-500/10"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">نسبة حضور اليوم</span>
-              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">نسبة حضور اليوم</span>
+              <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
-            <p className="text-2xl md:text-3xl font-black text-emerald-400 mt-2 font-mono">
+            <p className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2 font-mono">
               {loading ? '...' : stats.todayAttendanceRate}
             </p>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
-              <span className="text-slate-400 font-medium">
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+              <span className="text-zinc-500 dark:text-zinc-400 font-medium">
                 {stats.todayAttendancesCount > 0 ? `${stats.todayAttendancesCount} طالب حاضر` : 'بانتظار تسجيل الحضور'}
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-300 transition-transform group-hover:-translate-x-1" />
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -316,22 +316,22 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-white/10 hover:border-amber-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-amber-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-amber-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-amber-500/10"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">طلبات الحجز المعلقة</span>
-              <div className={`p-2.5 rounded-2xl border transform group-hover:scale-110 transition-transform duration-300 ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">طلبات الحجز المعلقة</span>
+              <div className={`p-2.5 rounded-2xl border transform group-hover:scale-110 transition-transform duration-300 ${stats.pendingRegistrations > 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse' : 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'}`}>
                 <AlertTriangle className="w-5 h-5" />
               </div>
             </div>
-            <p className={`text-2xl md:text-3xl font-black mt-2 font-mono ${stats.pendingRegistrations > 0 ? 'text-amber-400' : 'text-white'}`}>
+            <p className={`text-2xl md:text-3xl font-black mt-2 font-mono ${stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-950 dark:text-white'}`}>
               {loading ? '...' : stats.pendingRegistrations}
             </p>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5 text-[11px]">
-              <span className={stats.pendingRegistrations > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+              <span className={stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-zinc-500 dark:text-zinc-400'}>
                 {stats.pendingRegistrations > 0 ? 'مطلوب المراجعة والقبول' : 'لا توجد طلبات معلقة'}
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-300 transition-transform group-hover:-translate-x-1" />
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -346,30 +346,30 @@ export default function DashboardPage() {
         {/* Left Column (8 cols): Today's Schedule + Analytics Chart */}
         <div className="lg:col-span-8 space-y-6">
           {/* Today's Scheduled Sessions Center */}
-          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-white/10 shadow-2xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/10 gap-3">
+          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-white/10 gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-500/25">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/25">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white">جدول ومجموعات الدروس</h2>
-                  <p className="text-[11px] text-slate-400">متابعة الحصص والمجموعات وإدارة الحضور المباشر</p>
+                  <h2 className="text-base font-bold text-zinc-950 dark:text-white">جدول ومجموعات الدروس</h2>
+                  <p className="text-[11px] text-zinc-500 dark:text-slate-400">متابعة الحصص والمجموعات وإدارة الحضور المباشر</p>
                 </div>
               </div>
 
               {/* Tab Switcher */}
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-2xl border border-white/10 self-start sm:self-auto">
+              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-slate-950 p-1 rounded-2xl border border-zinc-200 dark:border-white/10 self-start sm:self-auto">
                 <button
                   onClick={() => setActiveGroupTab('TODAY')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                     activeGroupTab === 'TODAY'
                       ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white'
                   }`}
                 >
                   <span>مجموعات اليوم</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-slate-900 text-zinc-800 dark:text-slate-200 text-[10px] font-mono">
                     {todayGroups.length}
                   </span>
                 </button>
@@ -378,11 +378,11 @@ export default function DashboardPage() {
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                     activeGroupTab === 'ALL'
                       ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-zinc-600 dark:text-slate-400 hover:text-zinc-950 dark:hover:text-white'
                   }`}
                 >
                   <span>جميع المجموعات</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-slate-900 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-slate-900 text-zinc-800 dark:text-slate-200 text-[10px] font-mono">
                     {allGroupsList.length || stats.activeGroups}
                   </span>
                 </button>
@@ -432,13 +432,13 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={grp.id}
-                        className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between"
+                        className="bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between shadow-sm"
                       >
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <h3 className="font-bold text-white text-sm leading-snug">{grp.name}</h3>
-                              <p className="text-[11px] text-slate-400 mt-0.5">
+                              <h3 className="font-bold text-zinc-950 dark:text-white text-sm leading-snug">{grp.name}</h3>
+                              <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-0.5">
                                 {grp.stageName || 'مجموعة دراسية'}
                               </p>
                             </div>
@@ -456,21 +456,21 @@ export default function DashboardPage() {
                           </div>
 
                           <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] text-slate-400">
+                            <div className="flex justify-between text-[11px] text-zinc-500 dark:text-slate-400">
                               <span>
                                 الطلاب:{' '}
-                                <b className="text-white font-mono">
+                                <b className="text-zinc-950 dark:text-white font-mono">
                                   {activeGroupTab === 'TODAY' ? `${grp.presentCount} / ` : ''}
                                   {grp.studentsCount}
                                 </b>{' '}
                                 طالب
                               </span>
                               {activeGroupTab === 'TODAY' && (
-                                <span className="font-mono text-emerald-400 font-bold">{pct}%</span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{pct}%</span>
                               )}
                             </div>
                             {activeGroupTab === 'TODAY' && (
-                              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                              <div className="w-full bg-zinc-200 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                                   style={{ width: `${pct}%` }}
@@ -480,15 +480,15 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
-                          <span className="text-[10px] text-slate-500 truncate max-w-[130px]">
+                        <div className="pt-2 border-t border-zinc-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-zinc-500 dark:text-slate-400 truncate max-w-[130px]">
                             {grp.timeSlot ||
                               (grp.scheduleDays && grp.scheduleDays.length > 0
                                 ? grp.scheduleDays.join(' · ')
                                 : 'مواعيد منتظمة')}
                           </span>
                           <Link href={`/attendance?groupId=${grp.id}`}>
-                            <button className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
+                            <button className="px-3 py-1 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer">
                               تسجيل الحضور ←
                             </button>
                           </Link>

@@ -219,17 +219,18 @@ export default function TeacherOverlay() {
     };
   }
 
-  // Smooth feathering mask based on placement mode
+  // Smart Hero Studio downward fade mask: Focused smoothly behind the Hero Header with seamless vertical fade
   let maskImageStyle = '';
   if (isFullscreen) {
-    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 50%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.2) 90%, transparent 100%)';
+    maskImageStyle = 'linear-gradient(to bottom, black 35%, rgba(0,0,0,0.85) 60%, transparent 90%)';
   } else if (isMobile) {
-    // Mobile mask: spans entire screen gracefully so face/head at top is fully visible behind hero section
-    maskImageStyle = 'radial-gradient(ellipse 100% 95% at 50% 45%, black 45%, rgba(0,0,0,0.85) 72%, rgba(0,0,0,0.2) 95%, transparent 100%)';
+    // Mobile mask: crisp at top hero area with smooth linear fade toward bottom
+    maskImageStyle = 'linear-gradient(to bottom, black 30%, rgba(0,0,0,0.85) 55%, transparent 85%)';
   } else if (isCenter) {
-    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 50% 60%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.3) 85%, transparent 100%)';
+    maskImageStyle = 'linear-gradient(to bottom, black 30%, rgba(0,0,0,0.85) 55%, transparent 85%)';
   } else {
-    maskImageStyle = 'radial-gradient(ellipse 95% 90% at 25% 65%, black 35%, rgba(0,0,0,0.85) 65%, rgba(0,0,0,0.3) 85%, transparent 100%)';
+    // Desktop side placement: smooth downward & side fade
+    maskImageStyle = 'linear-gradient(to bottom, black 35%, rgba(0,0,0,0.8) 60%, transparent 85%)';
   }
 
   const scale = currentConfig.scale ?? 1.0;
