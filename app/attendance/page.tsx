@@ -252,12 +252,14 @@ export default function AttendancePage() {
 
       // Handle Enter (which standard scanners send at the end of output)
       if (e.key === 'Enter') {
-        if (buffer.length >= 3) {
+        const rawCode = buffer.trim() || (inputRef.current ? inputRef.current.value.trim() : code.trim());
+        if (rawCode.length >= 2) {
           e.preventDefault();
           e.stopPropagation();
-          const scannedCode = buffer.trim();
           buffer = '';
-          handleScanRef.current(undefined, { targetCode: scannedCode });
+          setCode('');
+          if (inputRef.current) inputRef.current.value = '';
+          handleScanRef.current(undefined, { targetCode: rawCode });
         }
         return;
       }
@@ -482,8 +484,13 @@ export default function AttendancePage() {
 
   const handleScan = async (e?: React.FormEvent, bypassFlags?: { forceDuplicate?: boolean; forceDifferentGroup?: boolean; targetCode?: string; selectedMonth?: number; selectedYear?: number; skipPayment?: boolean }) => {
     if (e) e.preventDefault();
-    const scanCode = bypassFlags?.targetCode || code;
-    if (!scanCode.trim()) return;
+    const scanCode = (bypassFlags?.targetCode || code || (inputRef.current ? inputRef.current.value : '')).trim();
+    if (!scanCode) return;
+
+    // Instantly clear input so subsequent scans never get glued to old text
+    setCode('');
+    if (inputRef.current) inputRef.current.value = '';
+
     setLoading(true);
     try {
       const res = await fetch('/api/attendance/scan', {
@@ -511,7 +518,6 @@ export default function AttendancePage() {
         await fetchHistory();
         await fetchTodayGroups();
         if (absenteesGroup) fetchAbsentees(absenteesGroup);
-        setCode('');
       } else if (data.warningType === 'UNPAID_PREVIOUS_MONTHS') {
         playBeepWarning();
         setUnpaidModalData({
@@ -885,7 +891,10 @@ export default function AttendancePage() {
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                onFocus={() => setIsFocused(true)}
+                onFocus={() => {
+                  setIsFocused(true);
+                  inputRef.current?.select();
+                }}
                 onBlur={() => {
                   setIsFocused(false);
                   setTimeout(() => setShowDropdown(false), 200);

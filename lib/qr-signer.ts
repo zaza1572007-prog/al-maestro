@@ -68,16 +68,25 @@ export function verifyStudentQR(qrData: string): { valid: boolean; studentId: st
 export function extractCodeCandidates(rawInput: string): string[] {
   if (!rawInput) return [];
   const candidates = new Set<string>();
-  const trimmed = rawInput.trim();
-  candidates.add(trimmed);
 
-  // 1. Arabic keyboard layout translation
+  // Clean non-printable / control characters (STX, ETX, CR, LF, Tabs, NULL, etc.)
+  const cleanInput = rawInput.replace(/[\x00-\x1F\x7F]/g, '').trim();
+  if (!cleanInput) return [];
+
+  candidates.add(cleanInput);
+  candidates.add(cleanInput.toUpperCase());
+  candidates.add(cleanInput.toLowerCase());
+
+  // 1. Arabic keyboard layout translation (handles both lower and upper equivalents)
   const arabicMap: Record<string, string> = {
     'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p',
     'ج': '[', 'د': ']', 'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k',
     'م': 'l', 'ك': ';', 'ط': "'", 'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'لا': 'b', 'ى': 'n', 'ة': 'm',
     'و': ',', 'ز': '.', 'ظ': '/', '؟': '?', '،': ',', '؛': ';', 'ـ': '_',
-    'أ': 's', 'إ': 'u', 'آ': 'n', 'لإ': 't', 'لأ': 'g', 'لآ': 'b'
+    'أ': 's', 'إ': 'u', 'آ': 'n', 'لإ': 't', 'لأ': 'g', 'لآ': 'b',
+    // Shifted Arabic keys
+    'َ': 'q', 'ً': 'w', 'ُ': 'e', 'ٌ': 'r', '‘': 'u', '÷': 'i', '×': 'o',
+    'ِ': 'a', 'ٍ': 's', ']': 'd', '[': 'f'
   };
 
   const translateArabic = (str: string): string => {
@@ -96,61 +105,95 @@ export function extractCodeCandidates(rawInput: string): string[] {
     return result;
   };
 
-  const translated = translateArabic(trimmed);
-  if (translated !== trimmed) {
+  const translated = translateArabic(cleanInput);
+  if (translated && translated !== cleanInput) {
     candidates.add(translated);
     candidates.add(translated.toUpperCase());
+    candidates.add(translated.toLowerCase());
   }
 
   // 2. Extract from URL patterns in both raw and translated strings
   const parseUrlToken = (str: string) => {
-    // Check query params ?token=... or &token=...
+    if (!str) return;
     const tokenMatch = str.match(/[?&]token=([^&#\s]+)/i);
     if (tokenMatch && tokenMatch[1]) {
       try {
         const decoded = decodeURIComponent(tokenMatch[1]);
         candidates.add(decoded);
-        candidates.add(tokenMatch[1]);
+        candidates.add(decoded.toUpperCase());
+        candidates.add(decoded.toLowerCase());
       } catch {
         candidates.add(tokenMatch[1]);
       }
     }
-    // Check URL paths like /qr-login/... or /students/...
     const pathMatch = str.match(/\/(?:qr-login|students|student|card)\/([^?&#\s]+)/i);
     if (pathMatch && pathMatch[1]) {
       try {
-        candidates.add(decodeURIComponent(pathMatch[1]));
+        const decoded = decodeURIComponent(pathMatch[1]);
+        candidates.add(decoded);
+        candidates.add(decoded.toUpperCase());
+        candidates.add(decoded.toLowerCase());
       } catch {
         candidates.add(pathMatch[1]);
       }
     }
   };
 
-  parseUrlToken(trimmed);
+  parseUrlToken(cleanInput);
   parseUrlToken(translated);
 
-  // 3. For every candidate gathered so far, expand prefixes and suffixes
-  const baseCandidates = Array.from(candidates);
-  for (const item of baseCandidates) {
-    if (!item) continue;
-    
-    // If it starts with QR-
-    if (item.toUpperCase().startsWith('QR-')) {
-      candidates.add(item.substring(3));
-    } else {
-      candidates.add(`QR-${item}`);
+  // 3. Regex match all codes like STU-XXXX, QR-STU-XXXX, QR-XXXX from anywhere in the string
+  const allTexts = Array.from(candidates);
+  for (const text of allTexts) {
+    // Match patterns like QR-STU-1445 or STU-1445
+    const fullMatches = text.match(/(?:QR-)?(?:STU-)?\d{2,8}/gi);
+    if (fullMatches) {
+      for (const m of fullMatches) {
+        candidates.add(m);
+        candidates.add(m.toUpperCase());
+        candidates.add(m.toLowerCase());
+      }
     }
 
-    // If it has digits
-    const digitMatches = item.match(/\d+/g);
-    if (digitMatches) {
-      const lastDigits = digitMatches[digitMatches.length - 1];
-      candidates.add(`STU-${lastDigits}`);
-      candidates.add(`QR-STU-${lastDigits}`);
-      candidates.add(lastDigits);
+    // Match all isolated or embedded numbers (e.g. 1445)
+    const digits = text.match(/\d{2,8}/g);
+    if (digits) {
+      for (const d of digits) {
+        candidates.add(d);
+        candidates.add(`STU-${d}`);
+        candidates.add(`stu-${d}`);
+        candidates.add(`QR-STU-${d}`);
+        candidates.add(`qr-stu-${d}`);
+        candidates.add(`QR-${d}`);
+        candidates.add(`qr-${d}`);
+      }
     }
   }
 
-  return Array.from(candidates).filter(Boolean);
+  // 4. For every candidate gathered so far, expand prefixes and cases
+  const expanded = new Set<string>();
+  for (const item of candidates) {
+    if (!item) continue;
+    const itemTrimmed = item.trim();
+    if (!itemTrimmed) continue;
+
+    expanded.add(itemTrimmed);
+    expanded.add(itemTrimmed.toUpperCase());
+    expanded.add(itemTrimmed.toLowerCase());
+
+    const upper = itemTrimmed.toUpperCase();
+    if (upper.startsWith('QR-')) {
+      const withoutQR = itemTrimmed.substring(3);
+      expanded.add(withoutQR);
+      expanded.add(withoutQR.toUpperCase());
+      expanded.add(withoutQR.toLowerCase());
+    } else {
+      expanded.add(`QR-${itemTrimmed}`);
+      expanded.add(`QR-${upper}`);
+      expanded.add(`qr-${itemTrimmed.toLowerCase()}`);
+    }
+  }
+
+  return Array.from(expanded).filter(Boolean);
 }
 
