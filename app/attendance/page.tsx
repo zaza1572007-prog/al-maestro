@@ -7,37 +7,17 @@ import { get, set } from 'idb-keyval';
 import { generateDirectWhatsAppLink } from '@/lib/whatsapp-direct';
 import CameraQrScanner from '@/components/CameraQrScanner';
 import { extractCodeCandidates, extractNumericDigits } from '@/lib/qr-signer';
+import { playSuccessChime, playWarningTone } from '@/lib/sound-fx';
+import { triggerHaptic } from '@/lib/haptics';
 
 function playBeepSuccess() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 high beep
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-  } catch {}
+  playSuccessChime();
+  triggerHaptic('success');
 }
 
 function playBeepWarning() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(320, ctx.currentTime);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.3);
-  } catch {}
+  playWarningTone();
+  triggerHaptic('warning');
 }
 
 interface AttendanceRecord {

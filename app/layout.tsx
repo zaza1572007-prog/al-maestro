@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
@@ -12,6 +12,15 @@ import CommandMenu from "@/components/CommandMenu";
 import OfflineBanner from "@/components/OfflineBanner";
 import PwaStatusManager from "@/components/PwaStatusManager";
 import OfflineSyncWidget from "@/components/OfflineSyncWidget";
+import FloatingBottomNav from "@/components/FloatingBottomNav";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#0f172a",
+};
 
 export const metadata: Metadata = {
   title: "منصة المايسترو - الأستاذ أحمد راضي كحلة",
@@ -56,11 +65,13 @@ export default function RootLayout({
             <CommandPalette />
             <div className="flex-1 flex flex-col min-w-0 min-h-screen">
               <Navbar />
-              <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+              <main className="flex-1 p-4 sm:p-6 pb-24 lg:pb-6 overflow-y-auto">
                 <PageTransition>
                   {children}
                 </PageTransition>
               </main>
+              {/* Floating Mobile Bottom Navigation Bar */}
+              <FloatingBottomNav />
             </div>
           </SidebarProvider>
         </ToastProvider>
