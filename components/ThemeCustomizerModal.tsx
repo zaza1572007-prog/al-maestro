@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Moon, Sun, Sparkles, Check, X, Palette } from 'lucide-react';
 import {
@@ -45,6 +46,11 @@ const ACCENT_OPTIONS: { id: AccentColor; name: string; darkHex: string; lightHex
 export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomizerModalProps) {
   const [mode, setMode] = useState<ThemeMode>('dark');
   const [accent, setAccent] = useState<AccentColor>('purple');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,27 +73,27 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
     triggerHaptic('medium');
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 overflow-y-auto select-none">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 select-none">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/75 backdrop-blur-md"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md"
         />
 
         {/* Modal Card */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl glass-panel p-5 sm:p-6 shadow-2xl border border-white/15 bg-slate-950/95 text-white z-10 space-y-5 my-auto"
+          className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl glass-panel p-5 sm:p-6 shadow-2xl border border-white/15 bg-slate-950/95 text-white z-10 space-y-5"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
@@ -217,7 +223,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
           <div className="pt-2">
             <button
               onClick={onClose}
-              className="w-full py-3 rounded-2xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition shadow-lg shadow-purple-600/20"
+              className="w-full py-3 rounded-2xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition shadow-lg shadow-purple-600/20 cursor-pointer"
             >
               تم الحفظ والتطبيق بنجاح ✨
             </button>
@@ -226,4 +232,6 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
       </div>
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }
