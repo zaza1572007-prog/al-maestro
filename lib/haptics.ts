@@ -58,3 +58,11 @@ export function isHapticsMuted(): boolean {
     return false;
   }
 }
+
+export const haptics = {
+  trigger: triggerHaptic,
+  setMuted: setHapticsMuted,
+  isMuted: isHapticsMuted,
+};
+
+export default haptics;

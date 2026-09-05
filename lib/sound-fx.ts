@@ -191,3 +191,14 @@ export function playWarningTone() {
     });
   } catch {}
 }
+
+export const soundFX = {
+  playSuccessChime,
+  playWarningTone,
+  playAchievementFanfare,
+  playPopClick,
+  isSoundMuted,
+  setSoundMuted,
+};
+
+export default soundFX;
