@@ -187,7 +187,7 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
 
   return (
     <div
-      className={`glass-panel border border-zinc-200/80 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden ${className}`}
+      className={`bg-white dark:bg-zinc-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-sm dark:shadow-2xl relative overflow-hidden ${className}`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -195,7 +195,7 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
             <Flame className="w-5 h-5 text-amber-500 dark:text-amber-400 animate-pulse" />
             <span>خريطة تفاعل الحضور (Heatmap)</span>
           </h2>
-          <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-zinc-600 dark:text-slate-400 mt-1">
             مؤشرات الحضور والغياب اليومية وكثافة التفاعل عبر الأسابيع
           </p>
         </div>
@@ -230,27 +230,27 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
 
       {/* KPI Summary Pills with Tabular Numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white/60 dark:bg-slate-900/60 border border-zinc-200/80 dark:border-slate-800/80 p-3 rounded-2xl shadow-sm">
-          <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">أيام النشاط</p>
+        <div className="bg-white dark:bg-slate-900/60 border border-zinc-200/90 dark:border-slate-800/80 p-3 rounded-2xl shadow-sm">
+          <p className="text-[10px] text-zinc-600 dark:text-slate-400 font-semibold mb-0.5">أيام النشاط</p>
           <p className="text-lg font-extrabold text-zinc-950 dark:text-white tabular-nums font-mono">
             {loading ? '...' : `${Object.keys(dataMap).length} يوم`}
           </p>
         </div>
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl">
-          <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">متوسط نسبة الحضور</p>
-          <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums font-mono">
+        <div className="bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200/90 dark:border-emerald-500/20 p-3 rounded-2xl shadow-sm">
+          <p className="text-[10px] text-zinc-600 dark:text-slate-400 font-semibold mb-0.5">متوسط نسبة الحضور</p>
+          <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums font-mono">
             {loading ? '...' : `${metrics.avgRate}%`}
           </p>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-2xl">
-          <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">إجمالي الحضور</p>
-          <p className="text-lg font-extrabold text-blue-600 dark:text-blue-400 tabular-nums font-mono">
+        <div className="bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200/90 dark:border-blue-500/20 p-3 rounded-2xl shadow-sm">
+          <p className="text-[10px] text-zinc-600 dark:text-slate-400 font-semibold mb-0.5">إجمالي الحضور</p>
+          <p className="text-lg font-extrabold text-blue-700 dark:text-blue-400 tabular-nums font-mono">
             {loading ? '...' : `${metrics.totalPresent} طالب`}
           </p>
         </div>
-        <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-2xl">
-          <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-semibold mb-0.5">عدد الجلسات المنفذة</p>
-          <p className="text-lg font-extrabold text-purple-600 dark:text-purple-400 tabular-nums font-mono">
+        <div className="bg-purple-50/80 dark:bg-purple-950/20 border border-purple-200/90 dark:border-purple-500/20 p-3 rounded-2xl shadow-sm">
+          <p className="text-[10px] text-zinc-600 dark:text-slate-400 font-semibold mb-0.5">عدد الجلسات المنفذة</p>
+          <p className="text-lg font-extrabold text-purple-700 dark:text-purple-400 tabular-nums font-mono">
             {loading ? '...' : `${metrics.totalSessions} جلسة`}
           </p>
         </div>

@@ -354,95 +354,98 @@ export default function DashboardPage() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-3xl p-5 md:p-6 glass-panel border border-white/15 shadow-2xl overflow-hidden bg-gradient-to-r from-purple-950/30 via-indigo-950/20 to-slate-950/40 backdrop-blur-xl"
+        className="relative rounded-3xl p-5 md:p-6 glass-panel border border-zinc-200/90 dark:border-white/15 shadow-2xl overflow-hidden bg-gradient-to-r from-purple-100/90 via-indigo-50/80 to-slate-100/90 dark:from-purple-950/30 dark:via-indigo-950/20 dark:to-slate-950/40 backdrop-blur-xl"
       >
         {/* Background Subtle Spotlights */}
         <div className="absolute -top-20 -left-20 w-56 h-56 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            {/* Greeting & Live Operational Info */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
-                  لوحة المتابعة الذكية
-                </span>
-              </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight gradient-heading">
-                أهلاً بك، أستاذ أحمد راضي كحلة 👋
-              </h1>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          {/* Greeting & Live Operational Info */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-500 dark:text-amber-400 animate-spin" />
+                لوحة المتابعة الذكية
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-zinc-950 dark:text-white tracking-tight">
+              أهلاً بك، أستاذ أحمد راضي كحلة 👋
+            </h1>
 
-              {/* Live Operational Schedule Info (Replacing duplicate numbers) */}
-              <div className="text-zinc-300 text-xs md:text-sm flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1">
-                  المجموعات المجدولة اليوم:{' '}
-                  <b className="text-white font-mono tabular-nums bg-white/10 px-2 py-0.5 rounded-lg border border-white/15">
-                    {todayGroups.length} مجموعات
-                  </b>
-                </span>
-                <span className="text-zinc-500">•</span>
-                <span className="flex items-center gap-1">
-                  {todayGroups.length > 0 ? (
-                    <>
-                      <span>الحصة القادمة:</span>{' '}
-                      <b className="text-purple-300 font-mono tabular-nums bg-purple-500/20 px-2 py-0.5 rounded-lg border border-purple-500/30">
+            {/* Live Operational Schedule Info with RTL Isolation */}
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-zinc-700 dark:text-zinc-300 text-xs font-medium">
+              <span className="flex items-center gap-1">
+                المجموعات المجدولة اليوم:{' '}
+                <b className="text-zinc-900 dark:text-white font-mono tabular-nums bg-white/80 dark:bg-white/10 px-2.5 py-0.5 rounded-lg border border-zinc-300 dark:border-white/15 font-bold shadow-sm">
+                  {todayGroups.length} مجموعات
+                </b>
+              </span>
+              <span className="text-zinc-400 dark:text-zinc-600">•</span>
+              <div className="inline-flex items-center gap-1.5">
+                {todayGroups.length > 0 ? (
+                  <>
+                    <span>الحصة القادمة:</span>{' '}
+                    <span className="bg-primary/10 border border-primary/30 text-primary dark:text-primary-foreground text-xs font-mono font-bold px-3 py-1 rounded-full inline-flex items-center gap-1 shadow-sm">
+                      <Clock className="w-3 h-3" />
+                      <span dir="ltr">
                         {todayGroups.find((g) => g.sessionStatus !== 'COMPLETED')?.timeSlot ||
                           todayGroups[0]?.timeSlot ||
-                          '03:00 م'}
-                      </b>
-                    </>
-                  ) : (
-                    <span className="text-emerald-400 font-semibold">
-                      لا توجد حصص مجدولة لباقي اليوم ✨
+                          '18:00 - 20:00'}
+                      </span>
                     </span>
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Compact Clock & Quick Action Buttons */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start lg:self-center">
-              {/* Sleek Clock Pill with Tabular Nums */}
-              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/70 dark:bg-slate-900/80 border border-zinc-200/80 dark:border-white/10 shadow-lg">
-                <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse flex-shrink-0" />
-                <div className="text-right leading-tight">
-                  <p className="text-sm font-black text-zinc-950 dark:text-white font-mono tabular-nums tracking-wider" dir="ltr">
-                    {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                  </p>
-                  <p className="text-[10px] text-zinc-500 dark:text-slate-400">
-                    {currentTime.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quick Action Buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Link href="/attendance">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer"
-                  >
-                    <QrCode className="w-4 h-4" />
-                    <span>ماسح الـ QR</span>
-                  </motion.button>
-                </Link>
-
-                <Link href="/students">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600/20 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-500/30 rounded-2xl text-xs font-bold transition cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>إضافة طالب</span>
-                  </motion.button>
-                </Link>
+                  </>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    لا توجد حصص مجدولة لباقي اليوم ✨
+                  </span>
+                )}
               </div>
             </div>
           </div>
-        </motion.div>
+
+          {/* Compact Clock & Quick Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-start lg:self-center">
+            {/* Sleek Clock Pill with Tabular Nums */}
+            <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-zinc-200/90 dark:border-white/10 shadow-sm">
+              <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400 animate-pulse flex-shrink-0" />
+              <div className="text-right leading-tight">
+                <p className="text-sm font-black text-zinc-950 dark:text-white font-mono tabular-nums tracking-wider" dir="ltr">
+                  {currentTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                </p>
+                <p className="text-[10px] text-zinc-500 dark:text-slate-400 font-medium">
+                  {currentTime.toLocaleDateString('ar-EG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/attendance">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-emerald-600/20 cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>ماسح الـ QR</span>
+                </motion.button>
+              </Link>
+
+              <Link href="/students">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-500/30 rounded-2xl text-xs font-bold transition cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>إضافة طالب</span>
+                </motion.button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       {/* 📊 Clean Interactive Metric KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -452,7 +455,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">إجمالي الطلاب</span>
@@ -467,7 +470,7 @@ export default function DashboardPage() {
                 {stats.totalStudents}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
               <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                 <TrendingUp className="w-3 h-3" /> مسجلين بالقواعد
               </span>
@@ -481,7 +484,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">المجموعات التعليمية</span>
@@ -496,8 +499,8 @@ export default function DashboardPage() {
                 {stats.activeGroups}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
-              <span className="text-zinc-500 dark:text-zinc-400 font-medium">مجموعات نشطة</span>
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold">مجموعات نشطة</span>
             </div>
           </motion.div>
         </Link>
@@ -508,7 +511,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">نسبة حضور اليوم</span>
@@ -523,8 +526,8 @@ export default function DashboardPage() {
                 {stats.todayAttendanceRate}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
-              <span className="text-zinc-500 dark:text-zinc-400 font-medium">
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+              <span className="text-zinc-600 dark:text-zinc-400 font-semibold">
                 {stats.todayAttendancesCount > 0 ? `${stats.todayAttendancesCount} طالب حاضر` : 'بانتظار تسجيل الحضور'}
               </span>
             </div>
@@ -537,7 +540,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
+            className="bg-white dark:bg-zinc-900/70 p-4 md:p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">طلبات الحجز المعلقة</span>
@@ -552,8 +555,8 @@ export default function DashboardPage() {
                 {stats.pendingRegistrations}
               </p>
             )}
-            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
-              <span className={stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-zinc-500 dark:text-zinc-400'}>
+            <div className="mt-2 pt-2 border-t border-zinc-200/80 dark:border-white/5 text-[11px]">
+              <span className={stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-zinc-600 dark:text-zinc-400 font-semibold'}>
                 {stats.pendingRegistrations > 0 ? 'مطلوب المراجعة والقبول' : 'لا توجد طلبات معلقة'}
               </span>
             </div>
@@ -570,7 +573,7 @@ export default function DashboardPage() {
         {/* Left Column (8 cols): Today's Schedule + Analytics Chart */}
         <div className="lg:col-span-8 space-y-6">
           {/* Today's Scheduled Sessions Center */}
-          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-zinc-900/70 p-5 md:p-6 rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-sm dark:shadow-2xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-white/10 gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/25">
@@ -578,7 +581,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-zinc-950 dark:text-white">جدول ومجموعات الدروس</h2>
-                  <p className="text-[11px] text-zinc-500 dark:text-slate-400">متابعة الحصص والمجموعات وإدارة الحضور المباشر</p>
+                  <p className="text-[11px] text-zinc-600 dark:text-slate-400">متابعة الحصص والمجموعات وإدارة الحضور المباشر</p>
                 </div>
               </div>
 
@@ -606,7 +609,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   <span>جميع المجموعات</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-slate-900 text-zinc-800 dark:text-slate-200 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-zinc-200 dark:bg-slate-800 text-zinc-800 dark:text-slate-200 text-[10px] font-mono font-bold">
                     {allGroupsList.length || stats.activeGroups}
                   </span>
                 </button>
@@ -671,24 +674,24 @@ export default function DashboardPage() {
                         key={grp.id}
                         className={`rounded-2xl p-4 space-y-3 transition-all duration-300 flex flex-col justify-between relative overflow-hidden ${
                           isLive
-                            ? 'border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_25px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
+                            ? 'border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/10 shadow-[0_0_25px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30 text-zinc-900 dark:text-white'
                             : isCompleted
-                            ? 'opacity-60 hover:opacity-100 transition-opacity bg-white/40 dark:bg-slate-950/40 border border-zinc-200/60 dark:border-slate-800/60 shadow-sm'
-                            : 'bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-slate-800/80 hover:border-amber-500/40 shadow-sm'
+                            ? 'opacity-60 hover:opacity-100 transition-opacity bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 shadow-sm text-zinc-800 dark:text-zinc-200'
+                            : 'bg-white dark:bg-zinc-900/70 border border-zinc-200/90 dark:border-white/10 hover:border-amber-500/40 shadow-sm text-zinc-900 dark:text-white'
                         }`}
                       >
                         <div className="space-y-2.5">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <h3 className="font-bold text-zinc-950 dark:text-white text-sm leading-snug">{grp.name}</h3>
-                              <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-0.5">
+                              <p className="text-[11px] text-zinc-600 dark:text-slate-400 mt-0.5">
                                 {grp.stageName || 'مجموعة دراسية'}
                               </p>
                             </div>
                             
                             {/* Dynamic Status Badge */}
                             {isLive ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 shadow-sm">
                                 <span className="relative flex h-2 w-2">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -696,23 +699,23 @@ export default function DashboardPage() {
                                 جارية الآن
                               </span>
                             ) : isUpcoming ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                 {timing.label}
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-500 dark:text-zinc-400">
-                                <CheckCircle2 className="w-3 h-3 text-zinc-400" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-400">
+                                <CheckCircle2 className="w-3 h-3 text-zinc-500" />
                                 انتهت الجلسة
                               </span>
                             )}
                           </div>
 
                           <div className="space-y-1">
-                            <div className="flex justify-between text-[11px] text-zinc-500 dark:text-slate-400">
+                            <div className="flex justify-between text-[11px] text-zinc-600 dark:text-slate-300">
                               <span>
                                 عدد الطلاب:{' '}
-                                <b className="text-zinc-800 dark:text-zinc-200 font-bold text-xs font-mono tabular-nums">
+                                <b className="text-zinc-900 dark:text-white font-bold text-xs font-mono tabular-nums">
                                   {activeGroupTab === 'TODAY' ? `${grp.presentCount} / ` : ''}
                                   {grp.studentsCount}
                                 </b>{' '}
@@ -723,7 +726,7 @@ export default function DashboardPage() {
                               )}
                             </div>
                             {activeGroupTab === 'TODAY' && (
-                              <div className="w-full bg-zinc-200 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                              <div className="w-full bg-zinc-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all duration-500 ${
                                     isLive ? 'bg-emerald-500' : isCompleted ? 'bg-zinc-400 dark:bg-zinc-600' : 'bg-amber-500'
@@ -735,8 +738,8 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <div className="pt-2 border-t border-zinc-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
-                          <span className="text-[10px] text-zinc-500 dark:text-slate-400 truncate max-w-[130px] font-mono tabular-nums">
+                        <div className="pt-2 border-t border-zinc-200/80 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-zinc-600 dark:text-slate-400 truncate max-w-[130px] font-mono tabular-nums" dir="ltr">
                             {grp.timeSlot ||
                               (grp.scheduleDays && grp.scheduleDays.length > 0
                                 ? grp.scheduleDays.join(' · ')
@@ -751,13 +754,13 @@ export default function DashboardPage() {
                             </Link>
                           ) : isCompleted ? (
                             <Link href={`/attendance?groupId=${grp.id}`}>
-                              <button className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-medium transition cursor-pointer shadow-sm">
+                              <button className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-medium transition cursor-pointer shadow-sm">
                                 عرض تقرير الحصة
                               </button>
                             </Link>
                           ) : (
                             <Link href={`/attendance?groupId=${grp.id}`}>
-                              <button className="px-3.5 py-1.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm">
+                              <button className="px-3.5 py-1.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-500/20 rounded-xl text-xs font-bold transition cursor-pointer shadow-sm">
                                 تسجيل الحضور ←
                               </button>
                             </Link>
@@ -772,7 +775,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Weekly Attendance Performance Chart */}
-          <div className="glass-panel p-5 md:p-6 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-zinc-900/70 p-5 md:p-6 rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-sm dark:shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-white/10">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/25">
@@ -780,7 +783,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-zinc-950 dark:text-white">معدل الحضور والتفاعل الأسبوعي</h2>
-                  <p className="text-[11px] text-zinc-500 dark:text-slate-400">تحليل بياني أسبوعي للحضور الفعلي للطلاب</p>
+                  <p className="text-[11px] text-zinc-600 dark:text-slate-400">تحليل بياني أسبوعي للحضور الفعلي للطلاب</p>
                 </div>
               </div>
 
@@ -798,27 +801,27 @@ export default function DashboardPage() {
                       <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(150,150,150,0.12)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(150,150,150,0.18)" />
                   <XAxis
                     dataKey="name"
-                    stroke="#a1a1aa"
+                    stroke="#71717a"
                     fontSize={11}
                     tickLine={false}
-                    tick={{ fill: '#a1a1aa', fontWeight: 500 }}
+                    tick={{ fill: '#71717a', fontWeight: 500 }}
                   />
                   <YAxis
-                    stroke="#a1a1aa"
+                    stroke="#71717a"
                     fontSize={11}
                     tickLine={false}
                     domain={[0, 100]}
-                    tick={{ fill: '#a1a1aa', fontWeight: 500 }}
+                    tick={{ fill: '#71717a', fontWeight: 500 }}
                     unit="%"
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="p-2.5 rounded-2xl glass-panel border border-zinc-200 dark:border-white/15 bg-white/95 dark:bg-zinc-950/95 shadow-xl text-xs space-y-1">
+                          <div className="p-2.5 rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/15 shadow-xl text-xs space-y-1">
                             <p className="font-bold text-zinc-950 dark:text-white">{label}</p>
                             <p className="text-purple-600 dark:text-purple-300 font-bold tabular-nums font-mono">
                               نسبة الحضور: {payload[0].value}%
@@ -848,7 +851,7 @@ export default function DashboardPage() {
         {/* Right Column (4 cols): Shortcuts Hub + Live Activity Feed */}
         <div className="lg:col-span-4 space-y-6">
           {/* ⚡ Quick Navigation Shortcuts Hub */}
-          <div className="glass-panel p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-3.5">
+          <div className="bg-white dark:bg-zinc-900/70 p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-sm dark:shadow-2xl space-y-3.5">
             <div className="flex items-center gap-2 pb-2.5 border-b border-zinc-200/80 dark:border-white/10">
               <Zap className="w-4 h-4 text-amber-500 dark:text-amber-400" />
               <h2 className="text-sm font-bold text-zinc-950 dark:text-white">الوصول السريع والإجراءات</h2>
@@ -856,7 +859,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-2 gap-2.5">
               <Link href="/attendance" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <QrCode className="w-5 h-5" />
                   </div>
@@ -865,7 +868,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link href="/students" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-purple-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-purple-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <UserPlus className="w-5 h-5" />
                   </div>
@@ -874,7 +877,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link href="/exams" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-blue-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-blue-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
                     <Award className="w-5 h-5" />
                   </div>
@@ -883,7 +886,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link href="/subscriptions" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-amber-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-amber-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <CreditCard className="w-5 h-5" />
                   </div>
@@ -892,7 +895,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link href="/cards" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-teal-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-teal-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <Printer className="w-5 h-5" />
                   </div>
@@ -901,7 +904,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link href="/reports" className="block">
-                <div className="p-3 bg-white/60 dark:bg-slate-950/70 hover:bg-zinc-100 dark:hover:bg-slate-900 border border-zinc-200/80 dark:border-white/5 hover:border-pink-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
+                <div className="p-3 bg-zinc-50/80 hover:bg-zinc-100 dark:bg-slate-950/70 dark:hover:bg-slate-900 border border-zinc-200/90 dark:border-white/5 hover:border-pink-500/30 rounded-2xl transition-all group cursor-pointer text-center space-y-1.5 shadow-sm">
                   <div className="w-9 h-9 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center mx-auto transform group-hover:scale-110 group-hover:-translate-y-0.5 transition-all duration-300">
                     <BarChart2 className="w-5 h-5" />
                   </div>
@@ -912,7 +915,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ⚡ Live Operations Activity Feed with Translated Arabic Actions & Relative Times */}
-          <div className="glass-panel p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-2xl space-y-3.5">
+          <div className="bg-white dark:bg-zinc-900/70 p-5 rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-sm dark:shadow-2xl space-y-3.5">
             <div className="flex items-center justify-between pb-2.5 border-b border-zinc-200/80 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -938,13 +941,13 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={act.id}
-                      className="p-2.5 rounded-2xl bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-white/5 flex items-center gap-3 hover:border-purple-500/30 transition-all shadow-sm"
+                      className="p-2.5 rounded-2xl bg-zinc-50/80 dark:bg-slate-950/70 border border-zinc-200/90 dark:border-white/5 flex items-center gap-3 hover:border-purple-500/30 transition-all shadow-sm"
                     >
                       <div className={`p-2 rounded-xl border ${badgeColor} shrink-0`}>
                         <IconComponent className="w-4 h-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-zinc-800 dark:text-slate-200 font-semibold truncate" title={displayText}>
+                        <p className="text-xs text-zinc-900 dark:text-slate-200 font-semibold truncate" title={displayText}>
                           {displayText}
                         </p>
                         <span className="text-[10px] text-zinc-500 dark:text-slate-400 block mt-0.5 font-mono tabular-nums">
