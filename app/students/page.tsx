@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from '@/components/ToastProvider';
-import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen } from 'lucide-react';
+import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen, QrCode } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import StatusIndicator from '@/components/StatusIndicator';
@@ -711,54 +712,74 @@ function StudentsContent() {
             </div>
 
             {/* Student Info */}
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-2 text-xs">
-              <p className="font-semibold text-purple-400 mb-2">👨‍🎓 معلومات حساب الطالب</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-slate-500">كود الحساب</p>
-                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.code}</p>
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-purple-400">👨‍🎓 معلومات حساب الطالب والـ QR</p>
+                <Link
+                  href={`/qr-print`}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1"
+                >
+                  🖨️ طباعة الكرت
+                </Link>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                <div className="bg-white p-2 rounded-xl flex-shrink-0 shadow">
+                  <QRCodeSVG
+                    value={credentialsStudent.qrCode || `QR-${credentialsStudent.code}` || credentialsStudent.code}
+                    size={76}
+                    level="M"
+                    includeMargin={false}
+                  />
                 </div>
-                <div>
-                  <p className="text-slate-500">رقم الهاتف</p>
-                  <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">الباركود</p>
-                  <p className="font-mono text-purple-400 font-bold">{credentialsStudent.qrCode}</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-slate-500">كلمة المرور</p>
-                    {credentialsStudent.passwordPlain && (
-                      <button
-                        type="button"
-                        onClick={() => setShowStudentPass(v => !v)}
-                        className="text-[10px] text-purple-400 hover:text-purple-300 transition"
-                      >
-                        {showStudentPass ? 'إخفاء' : 'إظهار'}
-                      </button>
-                    )}
+                <div className="grid grid-cols-2 gap-2 flex-1 w-full">
+                  <div>
+                    <p className="text-slate-500">كود الحساب</p>
+                    <p className="font-mono text-blue-400 font-bold">{credentialsStudent.code}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      {credentialsStudent.passwordPlain
-                        ? (showStudentPass ? credentialsStudent.passwordPlain : '••••••••')
-                        : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
-                    </p>
-                    {credentialsStudent.passwordPlain && (
-                      <button
-                        type="button"
-                        title="نسخ كلمة مرور الطالب"
-                        onClick={() => {
-                          navigator.clipboard.writeText(credentialsStudent.passwordPlain!);
-                          toast.success('تم نسخ كلمة مرور الطالب 📋');
-                        }}
-                        className="text-xs p-1 text-slate-400 hover:text-emerald-400 transition"
-                      >
-                        📋
-                      </button>
-                    )}
+                  <div>
+                    <p className="text-slate-500">رقم الهاتف</p>
+                    <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone || '—'}</p>
                   </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-500">الباركود / رمز الـ QR</p>
+                    <p className="font-mono text-purple-400 font-bold break-all">{credentialsStudent.qrCode || `QR-${credentialsStudent.code}`}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-500">كلمة المرور</p>
+                  {credentialsStudent.passwordPlain && (
+                    <button
+                      type="button"
+                      onClick={() => setShowStudentPass(v => !v)}
+                      className="text-[10px] text-purple-400 hover:text-purple-300 transition cursor-pointer"
+                    >
+                      {showStudentPass ? 'إخفاء' : 'إظهار'}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 flex-1">
+                    {credentialsStudent.passwordPlain
+                      ? (showStudentPass ? credentialsStudent.passwordPlain : '••••••••')
+                      : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
+                  </p>
+                  {credentialsStudent.passwordPlain && (
+                    <button
+                      type="button"
+                      title="نسخ كلمة مرور الطالب"
+                      onClick={() => {
+                        navigator.clipboard.writeText(credentialsStudent.passwordPlain!);
+                        toast.success('تم نسخ كلمة مرور الطالب 📋');
+                      }}
+                      className="text-xs p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 rounded-lg transition cursor-pointer"
+                    >
+                      📋
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

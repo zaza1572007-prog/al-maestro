@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signToken } from '@/lib/auth';
+import { verifyStudentQR, extractCodeCandidates } from '@/lib/qr-signer';
 
 export async function POST(req: Request) {
   try {
@@ -10,9 +11,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'رمز QR غير صالح' }, { status: 400 });
     }
 
-    // 1. Search in Student by qrCode
+    const qrVerification = verifyStudentQR(token);
+    const resolvedToken = qrVerification.valid ? qrVerification.studentId : token;
+    const candidates = extractCodeCandidates(resolvedToken || token);
+
+    // 1. Search in Student by qrCode, code, id, or phone
     const student = await prisma.student.findFirst({
-      where: { qrCode: token },
+      where: {
+        OR: [
+          { qrCode: { in: candidates } },
+          { code: { in: candidates } },
+          { id: { in: candidates } },
+          { phone: { in: candidates } },
+        ],
+      },
       include: { academicStage: true, group: true },
     });
 
@@ -43,9 +55,15 @@ export async function POST(req: Request) {
       return res;
     }
 
-    // 2. Search in Parent by qrCode
+    // 2. Search in Parent by qrCode, phone, or id
     const parent = await prisma.parent.findFirst({
-      where: { qrCode: token },
+      where: {
+        OR: [
+          { qrCode: { in: candidates } },
+          { phone: { in: candidates } },
+          { id: { in: candidates } },
+        ],
+      },
     });
 
     if (parent) {

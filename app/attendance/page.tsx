@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, QrCode, UserCheck, UserX, Clock, MessageSquare } from 'lucide-react';
+import { RefreshCw, QrCode, UserCheck, UserX, Clock, MessageSquare, Camera } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { get, set } from 'idb-keyval';
 import { generateDirectWhatsAppLink } from '@/lib/whatsapp-direct';
+import CameraQrScanner from '@/components/CameraQrScanner';
+import { extractCodeCandidates } from '@/lib/qr-signer';
 
 function playBeepSuccess() {
   try {
@@ -145,6 +147,7 @@ export default function AttendancePage() {
 
   // Scanner status: starts RED 🔴 only goes GREEN when barcode input is focused
   const [isFocused, setIsFocused] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
   const [whatsappTemplates, setWhatsappTemplates] = useState<any>(null);
@@ -241,7 +244,7 @@ export default function AttendancePage() {
       }
 
       // If key timing is too slow, reset buffer (means a human typed it)
-      if (currentTime - lastKeyTime > 50) {
+      if (currentTime - lastKeyTime > 150) {
         buffer = '';
       }
 
@@ -538,14 +541,15 @@ export default function AttendancePage() {
       console.warn('Network offline, performing offline scan fallback');
       try {
         const cachedStudents: any[] = (await get('almaestro_cached_students')) || [];
-        const cleanCode = scanCode.trim().toLowerCase();
+        const candidates = extractCodeCandidates(scanCode).map(c => c.toLowerCase());
 
         const student = cachedStudents.find(
           (s: any) =>
-            s.code?.toLowerCase() === cleanCode ||
-            s.qrCode?.toLowerCase() === cleanCode ||
-            s.name?.toLowerCase().includes(cleanCode) ||
-            s.id === cleanCode
+            candidates.includes(s.code?.toLowerCase()) ||
+            candidates.includes(s.qrCode?.toLowerCase()) ||
+            candidates.includes(s.id?.toLowerCase()) ||
+            candidates.includes(s.phone?.toLowerCase()) ||
+            s.name?.toLowerCase().includes(scanCode.trim().toLowerCase())
         );
 
         if (student) {
@@ -750,7 +754,18 @@ export default function AttendancePage() {
               <QrCode className="w-5 h-5 text-blue-400" />
               الماسح الضوئي (Barcode)
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Open Camera Scanner Button */}
+              <button
+                type="button"
+                onClick={() => setIsCameraOpen(true)}
+                className="text-[11px] px-3 py-1 rounded-full font-bold border border-blue-500/40 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                title="فتح كاميرا الموبايل / الكمبيوتر لمسح كود الـ QR"
+              >
+                <Camera className="w-3.5 h-3.5 text-blue-400" />
+                <span>مسح بالكاميرا 📷</span>
+              </button>
+
               {/* Hardware Scanner Status Badge */}
               <button
                 type="button"
@@ -905,13 +920,24 @@ export default function AttendancePage() {
                 </div>
               )}
             </div>
-            <button
-              type="submit"
-              disabled={loading || !code.trim()}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-lg shadow-blue-600/20"
-            >
-              {loading ? 'جارٍ التسجيل...' : 'تسجيل الحضور 📲'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading || !code.trim()}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl transition shadow-lg shadow-blue-600/20 cursor-pointer"
+              >
+                {loading ? 'جارٍ التسجيل...' : 'تسجيل الحضور 📲'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCameraOpen(true)}
+                className="px-4 py-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg"
+                title="فتح كاميرا الموبايل / الكمبيوتر لمسح الكروت"
+              >
+                <Camera className="w-4 h-4 text-purple-400" />
+                <span>الكاميرا 📷</span>
+              </button>
+            </div>
           </form>
 
           {/* Result */}
@@ -1791,6 +1817,17 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
+
+      {/* Camera QR & Barcode Scanner Modal */}
+      <CameraQrScanner
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onScan={(detectedCode) => {
+          handleScan(undefined, { targetCode: detectedCode });
+        }}
+        title="📱 ماسح كاميرا QR والحضور"
+        continuous={true}
+      />
 
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {

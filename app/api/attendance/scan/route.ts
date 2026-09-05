@@ -4,7 +4,7 @@ import { handleApiError } from '@/lib/error-handler';
 import { syncTodaySessionsState } from '@/lib/session-sync';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { verifyStaff } from '@/lib/auth';
-import { verifyStudentQR } from '@/lib/qr-signer';
+import { verifyStudentQR, extractCodeCandidates } from '@/lib/qr-signer';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { logAuditAction } from '@/lib/audit-logger';
 import { calculateStudentDueMonths, ARABIC_MONTH_NAMES, getCairoNow } from '@/lib/due-months';
@@ -114,50 +114,19 @@ export async function POST(req: Request) {
     // Maintain session states matching Cairo timezone
     await syncTodaySessionsState();
 
-    // Normalize code in case of Arabic keyboard layout translations
-    let searchCodes = [resolvedCode, studentCode];
-    
-    const arabicMap: Record<string, string> = {
-      'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p',
-      'ج': '[', 'د': ']', 'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k',
-      'م': 'l', 'ك': ';', 'ط': "'", 'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'لا': 'b', 'ى': 'n', 'ة': 'm',
-      'و': ',', 'ز': '.', 'ظ': '/',
-      'أ': 's', 'لإ': 't', 'إ': 'u', 'لأ': 'g', 'لآ': 'b', 'آ': 'n'
-    };
-    let translated = '';
-    for (let i = 0; i < studentCode.length; i++) {
-      const char = studentCode[i];
-      if (i < studentCode.length - 1 && arabicMap[char + studentCode[i+1]]) {
-        translated += arabicMap[char + studentCode[i+1]];
-        i++;
-      } else if (arabicMap[char]) {
-        translated += arabicMap[char];
-      } else {
-        translated += char;
-      }
-    }
-    if (translated !== studentCode) {
-      searchCodes.push(translated);
-      searchCodes.push(translated.toUpperCase());
-    }
-
-    // Extract digits as a fallback and check standard code formats
-    const digitMatch = studentCode.match(/\d+/);
-    if (digitMatch) {
-      const digits = digitMatch[0];
-      searchCodes.push(`STU-${digits}`);
-      searchCodes.push(`QR-STU-${digits}`);
-      searchCodes.push(digits);
-    }
-
-    searchCodes = Array.from(new Set(searchCodes.filter(Boolean)));
+    // Extract all candidate codes (handles URLs like /qr-login?token=..., Arabic keyboard translations, prefixes QR-, etc.)
+    const searchCodes = extractCodeCandidates(resolvedCode || studentCode);
 
     const student = await prisma.student.findFirst({
       where: {
         OR: [
           { code: { in: searchCodes } },
           { qrCode: { in: searchCodes } },
-          { name: studentCode }
+          { id: { in: searchCodes } },
+          { phone: { in: searchCodes } },
+          { name: studentCode },
+          { parent: { qrCode: { in: searchCodes } } },
+          { parent: { phone: { in: searchCodes } } },
         ],
       },
       include: {
