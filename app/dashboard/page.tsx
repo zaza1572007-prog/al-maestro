@@ -55,6 +55,127 @@ interface TodayGroup {
   absentCount: number;
   sessionStatus?: string;
   timeSlot?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+interface SessionTimingResult {
+  status: 'LIVE' | 'UPCOMING' | 'COMPLETED';
+  label: string;
+  startsInMinutes?: number;
+  timeRemainingText?: string;
+}
+
+function parseTimeToMinutes(timeStr?: string): number | null {
+  if (!timeStr) return null;
+  const cleaned = timeStr.trim();
+  const match12 = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm|ص|م)?$/i);
+  if (match12) {
+    let hours = parseInt(match12[1], 10);
+    const minutes = parseInt(match12[2], 10);
+    const period = match12[3]?.toUpperCase();
+    if (period === 'PM' || period === 'م') {
+      if (hours < 12) hours += 12;
+    } else if (period === 'AM' || period === 'ص') {
+      if (hours === 12) hours = 0;
+    }
+    return hours * 60 + minutes;
+  }
+
+  const match24 = cleaned.match(/^(\d{1,2}):(\d{2})/);
+  if (match24) {
+    const hours = parseInt(match24[1], 10);
+    const minutes = parseInt(match24[2], 10);
+    return hours * 60 + minutes;
+  }
+
+  return null;
+}
+
+function getSessionTimingStatus(
+  startTime?: string,
+  endTime?: string,
+  timeSlot?: string,
+  now = new Date(),
+  fallbackStatus?: string
+): SessionTimingResult {
+  let startMinutes = parseTimeToMinutes(startTime);
+  let endMinutes = parseTimeToMinutes(endTime);
+
+  // If start / end are not directly passed, try extracting from timeSlot (e.g. "14:00 - 16:00")
+  if (startMinutes === null && timeSlot && timeSlot.includes('-')) {
+    const parts = timeSlot.split('-').map(s => s.trim());
+    if (parts.length >= 2) {
+      startMinutes = parseTimeToMinutes(parts[0]);
+      endMinutes = parseTimeToMinutes(parts[1]);
+    }
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (startMinutes !== null) {
+    if (endMinutes === null) {
+      endMinutes = startMinutes + 90; // Default 1.5h session if end time omitted
+    }
+
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60;
+    }
+
+    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+      return {
+        status: 'LIVE',
+        label: 'جارية الآن',
+      };
+    }
+
+    if (currentMinutes < startMinutes) {
+      const diff = startMinutes - currentMinutes;
+      let timeRemainingText = '';
+      if (diff === 1) {
+        timeRemainingText = 'تبدأ بعد دقيقة';
+      } else if (diff === 2) {
+        timeRemainingText = 'تبدأ بعد دقيقتين';
+      } else if (diff > 2 && diff <= 10) {
+        timeRemainingText = `تبدأ بعد ${diff} دقائق`;
+      } else if (diff > 10 && diff < 60) {
+        timeRemainingText = `تبدأ بعد ${diff} دقيقة`;
+      } else if (diff === 60) {
+        timeRemainingText = 'تبدأ بعد ساعة';
+      } else if (diff > 60) {
+        const hours = Math.floor(diff / 60);
+        const mins = diff % 60;
+        if (mins === 0) {
+          timeRemainingText = hours === 2 ? 'تبدأ بعد ساعتين' : `تبدأ بعد ${hours} ساعات`;
+        } else {
+          timeRemainingText = `تبدأ بعد ${hours} س و ${mins} د`;
+        }
+      }
+
+      return {
+        status: 'UPCOMING',
+        label: timeRemainingText || 'لم تبدأ بعد',
+        startsInMinutes: diff,
+        timeRemainingText,
+      };
+    }
+
+    if (currentMinutes > endMinutes) {
+      return {
+        status: 'COMPLETED',
+        label: 'انتهت الجلسة',
+      };
+    }
+  }
+
+  if (fallbackStatus === 'OPEN') {
+    return { status: 'LIVE', label: 'جارية الآن' };
+  }
+  if (fallbackStatus === 'COMPLETED') {
+    return { status: 'COMPLETED', label: 'انتهت الجلسة' };
+  }
+
+  return { status: 'UPCOMING', label: 'لم تبدأ بعد' };
 }
 
 function formatActivityLog(log: any) {
@@ -180,6 +301,8 @@ export default function DashboardPage() {
           presentCount: g.stats?.present ?? 0,
           absentCount: g.stats?.absent ?? 0,
           sessionStatus: g.sessionStatus || 'NOT_STARTED',
+          startTime: g.startTime,
+          endTime: g.endTime,
           timeSlot: g.startTime ? `${g.startTime}${g.endTime ? ` - ${g.endTime}` : ''}` : undefined,
         }));
         setTodayGroups(formatted);
@@ -530,10 +653,29 @@ export default function DashboardPage() {
                         ? Math.round((grp.presentCount / grp.studentsCount) * 100)
                         : 0;
 
+                    // Real-time calculated status based on current device time
+                    const timing = getSessionTimingStatus(
+                      grp.startTime,
+                      grp.endTime,
+                      grp.timeSlot,
+                      currentTime,
+                      grp.sessionStatus
+                    );
+
+                    const isLive = timing.status === 'LIVE';
+                    const isCompleted = timing.status === 'COMPLETED';
+                    const isUpcoming = timing.status === 'UPCOMING';
+
                     return (
                       <div
                         key={grp.id}
-                        className="bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-slate-800/80 rounded-2xl p-4 space-y-3 hover:border-purple-500/40 transition-all flex flex-col justify-between shadow-sm"
+                        className={`rounded-2xl p-4 space-y-3 transition-all duration-300 flex flex-col justify-between relative overflow-hidden ${
+                          isLive
+                            ? 'border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_25px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
+                            : isCompleted
+                            ? 'opacity-60 hover:opacity-100 transition-opacity bg-white/40 dark:bg-slate-950/40 border border-zinc-200/60 dark:border-slate-800/60 shadow-sm'
+                            : 'bg-white/60 dark:bg-slate-950/70 border border-zinc-200/80 dark:border-slate-800/80 hover:border-amber-500/40 shadow-sm'
+                        }`}
                       >
                         <div className="space-y-2.5">
                           <div className="flex items-start justify-between gap-2">
@@ -544,20 +686,26 @@ export default function DashboardPage() {
                               </p>
                             </div>
                             
-                            {/* High-Contrast Clear Status Badge */}
-                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
-                              grp.sessionStatus === 'OPEN'
-                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
-                                : grp.sessionStatus === 'COMPLETED'
-                                ? 'bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-300'
-                                : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300'
-                            }`}>
-                              {grp.sessionStatus === 'OPEN'
-                                ? 'جارية الآن 🟢'
-                                : grp.sessionStatus === 'COMPLETED'
-                                ? 'مكتملة ✅'
-                                : 'لم تبدأ بعد ⏳'}
-                            </span>
+                            {/* Dynamic Status Badge */}
+                            {isLive ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                جارية الآن
+                              </span>
+                            ) : isUpcoming ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                {timing.label}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-zinc-500 dark:text-zinc-400">
+                                <CheckCircle2 className="w-3 h-3 text-zinc-400" />
+                                انتهت الجلسة
+                              </span>
+                            )}
                           </div>
 
                           <div className="space-y-1">
@@ -577,7 +725,9 @@ export default function DashboardPage() {
                             {activeGroupTab === 'TODAY' && (
                               <div className="w-full bg-zinc-200 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden">
                                 <div
-                                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    isLive ? 'bg-emerald-500' : isCompleted ? 'bg-zinc-400 dark:bg-zinc-600' : 'bg-amber-500'
+                                  }`}
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
@@ -592,11 +742,26 @@ export default function DashboardPage() {
                                 ? grp.scheduleDays.join(' · ')
                                 : 'مواعيد منتظمة')}
                           </span>
-                          <Link href={`/attendance?groupId=${grp.id}`}>
-                            <button className="px-3.5 py-1.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm">
-                              تسجيل الحضور ←
-                            </button>
-                          </Link>
+                          {isLive ? (
+                            <Link href={`/attendance?groupId=${grp.id}`}>
+                              <button className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition-all duration-200 cursor-pointer shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 flex items-center gap-1">
+                                <span>تسجيل الحضور الفوري</span>
+                                <span className="text-emerald-200">←</span>
+                              </button>
+                            </Link>
+                          ) : isCompleted ? (
+                            <Link href={`/attendance?groupId=${grp.id}`}>
+                              <button className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-medium transition cursor-pointer shadow-sm">
+                                عرض تقرير الحصة
+                              </button>
+                            </Link>
+                          ) : (
+                            <Link href={`/attendance?groupId=${grp.id}`}>
+                              <button className="px-3.5 py-1.5 bg-purple-600/15 hover:bg-purple-600 text-purple-700 hover:text-white dark:text-purple-300 dark:hover:text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-sm">
+                                تسجيل الحضور ←
+                              </button>
+                            </Link>
+                          )}
                         </div>
                       </div>
                     );
