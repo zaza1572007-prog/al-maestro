@@ -4,7 +4,7 @@ import { handleApiError } from '@/lib/error-handler';
 import { syncTodaySessionsState } from '@/lib/session-sync';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { verifyStaff } from '@/lib/auth';
-import { verifyStudentQR, extractCodeCandidates } from '@/lib/qr-signer';
+import { verifyStudentQR, extractCodeCandidates, extractNumericDigits } from '@/lib/qr-signer';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { logAuditAction } from '@/lib/audit-logger';
 import { calculateStudentDueMonths, ARABIC_MONTH_NAMES, getCairoNow } from '@/lib/due-months';
@@ -116,6 +116,12 @@ export async function POST(req: Request) {
 
     // Extract all candidate codes (handles URLs like /qr-login?token=..., Arabic keyboard translations, prefixes QR-, etc.)
     const searchCodes = extractCodeCandidates(resolvedCode || studentCode);
+    const numericDigits = extractNumericDigits(resolvedCode || studentCode);
+
+    const digitFilters = numericDigits.flatMap(d => [
+      { code: { endsWith: d } },
+      { qrCode: { endsWith: d } },
+    ]);
 
     const student = await prisma.student.findFirst({
       where: {
@@ -126,6 +132,7 @@ export async function POST(req: Request) {
           { phone: { in: searchCodes } },
           { name: { in: searchCodes } },
           { name: studentCode.trim() },
+          ...digitFilters,
           { parent: { qrCode: { in: searchCodes } } },
           { parent: { phone: { in: searchCodes } } },
         ],

@@ -6,7 +6,7 @@ import { useToast } from '@/components/ToastProvider';
 import { get, set } from 'idb-keyval';
 import { generateDirectWhatsAppLink } from '@/lib/whatsapp-direct';
 import CameraQrScanner from '@/components/CameraQrScanner';
-import { extractCodeCandidates } from '@/lib/qr-signer';
+import { extractCodeCandidates, extractNumericDigits } from '@/lib/qr-signer';
 
 function playBeepSuccess() {
   try {
@@ -548,6 +548,7 @@ export default function AttendancePage() {
       try {
         const cachedStudents: any[] = (await get('almaestro_cached_students')) || [];
         const candidates = extractCodeCandidates(scanCode).map(c => c.toLowerCase());
+        const digits = extractNumericDigits(scanCode);
 
         const student = cachedStudents.find(
           (s: any) =>
@@ -555,6 +556,7 @@ export default function AttendancePage() {
             candidates.includes(s.qrCode?.toLowerCase()) ||
             candidates.includes(s.id?.toLowerCase()) ||
             candidates.includes(s.phone?.toLowerCase()) ||
+            digits.some(d => s.code?.endsWith(d) || s.qrCode?.endsWith(d)) ||
             s.name?.toLowerCase().includes(scanCode.trim().toLowerCase())
         );
 

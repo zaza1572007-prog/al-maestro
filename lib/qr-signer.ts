@@ -61,6 +61,21 @@ export function verifyStudentQR(qrData: string): { valid: boolean; studentId: st
   return { valid: true, studentId: trimmed, isLegacy: true };
 }
 
+export function extractNumericDigits(rawInput: string): string[] {
+  if (!rawInput) return [];
+  const arabicIndicDigits: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+  };
+  let normalized = '';
+  for (const ch of rawInput) {
+    if (arabicIndicDigits[ch]) normalized += arabicIndicDigits[ch];
+    else normalized += ch;
+  }
+  const matches = normalized.match(/\d{2,8}/g);
+  return matches ? Array.from(new Set(matches)) : [];
+}
+
 /**
  * Normalizes and extracts all possible candidate student/parent identifiers from any scanned string
  * (URLs, URL parameters, Arabic keyboard translations, prefixes, and plain codes).
@@ -69,37 +84,49 @@ export function extractCodeCandidates(rawInput: string): string[] {
   if (!rawInput) return [];
   const candidates = new Set<string>();
 
+  // Convert Arabic-Indic digits (٠-٩) first
+  const arabicIndicDigits: Record<string, string> = {
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
+  };
+  let normalizedDigitsInput = '';
+  for (const ch of rawInput) {
+    if (arabicIndicDigits[ch]) normalizedDigitsInput += arabicIndicDigits[ch];
+    else normalizedDigitsInput += ch;
+  }
+
   // Clean non-printable / control characters (STX, ETX, CR, LF, Tabs, NULL, etc.)
-  const cleanInput = rawInput.replace(/[\x00-\x1F\x7F]/g, '').trim();
+  const cleanInput = normalizedDigitsInput.replace(/[\x00-\x1F\x7F]/g, '').trim();
   if (!cleanInput) return [];
 
   candidates.add(cleanInput);
   candidates.add(cleanInput.toUpperCase());
   candidates.add(cleanInput.toLowerCase());
 
-  // 1. Arabic keyboard layout translation (handles both lower and upper equivalents)
+  // 1. Full Arabic keyboard layout translation (handles both Unshifted and Shifted equivalents)
   const arabicMap: Record<string, string> = {
+    // Unshifted keys
     'ض': 'q', 'ص': 'w', 'ث': 'e', 'ق': 'r', 'ف': 't', 'غ': 'y', 'ع': 'u', 'ه': 'i', 'خ': 'o', 'ح': 'p',
     'ج': '[', 'د': ']', 'ش': 'a', 'س': 's', 'ي': 'd', 'ب': 'f', 'ل': 'g', 'ا': 'h', 'ت': 'j', 'ن': 'k',
     'م': 'l', 'ك': ';', 'ط': "'", 'ئ': 'z', 'ء': 'x', 'ؤ': 'c', 'ر': 'v', 'لا': 'b', 'ى': 'n', 'ة': 'm',
-    'و': ',', 'ز': '.', 'ظ': '/', '؟': '?', '،': ',', '؛': ';', 'ـ': '_',
-    'أ': 's', 'إ': 'u', 'آ': 'n', 'لإ': 't', 'لأ': 'g', 'لآ': 'b',
-    // Shifted Arabic keys
-    'َ': 'q', 'ً': 'w', 'ُ': 'e', 'ٌ': 'r', '‘': 'u', '÷': 'i', '×': 'o',
-    'ِ': 'a', 'ٍ': 's', ']': 'd', '[': 'f'
+    'و': ',', 'ز': '.', 'ظ': '/', '؟': '?',
+    // Shifted keys
+    'َ': 'q', 'ً': 'w', 'ُ': 'e', 'ٌ': 'r', 'لإ': 't', 'إ': 'y', '‘': 'u', '÷': 'i', '×': 'o', '؛': 'p',
+    'ِ': 'a', 'ٍ': 's', ']': 'd', '[': 'f', 'لأ': 'g', 'أ': 'h', 'ـ': 'j', '،': 'k', '/': 'l',
+    '~': 'z', 'ْ': 'x', '}': 'c', '{': 'v', 'لآ': 'b', 'آ': 'n', '"': 'm'
   };
 
   const translateArabic = (str: string): string => {
     let result = '';
     for (let i = 0; i < str.length; i++) {
-      const char = str[i];
-      if (i < str.length - 1 && arabicMap[char + str[i + 1]]) {
-        result += arabicMap[char + str[i + 1]];
+      const two = str.substring(i, i + 2);
+      if (arabicMap[two]) {
+        result += arabicMap[two];
         i++;
-      } else if (arabicMap[char]) {
-        result += arabicMap[char];
+      } else if (arabicMap[str[i]]) {
+        result += arabicMap[str[i]];
       } else {
-        result += char;
+        result += str[i];
       }
     }
     return result;
