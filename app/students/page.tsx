@@ -278,21 +278,21 @@ function StudentsContent() {
   const [selectedDetailStudent, setSelectedDetailStudent] = useState<Student | null>(null);
 
   const columns = [
-    { key: 'code', label: 'الكود', defaultWidth: 90, align: 'right' as const },
-    { key: 'qrCode', label: 'الباركود', defaultWidth: 110, align: 'right' as const },
-    { key: 'name', label: 'اسم الطالب', defaultWidth: 180, align: 'right' as const },
-    { key: 'stage', label: 'المرحلة والمجموعة', defaultWidth: 150, align: 'right' as const },
-    { key: 'parent', label: 'ولي الأمر والتواصل', defaultWidth: 160, align: 'right' as const },
-    { key: 'status', label: 'حالة الاشتراك', defaultWidth: 110, align: 'right' as const },
-    { key: 'actions', label: 'الإجراءات والخيارات', defaultWidth: 200, align: 'center' as const },
+    { key: 'code', label: 'الكود', defaultWidth: 90, minWidth: 80, align: 'right' as const },
+    { key: 'qrCode', label: 'الباركود', defaultWidth: 110, minWidth: 90, align: 'right' as const },
+    { key: 'name', label: 'اسم الطالب', defaultWidth: 200, minWidth: 160, align: 'right' as const },
+    { key: 'stage', label: 'المرحلة والمجموعة', defaultWidth: 160, minWidth: 130, align: 'right' as const },
+    { key: 'parent', label: 'ولي الأمر والتواصل', defaultWidth: 160, minWidth: 130, align: 'right' as const },
+    { key: 'status', label: 'حالة الاشتراك', defaultWidth: 110, minWidth: 90, align: 'center' as const },
+    { key: 'actions', label: 'الإجراءات والخيارات', defaultWidth: 360, minWidth: 320, align: 'center' as const },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 min-h-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white gradient-heading">👨‍🎓 إدارة قائمة الطلاب (Students List)</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-2xl font-black text-zinc-950 dark:text-white tracking-tight">👨‍🎓 إدارة قائمة الطلاب (Students List)</h1>
+          <p className="text-zinc-600 dark:text-zinc-400 text-sm mt-1 font-medium">
             {groupIdFilter ? `عرض طلاب المجموعة المحددة` : 'عرض جدول الطلاب والإجراءات السريعة والعرض المجانب'}
           </p>
         </div>
@@ -304,7 +304,7 @@ function StudentsContent() {
             }
             setIsAddingStudent(true);
           }}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+          className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 cursor-pointer"
         >
           <span>➕</span> إضافة طالب جديد
         </button>
@@ -316,14 +316,32 @@ function StudentsContent() {
         storageKey="students_table_section"
         badge={filteredStudents.length}
       >
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="البحث بالاسم، الكود، رقم الهاتف، أو رقم ولي الأمر... (اضغط على أي طالب للمعاينة المباشرة)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-md bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="البحث بالاسم، الكود، رقم الهاتف، أو رقم ولي الأمر..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-white/15 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-2.5 text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 focus:outline-none transition-all shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs p-1"
+                title="مسح البحث"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-white/10 text-xs font-bold text-zinc-800 dark:text-zinc-200 shadow-sm shrink-0">
+            <span>👥</span>
+            <span>إجمالي نتائج الاستعلام:</span>
+            <span className="text-primary font-black text-sm">{filteredStudents.length}</span>
+            <span>طالب</span>
+          </div>
         </div>
 
         <SplitView
@@ -348,27 +366,27 @@ function StudentsContent() {
                 />
               }
               renderCell={(stu, colKey) => {
-                if (colKey === 'code') return <span className="font-mono text-blue-400 font-bold">{stu.code}</span>;
-                if (colKey === 'qrCode') return <span className="font-mono text-purple-400 font-semibold">{stu.qrCode}</span>;
+                if (colKey === 'code') return <span className="font-mono text-primary font-black text-xs">{stu.code}</span>;
+                if (colKey === 'qrCode') return <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold text-xs">{stu.qrCode}</span>;
                 if (colKey === 'name') return (
                   <div className="flex items-center gap-2.5">
                     <Avatar name={stu.name} size="sm" />
                     <div>
-                      <p className="font-bold text-white leading-tight">{stu.name}</p>
-                      {stu.phone && <p className="text-[11px] text-slate-400 font-mono">{stu.phone}</p>}
+                      <p className="font-bold text-zinc-950 dark:text-white text-sm leading-tight">{stu.name}</p>
+                      {stu.phone && <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.phone}</p>}
                     </div>
                   </div>
                 );
                 if (colKey === 'stage') return (
                   <div>
-                    <p className="text-slate-200">{stu.stage}</p>
-                    <p className="text-xs text-slate-400">{stu.group}</p>
+                    <p className="text-zinc-950 dark:text-zinc-200 font-bold text-xs">{stu.stage}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">{stu.group}</p>
                   </div>
                 );
                 if (colKey === 'parent') return (
                   <div>
-                    <p className="text-slate-200">{stu.parentName}</p>
-                    <p className="text-xs text-slate-400 font-mono">{stu.parentPhone}</p>
+                    <p className="text-zinc-950 dark:text-zinc-200 font-medium text-xs">{stu.parentName}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.parentPhone}</p>
                   </div>
                 );
                 if (colKey === 'status') return (
@@ -380,30 +398,46 @@ function StudentsContent() {
                 );
                 if (colKey === 'actions') return (
                   <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/students/${stu.id}`}
+                      title="سجل الامتحانات والدرجات"
+                      className="px-2.5 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                    >
+                      <span>📝</span>
+                      <span>الامتحانات</span>
+                    </Link>
                     <button
                       onClick={() => handleEditClick(stu)}
-                      className="px-2 py-1 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                      title="تعديل بيانات الطالب"
+                      className="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 hover:bg-amber-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
                     >
-                      ✏️ تعديل
+                      <span>✏️</span>
+                      <span>تعديل</span>
                     </button>
                     <button
                       onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
-                      className="px-2 py-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                      title="إدارة كلمات المرور وبيانات الدخول"
+                      className="px-2.5 py-1.5 bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
                     >
-                      🔑 الاعتماديات
-                    </button>
-                    <button
-                      onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
-                      className="px-2 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                    >
-                      🗑️ حذف
+                      <span>🔑</span>
+                      <span>الاعتماديات</span>
                     </button>
                     <Link
                       href={`/students/${stu.id}`}
-                      className="px-2 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-semibold transition"
+                      title="عرض الملف الشخصي الشامل"
+                      className="px-2.5 py-1.5 bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm"
                     >
-                      الملف
+                      <span>👁️</span>
+                      <span>الملف</span>
                     </Link>
+                    <button
+                      onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
+                      title="حذف الطالب من النظام"
+                      className="px-2.5 py-1.5 bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <span>🗑️</span>
+                      <span>حذف</span>
+                    </button>
                   </div>
                 );
                 return null;
@@ -413,47 +447,47 @@ function StudentsContent() {
           detail={
             selectedDetailStudent ? (
               <div className="space-y-5">
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-900 border border-white/5">
+                <div className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 shadow-sm">
                   <Avatar name={selectedDetailStudent.name} size="lg" />
                   <div>
-                    <h4 className="font-bold text-white text-base">{selectedDetailStudent.name}</h4>
-                    <p className="text-xs text-purple-400 font-mono">كود: {selectedDetailStudent.code} · QR: {selectedDetailStudent.qrCode}</p>
+                    <h4 className="font-bold text-zinc-950 dark:text-white text-base">{selectedDetailStudent.name}</h4>
+                    <p className="text-xs text-primary font-mono font-bold mt-0.5">كود: {selectedDetailStudent.code} · QR: {selectedDetailStudent.qrCode}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-semibold mb-1">المرحلة الدراسية</p>
-                    <p className="font-bold text-slate-200">{selectedDetailStudent.stage || 'غير محددة'}</p>
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5">
+                    <p className="text-zinc-500 dark:text-zinc-400 font-semibold mb-1">المرحلة الدراسية</p>
+                    <p className="font-bold text-zinc-900 dark:text-zinc-200">{selectedDetailStudent.stage || 'غير محددة'}</p>
                   </div>
-                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-semibold mb-1">المجموعة</p>
-                    <p className="font-bold text-slate-200">{selectedDetailStudent.group || 'غير محددة'}</p>
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5">
+                    <p className="text-zinc-500 dark:text-zinc-400 font-semibold mb-1">المجموعة</p>
+                    <p className="font-bold text-zinc-900 dark:text-zinc-200">{selectedDetailStudent.group || 'غير محددة'}</p>
                   </div>
-                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-semibold mb-1">هاتف الطالب</p>
-                    <p className="font-mono text-blue-400 font-bold">{selectedDetailStudent.phone || 'غير مسجل'}</p>
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5">
+                    <p className="text-zinc-500 dark:text-zinc-400 font-semibold mb-1">هاتف الطالب</p>
+                    <p className="font-mono text-primary font-bold">{selectedDetailStudent.phone || 'غير مسجل'}</p>
                   </div>
-                  <div className="p-3 bg-slate-900/60 rounded-xl border border-white/5">
-                    <p className="text-slate-500 font-semibold mb-1">هاتف ولي الأمر</p>
-                    <p className="font-mono text-emerald-400 font-bold">{selectedDetailStudent.parentPhone}</p>
+                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 rounded-xl border border-zinc-200 dark:border-white/5">
+                    <p className="text-zinc-500 dark:text-zinc-400 font-semibold mb-1">هاتف ولي الأمر</p>
+                    <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{selectedDetailStudent.parentPhone}</p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2 text-xs">
-                  <p className="font-bold text-purple-300">👨‍👩‍👦 بيانات ولي الأمر</p>
-                  <p className="text-slate-300">الاسم: <strong>{selectedDetailStudent.parentName}</strong></p>
+                  <p className="font-bold text-purple-700 dark:text-purple-300">👨‍👩‍👦 بيانات ولي الأمر</p>
+                  <p className="text-zinc-700 dark:text-zinc-300">الاسم: <strong className="text-zinc-950 dark:text-white">{selectedDetailStudent.parentName}</strong></p>
                 </div>
 
-                <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+                <div className="pt-3 border-t border-zinc-200 dark:border-white/10 flex flex-col gap-2">
                   <Link href={`/students/${selectedDetailStudent.id}`}>
-                    <button className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+                    <button className="w-full py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl text-xs transition shadow-md cursor-pointer">
                       فتح الملف الشامل والتقارير كاملة ←
                     </button>
                   </Link>
                   <button
                     onClick={() => handleEditClick(selectedDetailStudent)}
-                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
+                    className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold rounded-xl text-xs transition cursor-pointer border border-zinc-200 dark:border-white/5"
                   >
                     ✏️ تعديل بيانات الطالب
                   </button>
@@ -467,49 +501,49 @@ function StudentsContent() {
       {/* Edit Student Modal */}
       {editingStudent && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">✏️ تعديل بيانات الطالب: {editingStudent.name}</h3>
-              <button onClick={() => setEditingStudent(null)} className="text-slate-400 hover:text-white">✕</button>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-3">
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white">✏️ تعديل بيانات الطالب: {editingStudent.name}</h3>
+              <button onClick={() => setEditingStudent(null)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white font-bold text-lg">✕</button>
             </div>
             <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1">اسم الطالب الرباعي *</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">اسم الطالب الرباعي *</label>
                 <input
                   type="text"
                   required
                   value={editingStudent.name}
                   onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم هاتف الطالب</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">رقم هاتف الطالب</label>
                   <input
                     type="text"
                     value={editingStudent.phone}
                     onChange={(e) => setEditingStudent({ ...editingStudent, phone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم ولي الأمر</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">رقم ولي الأمر</label>
                   <input
                     type="text"
                     value={editingStudent.parentPhone}
                     onChange={(e) => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">المرحلة الدراسية</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">المرحلة الدراسية</label>
                   <select
                     value={editingStudent.stageId || ''}
                     onChange={(e) => setEditingStudent({ ...editingStudent, stageId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   >
                     <option value="">-- اختر --</option>
                     {stagesOptions.map((s: any) => (
@@ -518,11 +552,11 @@ function StudentsContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">المجموعة</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">المجموعة</label>
                   <select
                     value={editingStudent.groupId || ''}
                     onChange={(e) => setEditingStudent({ ...editingStudent, groupId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   >
                     <option value="">-- اختر --</option>
                     {groupsOptions.map((g: any) => (
@@ -531,22 +565,22 @@ function StudentsContent() {
                   </select>
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-slate-950 border border-purple-500/20">
-                <p className="text-xs text-purple-400 font-semibold mb-2">🔐 لإدارة كلمات المرور، استخدم زر "الاعتماديات" في جدول الطلاب</p>
-                <p className="text-[10px] text-slate-500">كلمات المرور مشفرة بـ bcrypt ولا يمكن عرضها كنص. يمكنك إعادة تعيينها عبر موديل الاعتماديات.</p>
+              <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-950 border border-purple-500/20">
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-2">🔐 لإدارة كلمات المرور، استخدم زر "الاعتماديات" في جدول الطلاب</p>
+                <p className="text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">كلمات المرور مشفرة بـ bcrypt ولا يمكن عرضها كنص. يمكنك إعادة تعيينها عبر موديل الاعتماديات.</p>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditingStudent(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
+                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold transition"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg"
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg transition"
                 >
                   {isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات 💾'}
                 </button>
@@ -559,64 +593,64 @@ function StudentsContent() {
       {/* Add Student Modal */}
       {isAddingStudent && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white">➕ إضافة طالب جديد لقاعدة البيانات</h3>
-              <button onClick={() => setIsAddingStudent(false)} className="text-slate-400 hover:text-white">✕</button>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-3">
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white">➕ إضافة طالب جديد لقاعدة البيانات</h3>
+              <button onClick={() => setIsAddingStudent(false)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white font-bold text-lg">✕</button>
             </div>
             <form onSubmit={handleCreateStudent} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1">اسم الطالب الرباعي *</label>
+                <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">اسم الطالب الرباعي *</label>
                 <input
                   type="text"
                   required
                   placeholder="مثال: محمد أحمد محمود"
                   value={newStudent.name}
                   onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم هاتف الطالب (اختياري)</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">رقم هاتف الطالب (اختياري)</label>
                   <input
                     type="text"
                     placeholder="01000000000"
                     value={newStudent.phone}
                     onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم ولي الأمر *</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">رقم ولي الأمر *</label>
                   <input
                     type="text"
                     required
                     placeholder="01100000000"
                     value={newStudent.parentPhone}
                     onChange={(e) => setNewStudent({ ...newStudent, parentPhone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">اسم ولي الأمر *</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">اسم ولي الأمر *</label>
                   <input
                     type="text"
                     required
                     placeholder="أحمد محمود"
                     value={newStudent.parentName}
                     onChange={(e) => setNewStudent({ ...newStudent, parentName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">صلة القرابة</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">صلة القرابة</label>
                   <select
                     value={newStudent.parentRelation}
                     onChange={(e) => setNewStudent({ ...newStudent, parentRelation: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   >
                     <option value="Father">والد (أب)</option>
                     <option value="Mother">والدة (أم)</option>
@@ -626,33 +660,33 @@ function StudentsContent() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">واتساب ولي الأمر</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">واتساب ولي الأمر</label>
                   <input
                     type="text"
                     placeholder="01xxxxxxxxx (اختياري)"
                     value={newStudent.parentWhatsapp}
                     onChange={(e) => setNewStudent({ ...newStudent, parentWhatsapp: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">رقم هاتف إضافي</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">رقم هاتف إضافي</label>
                   <input
                     type="text"
                     placeholder="رقم احتياطي (اختياري)"
                     value={newStudent.parentExtraPhone}
                     onChange={(e) => setNewStudent({ ...newStudent, parentExtraPhone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white font-mono"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-300 mb-1">المرحلة الدراسية *</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">المرحلة الدراسية *</label>
                   <select
                     value={newStudent.stageId}
                     onChange={(e) => setNewStudent({ ...newStudent, stageId: e.target.value, groupId: '' })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   >
                     <option value="">-- اختر المرحلة --</option>
                     {stagesOptions.map((s: any) => (
@@ -661,11 +695,11 @@ function StudentsContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-300 mb-1">المجموعة *</label>
+                  <label className="block text-zinc-700 dark:text-zinc-300 font-semibold mb-1">المجموعة *</label>
                   <select
                     value={newStudent.groupId}
                     onChange={(e) => setNewStudent({ ...newStudent, groupId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-white/15 focus:border-primary rounded-xl p-2.5 text-zinc-950 dark:text-white"
                   >
                     <option value="">-- اختر المجموعة --</option>
                     {groupsOptions
@@ -682,14 +716,14 @@ function StudentsContent() {
                 <button
                   type="button"
                   onClick={() => setIsAddingStudent(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
+                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold transition"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-lg cursor-pointer"
+                  className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold shadow-lg transition cursor-pointer"
                 >
                   {isSaving ? 'جاري الحفظ...' : 'إضافة الطالب ➕'}
                 </button>
@@ -702,28 +736,28 @@ function StudentsContent() {
       {/* Credentials Manager Modal */}
       {credentialsStudent && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-purple-500/10 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 border border-purple-500/30 rounded-3xl p-6 w-full max-w-md shadow-2xl shadow-purple-500/10 space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-4">
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white flex items-center gap-2">
                 <span className="text-2xl">🔑</span>
                 إدارة اعتماديات: {credentialsStudent.name}
               </h3>
-              <button onClick={() => setCredentialsStudent(null)} className="text-slate-400 hover:text-white text-xl">✕</button>
+              <button onClick={() => setCredentialsStudent(null)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-white text-xl font-bold">✕</button>
             </div>
 
             {/* Student Info */}
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-3 text-xs">
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-white/5 space-y-3 text-xs">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-purple-400">👨‍🎓 معلومات حساب الطالب والـ QR</p>
+                <p className="font-semibold text-purple-600 dark:text-purple-400">👨‍🎓 معلومات حساب الطالب والـ QR</p>
                 <Link
                   href={`/qr-print`}
-                  className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1"
+                  className="text-[11px] text-primary hover:underline font-bold flex items-center gap-1"
                 >
                   🖨️ طباعة الكرت
                 </Link>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-white dark:bg-zinc-900/60 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <div className="bg-white p-2 rounded-xl flex-shrink-0 shadow">
                   <QRCodeSVG
                     value={credentialsStudent.qrCode || `QR-${credentialsStudent.code}` || credentialsStudent.code}
@@ -734,35 +768,35 @@ function StudentsContent() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 flex-1 w-full">
                   <div>
-                    <p className="text-slate-500">كود الحساب</p>
-                    <p className="font-mono text-blue-400 font-bold">{credentialsStudent.code}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">كود الحساب</p>
+                    <p className="font-mono text-primary font-bold">{credentialsStudent.code}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">رقم الهاتف</p>
-                    <p className="font-mono text-blue-400 font-bold">{credentialsStudent.phone || '—'}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">رقم الهاتف</p>
+                    <p className="font-mono text-primary font-bold">{credentialsStudent.phone || '—'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-slate-500">الباركود / رمز الـ QR</p>
-                    <p className="font-mono text-purple-400 font-bold break-all">{credentialsStudent.qrCode || `QR-${credentialsStudent.code}`}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">الباركود / رمز الـ QR</p>
+                    <p className="font-mono text-purple-600 dark:text-purple-400 font-bold break-all">{credentialsStudent.qrCode || `QR-${credentialsStudent.code}`}</p>
                   </div>
                 </div>
               </div>
 
               <div className="pt-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-slate-500">كلمة المرور</p>
+                  <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
                   {credentialsStudent.passwordPlain && (
                     <button
                       type="button"
                       onClick={() => setShowStudentPass(v => !v)}
-                      className="text-[10px] text-purple-400 hover:text-purple-300 transition cursor-pointer"
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline transition cursor-pointer"
                     >
                       {showStudentPass ? 'إخفاء' : 'إظهار'}
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 flex-1">
+                  <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 flex-1">
                     {credentialsStudent.passwordPlain
                       ? (showStudentPass ? credentialsStudent.passwordPlain : '••••••••')
                       : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
@@ -775,7 +809,7 @@ function StudentsContent() {
                         navigator.clipboard.writeText(credentialsStudent.passwordPlain!);
                         toast.success('تم نسخ كلمة مرور الطالب 📋');
                       }}
-                      className="text-xs p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 rounded-lg transition cursor-pointer"
+                      className="text-xs p-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-emerald-500 rounded-lg transition cursor-pointer"
                     >
                       📋
                     </button>
@@ -785,32 +819,32 @@ function StudentsContent() {
             </div>
 
             {/* Parent Info */}
-            <div className="p-4 rounded-2xl bg-slate-950/80 border border-white/5 space-y-2 text-xs">
-              <p className="font-semibold text-emerald-400 mb-2">👨‍👩‍👦 معلومات حساب ولي الأمر</p>
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-white/5 space-y-2 text-xs">
+              <p className="font-semibold text-emerald-600 dark:text-emerald-400 mb-2">👨‍👩‍👦 معلومات حساب ولي الأمر</p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <p className="text-slate-500">اسم ولي الأمر</p>
-                  <p className="font-bold text-white">{credentialsStudent.parentName}</p>
+                  <p className="text-zinc-500 dark:text-zinc-400">اسم ولي الأمر</p>
+                  <p className="font-bold text-zinc-950 dark:text-white">{credentialsStudent.parentName}</p>
                 </div>
                 <div>
-                  <p className="text-slate-500">رقم الهاتف</p>
-                  <p className="font-mono text-emerald-400 font-bold">{credentialsStudent.parentPhone || '—'}</p>
+                  <p className="text-zinc-500 dark:text-zinc-400">رقم الهاتف</p>
+                  <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{credentialsStudent.parentPhone || '—'}</p>
                 </div>
                 <div className="col-span-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-slate-500">كلمة المرور</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
                     {credentialsStudent.parentPasswordPlain && (
                       <button
                         type="button"
                         onClick={() => setShowParentPass(v => !v)}
-                        className="text-[10px] text-emerald-400 hover:text-emerald-300 transition"
+                        className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline transition"
                       >
                         {showParentPass ? 'إخفاء' : 'إظهار'}
                       </button>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="font-mono text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       {credentialsStudent.parentPasswordPlain
                         ? (showParentPass ? credentialsStudent.parentPasswordPlain : '••••••••')
                         : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
@@ -823,7 +857,7 @@ function StudentsContent() {
                           navigator.clipboard.writeText(credentialsStudent.parentPasswordPlain!);
                           toast.success('تم نسخ كلمة مرور ولي الأمر 📋');
                         }}
-                        className="text-xs p-1 text-slate-400 hover:text-emerald-400 transition"
+                        className="text-xs p-1 text-zinc-400 hover:text-emerald-500 transition"
                       >
                         📋
                       </button>
@@ -835,25 +869,25 @@ function StudentsContent() {
 
             {/* Password Reset Section */}
             <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-3">
-              <p className="text-xs font-semibold text-rose-400">🔁 إعادة تعيين كلمة المرور (يتطلب إدخال كلمة المرور الجديدة يدوياً)</p>
+              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">🔁 إعادة تعيين كلمة المرور (يتطلب إدخال كلمة المرور الجديدة يدوياً)</p>
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">كلمة مرور جديدة للطالب</label>
+                <label className="block text-[10px] text-zinc-600 dark:text-zinc-400 mb-1">كلمة مرور جديدة للطالب</label>
                 <input
                   type="text"
                   placeholder="اترك فارغاً إن لم ترد التغيير..."
                   value={credentialsForm.studentPassword}
                   onChange={(e) => setCredentialsForm(prev => ({ ...prev, studentPassword: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-mono"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-400 mb-1">كلمة مرور جديدة لولي الأمر</label>
+                <label className="block text-[10px] text-zinc-600 dark:text-zinc-400 mb-1">كلمة مرور جديدة لولي الأمر</label>
                 <input
                   type="text"
                   placeholder="اترك فارغاً إن لم ترد التغيير..."
                   value={credentialsForm.parentPassword}
                   onChange={(e) => setCredentialsForm(prev => ({ ...prev, parentPassword: e.target.value }))}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-xs font-mono"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white text-xs font-mono"
                 />
               </div>
             </div>
@@ -862,7 +896,7 @@ function StudentsContent() {
               <button
                 type="button"
                 onClick={() => setCredentialsStudent(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition"
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold text-sm transition"
               >
                 إغلاق
               </button>
@@ -907,60 +941,60 @@ function StudentsContent() {
       {/* New Student Credentials Reveal Modal */}
       {newStudentCredentials && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-7 w-full max-w-md shadow-2xl shadow-emerald-500/10 space-y-6">
+          <div className="bg-white dark:bg-zinc-900 border border-emerald-500/30 rounded-3xl p-7 w-full max-w-md shadow-2xl shadow-emerald-500/10 space-y-6">
             <div className="text-center">
               <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-3xl">✅</span>
               </div>
-              <h3 className="text-xl font-black text-white">تم إنشاء حساب الطالب بنجاح!</h3>
-              <p className="text-slate-400 text-xs mt-1">الطالب: <strong className="text-white">{newStudentCredentials.studentName}</strong></p>
+              <h3 className="text-xl font-black text-zinc-950 dark:text-white">تم إنشاء حساب الطالب بنجاح!</h3>
+              <p className="text-zinc-600 dark:text-zinc-400 text-xs mt-1">الطالب: <strong className="text-zinc-950 dark:text-white">{newStudentCredentials.studentName}</strong></p>
             </div>
 
             <div className="space-y-3">
               <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs">
-                <p className="text-purple-300 font-semibold mb-2">🎓 بيانات حساب الطالب</p>
+                <p className="text-purple-700 dark:text-purple-300 font-semibold mb-2">🎓 بيانات حساب الطالب</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-slate-400">كود الحساب</p>
-                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.studentCode}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">كود الحساب</p>
+                    <p className="font-mono text-zinc-950 dark:text-white font-bold text-sm">{newStudentCredentials.studentCode}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400">رقم الهاتف (اسم المستخدم)</p>
-                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.studentPhone}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">رقم الهاتف (اسم المستخدم)</p>
+                    <p className="font-mono text-zinc-950 dark:text-white font-bold text-sm">{newStudentCredentials.studentPhone}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-slate-400">كلمة المرور</p>
-                    <p className="font-mono text-emerald-400 font-bold text-lg">{newStudentCredentials.studentPassword}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
+                    <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-lg">{newStudentCredentials.studentPassword}</p>
                   </div>
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs">
-                <p className="text-blue-300 font-semibold mb-2">👨‍👩‍👦 بيانات حساب ولي الأمر</p>
+                <p className="text-blue-700 dark:text-blue-300 font-semibold mb-2">👨‍👩‍👦 بيانات حساب ولي الأمر</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-slate-400">اسم ولي الأمر</p>
-                    <p className="font-bold text-white">{newStudentCredentials.parentName}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">اسم ولي الأمر</p>
+                    <p className="font-bold text-zinc-950 dark:text-white">{newStudentCredentials.parentName}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400">رقم الهاتف (اسم المستخدم)</p>
-                    <p className="font-mono text-white font-bold text-sm">{newStudentCredentials.parentPhone}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">رقم الهاتف (اسم المستخدم)</p>
+                    <p className="font-mono text-zinc-950 dark:text-white font-bold text-sm">{newStudentCredentials.parentPhone}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-slate-400">كلمة المرور</p>
-                    <p className="font-mono text-blue-400 font-bold text-lg">{newStudentCredentials.parentPassword}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
+                    <p className="font-mono text-primary font-bold text-lg">{newStudentCredentials.parentPassword}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[10px] text-amber-400">
+              <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-[10px] text-amber-700 dark:text-amber-400">
                 ⚠️ سيتم إرسال بيانات الدخول عبر الواتساب تلقائياً (إذا كان الواتساب مفعلاً). احتفظ بهذه البيانات في مكان آمن.
               </div>
             </div>
 
             <button
               onClick={() => setNewStudentCredentials(null)}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm transition cursor-pointer"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm transition cursor-pointer shadow-lg"
             >
               تم الحفظ ✓
             </button>
@@ -971,26 +1005,26 @@ function StudentsContent() {
       {/* Delete Confirmation Modal */}
       {studentToDelete && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center">
             <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
               <span className="text-3xl">⚠️</span>
             </div>
-            <h3 className="text-lg font-bold text-white">تأكيد الحذف</h3>
-            <p className="text-slate-400 text-sm">
-              هل أنت متأكد من حذف الطالب <strong className="text-rose-400">{studentToDelete.name}</strong> نهائياً؟ لا يمكن التراجع عن هذا الإجراء.
+            <h3 className="text-lg font-bold text-zinc-950 dark:text-white">تأكيد الحذف</h3>
+            <p className="text-zinc-600 dark:text-zinc-400 text-sm">
+              هل أنت متأكد من حذف الطالب <strong className="text-rose-600 dark:text-rose-400">{studentToDelete.name}</strong> نهائياً؟ لا يمكن التراجع عن هذا الإجراء.
             </p>
             <div className="flex justify-center gap-3 pt-4">
               <button
                 type="button"
                 onClick={() => setStudentToDelete(null)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition"
+                className="px-5 py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl font-bold transition"
               >
                 إلغاء
               </button>
               <button
                 type="button"
                 onClick={handleDeleteStudent}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 transition"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 transition cursor-pointer"
               >
                 نعم، احذف الطالب
               </button>

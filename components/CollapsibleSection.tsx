@@ -51,32 +51,32 @@ export default function CollapsibleSection({
 
   return (
     <div
-      className={`glass-panel border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all ${className}`}
+      className={`bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-xl transition-all ${className}`}
     >
       {/* Header */}
-      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-slate-950/40 select-none">
+      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-zinc-50/80 dark:bg-zinc-950/40 select-none border-b border-zinc-200/80 dark:border-white/5">
         <div
           onClick={toggleOpen}
           className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
         >
           {Icon && (
-            <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary border border-primary/25 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Icon className="w-4 h-4" />
             </div>
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition">
+              <h3 className="text-base font-bold text-zinc-950 dark:text-white group-hover:text-primary transition">
                 {title}
               </h3>
               {badge !== undefined && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-primary/10 text-primary border border-primary/25 shadow-sm">
                   {badge}
                 </span>
               )}
             </div>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5 truncate">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 truncate font-medium">{subtitle}</p>}
           </div>
         </div>
 
@@ -86,7 +86,7 @@ export default function CollapsibleSection({
 
           <button
             onClick={toggleOpen}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/10 transition cursor-pointer"
+            className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white border border-zinc-200 dark:border-white/10 transition cursor-pointer"
             title={isOpen ? 'طي القسم' : 'توسيع القسم'}
           >
             <motion.div

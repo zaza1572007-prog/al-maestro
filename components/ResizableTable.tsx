@@ -99,10 +99,10 @@ export default function ResizableTable<T>({
   }, [handleMouseMove, handleMouseUp]);
 
   return (
-    <div className={`w-full overflow-x-auto border border-slate-800/80 rounded-2xl bg-slate-950/40 select-none ${className}`}>
+    <div className={`w-full overflow-x-auto border border-zinc-200 dark:border-white/10 rounded-2xl bg-white dark:bg-zinc-900/90 shadow-xl select-none ${className}`}>
       <table className="w-full text-right border-collapse maestro-table" style={{ tableLayout: 'fixed' }}>
         <thead>
-          <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400">
+          <tr className="bg-zinc-100/90 dark:bg-zinc-900/95 border-b border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300">
             {columns.map((col) => {
               const width = colWidths[col.key] || col.defaultWidth || 140;
               return (
@@ -119,14 +119,14 @@ export default function ResizableTable<T>({
                     className="absolute top-0 bottom-0 left-0 w-2 hover:w-3 cursor-col-resize z-20 group flex items-center justify-center transition-all"
                     title="سحب لتغيير عرض العمود"
                   >
-                    <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-purple-400 transition-colors rounded-full" />
+                    <div className="w-[2px] h-4 bg-zinc-300 dark:bg-zinc-700 group-hover:bg-primary transition-colors rounded-full" />
                   </div>
                 </th>
               );
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800/60">
+        <tbody className="divide-y divide-zinc-200/60 dark:divide-white/5">
           {data.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="p-4">
@@ -141,10 +141,10 @@ export default function ResizableTable<T>({
                 <tr
                   key={key}
                   onClick={() => onRowClick && onRowClick(item)}
-                  className={`stagger-row transition cursor-pointer ${
+                  className={`stagger-row transition-colors cursor-pointer border-b border-zinc-200/60 dark:border-white/5 even:bg-zinc-50/50 dark:even:bg-white/[0.02] hover:bg-zinc-100/60 dark:hover:bg-white/[0.05] ${
                     isSelected
-                      ? 'bg-purple-600/15 border-r-2 border-purple-500'
-                      : 'hover:bg-slate-800/40'
+                      ? 'bg-primary/15 dark:bg-primary/20 border-r-4 border-primary'
+                      : ''
                   }`}
                 >
                   {columns.map((col) => (
