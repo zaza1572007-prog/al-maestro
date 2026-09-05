@@ -259,7 +259,7 @@ export default function CommandPalette() {
                     onChange={e => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="ابحث في أوامر المنصة..."
-                    className="flex-1 bg-transparent text-white text-sm placeholder-slate-500 focus:outline-none"
+                    className="flex-1 bg-transparent text-zinc-950 dark:text-white text-sm placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none"
                     autoComplete="off"
                   />
                   <div className="flex items-center gap-1.5">

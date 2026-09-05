@@ -155,7 +155,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-28">
       {/* 🌟 Modern Compact Executive Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -167,26 +167,44 @@ export default function DashboardPage() {
         <div className="absolute -bottom-20 -right-20 w-56 h-56 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            {/* Greeting & Info */}
+            {/* Greeting & Live Operational Info */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400 animate-spin" />
                   لوحة المتابعة الذكية
                 </span>
-                <NetworkStatusBadge size="sm" />
               </div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight gradient-heading">
                 أهلاً بك، أستاذ أحمد راضي كحلة 👋
               </h1>
 
-              <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2 flex-wrap">
-                <span>إجمالي الطلاب: <b className="text-white font-mono">{stats.totalStudents}</b> طالب</span>
-                <span>·</span>
-                <span>المجموعات النشطة: <b className="text-purple-300 font-mono">{stats.activeGroups}</b> مجموعة</span>
-                <span>·</span>
-                <span>حضور اليوم: <b className="text-emerald-400 font-mono">{stats.todayAttendanceRate}</b></span>
-              </p>
+              {/* Live Operational Schedule Info (Replacing duplicate numbers) */}
+              <div className="text-zinc-300 text-xs md:text-sm flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1">
+                  المجموعات المجدولة اليوم:{' '}
+                  <b className="text-white font-mono tabular-nums bg-white/10 px-2 py-0.5 rounded-lg border border-white/15">
+                    {todayGroups.length} مجموعات
+                  </b>
+                </span>
+                <span className="text-zinc-500">•</span>
+                <span className="flex items-center gap-1">
+                  {todayGroups.length > 0 ? (
+                    <>
+                      <span>الحصة القادمة:</span>{' '}
+                      <b className="text-purple-300 font-mono tabular-nums bg-purple-500/20 px-2 py-0.5 rounded-lg border border-purple-500/30">
+                        {todayGroups.find((g) => g.sessionStatus !== 'COMPLETED')?.timeSlot ||
+                          todayGroups[0]?.timeSlot ||
+                          '03:00 م'}
+                      </b>
+                    </>
+                  ) : (
+                    <span className="text-emerald-400 font-semibold">
+                      لا توجد حصص مجدولة لباقي اليوم ✨
+                    </span>
+                  )}
+                </span>
+              </div>
             </div>
 
             {/* Compact Clock & Quick Action Buttons */}
@@ -232,7 +250,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-      {/* 📊 High-Density Metric KPI Cards */}
+      {/* 📊 Clean Interactive Metric KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Card 1: Students */}
         <Link href="/students" className="block group">
@@ -240,7 +258,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-purple-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-purple-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">إجمالي الطلاب</span>
@@ -255,11 +273,10 @@ export default function DashboardPage() {
                 {stats.totalStudents}
               </p>
             )}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
               <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
                 <TrendingUp className="w-3 h-3" /> مسجلين بالقواعد
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-purple-600 dark:group-hover:text-purple-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -270,7 +287,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-blue-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-blue-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">المجموعات التعليمية</span>
@@ -285,9 +302,8 @@ export default function DashboardPage() {
                 {stats.activeGroups}
               </p>
             )}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
               <span className="text-zinc-500 dark:text-zinc-400 font-medium">مجموعات نشطة</span>
-              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -298,7 +314,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-emerald-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-emerald-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">نسبة حضور اليوم</span>
@@ -313,11 +329,10 @@ export default function DashboardPage() {
                 {stats.todayAttendanceRate}
               </p>
             )}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
               <span className="text-zinc-500 dark:text-zinc-400 font-medium">
                 {stats.todayAttendancesCount > 0 ? `${stats.todayAttendancesCount} طالب حاضر` : 'بانتظار تسجيل الحضور'}
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>
@@ -328,7 +343,7 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-amber-500/40 transition-all duration-200 shadow-xl relative overflow-hidden group-hover:shadow-amber-500/10"
+            className="glass-card p-4 md:p-5 rounded-3xl border border-zinc-200/80 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 shadow-sm relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <span className="text-zinc-600 dark:text-zinc-400 font-semibold text-xs">طلبات الحجز المعلقة</span>
@@ -343,11 +358,10 @@ export default function DashboardPage() {
                 {stats.pendingRegistrations}
               </p>
             )}
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
+            <div className="mt-2 pt-2 border-t border-zinc-200/60 dark:border-white/5 text-[11px]">
               <span className={stats.pendingRegistrations > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-zinc-500 dark:text-zinc-400'}>
                 {stats.pendingRegistrations > 0 ? 'مطلوب المراجعة والقبول' : 'لا توجد طلبات معلقة'}
               </span>
-              <ChevronLeft className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 group-hover:text-amber-600 dark:group-hover:text-amber-300 transition-transform group-hover:-translate-x-1" />
             </div>
           </motion.div>
         </Link>

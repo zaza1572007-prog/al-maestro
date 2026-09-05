@@ -229,21 +229,17 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Command Palette Trigger Button */}
+        {/* Command Palette Trigger Button with High Contrast Placeholder */}
         <motion.button
           whileHover={{ scale: 1.01 }}
           onClick={() => document.getElementById('command-palette-trigger')?.click()}
-          className="hidden sm:flex items-center gap-3 w-64 md:w-80 px-3 py-2 rounded-xl text-sm text-slate-500 cursor-pointer transition-all"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
+          className="hidden sm:flex items-center gap-3 w-64 md:w-80 px-3 py-2 rounded-xl text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer transition-all border border-zinc-200/80 dark:border-white/10 bg-white/60 dark:bg-white/[0.04] shadow-sm"
           title="فتح لوحة الأوامر (Ctrl+K)"
         >
-          <Search className="w-4 h-4 shrink-0" />
-          <span className="flex-1 text-right text-[13px]">البحث في المنصة...</span>
+          <Search className="w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400" />
+          <span className="flex-1 text-right text-[13px] font-medium placeholder:text-zinc-500 dark:placeholder:text-zinc-400">البحث في المنصة...</span>
           <div className="flex items-center gap-1 shrink-0">
-            <kbd className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgb(var(--p) / 0.8)' }}>
+            <kbd className="text-[10px] px-1.5 py-0.5 rounded font-mono bg-zinc-100 dark:bg-white/[0.08] border border-zinc-300 dark:border-white/15 text-zinc-700 dark:text-zinc-300">
               Ctrl+K
             </kbd>
           </div>
