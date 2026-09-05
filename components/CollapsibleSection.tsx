@@ -51,10 +51,10 @@ export default function CollapsibleSection({
 
   return (
     <div
-      className={`bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-xl transition-all ${className}`}
+      className={`glass-panel bg-white/90 dark:bg-slate-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl transition-all ${className}`}
     >
       {/* Header */}
-      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-zinc-50/80 dark:bg-zinc-950/40 select-none border-b border-zinc-200/80 dark:border-white/5">
+      <div className="p-4 sm:p-5 flex items-center justify-between gap-3 bg-white/60 dark:bg-slate-950/50 select-none border-b border-zinc-200/80 dark:border-white/10">
         <div
           onClick={toggleOpen}
           className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"

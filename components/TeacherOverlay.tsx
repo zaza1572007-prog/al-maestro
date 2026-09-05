@@ -178,8 +178,8 @@ export default function TeacherOverlay() {
 
   const pathname = usePathname();
 
-  // Hide on pages other than dashboard / root / login (e.g. /groups, /students)
-  if (pathname !== '/dashboard' && pathname !== '/' && pathname !== '/login') return null;
+  // Hide only on printable or public auth receipts if needed
+  if (pathname === '/print-card' || pathname === '/receipt') return null;
 
   if (!hasCustomImage) return null;
 

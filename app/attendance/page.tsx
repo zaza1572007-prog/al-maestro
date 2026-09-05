@@ -766,7 +766,7 @@ export default function AttendancePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scanner Card */}
-        <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-white/10 rounded-3xl p-6 shadow-xl space-y-6">
+        <div className="glass-panel bg-white/90 dark:bg-slate-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-6 shadow-2xl space-y-6 backdrop-blur-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 dark:border-white/10 pb-4 gap-2">
             <h2 className="font-bold text-zinc-950 dark:text-white flex items-center gap-2">
               <QrCode className="w-5 h-5 text-primary" />
@@ -1134,7 +1134,7 @@ export default function AttendancePage() {
 
           {/* Tab Content 1: History */}
           {rightPanelTab === 'history' && (
-            <div className="bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="glass-panel bg-white/90 dark:bg-slate-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 backdrop-blur-xl">
               <h2 className="font-bold text-zinc-950 dark:text-white text-sm">آخر سجلات الحضور</h2>
               
               <div className="space-y-2">

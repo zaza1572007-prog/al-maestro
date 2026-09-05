@@ -489,9 +489,9 @@ body {
 .ambient-glow-1 {
   position: fixed;
   top: -10%; right: -5%;
-  width: clamp(300px, 40vw, 700px);
-  height: clamp(300px, 40vw, 700px);
-  background: radial-gradient(circle, rgb(var(--p) / 0.14) 0%, transparent 65%);
+  width: clamp(350px, 45vw, 800px);
+  height: clamp(350px, 45vw, 800px);
+  background: radial-gradient(circle, rgb(var(--p) / 0.20) 0%, transparent 68%);
   pointer-events: none;
   z-index: 0;
   transition: background 0.8s ease;
@@ -501,9 +501,9 @@ body {
 .ambient-glow-2 {
   position: fixed;
   bottom: -10%; left: -5%;
-  width: clamp(300px, 40vw, 700px);
-  height: clamp(300px, 40vw, 700px);
-  background: radial-gradient(circle, rgb(var(--s) / 0.11) 0%, transparent 65%);
+  width: clamp(350px, 45vw, 800px);
+  height: clamp(350px, 45vw, 800px);
+  background: radial-gradient(circle, rgb(var(--s) / 0.16) 0%, transparent 68%);
   pointer-events: none;
   z-index: 0;
   transition: background 0.8s ease;

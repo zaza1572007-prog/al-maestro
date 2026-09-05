@@ -99,10 +99,10 @@ export default function ResizableTable<T>({
   }, [handleMouseMove, handleMouseUp]);
 
   return (
-    <div className={`w-full overflow-x-auto border border-zinc-200 dark:border-white/10 rounded-2xl bg-white dark:bg-zinc-900/90 shadow-xl select-none ${className}`}>
+    <div className={`w-full overflow-x-auto border border-zinc-200/90 dark:border-white/10 rounded-2xl bg-white/80 dark:bg-slate-950/50 shadow-xl select-none backdrop-blur-md ${className}`}>
       <table className="w-full text-right border-collapse maestro-table" style={{ tableLayout: 'fixed' }}>
         <thead>
-          <tr className="bg-zinc-100/90 dark:bg-zinc-900/95 border-b border-zinc-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300">
+          <tr className="bg-zinc-100/80 dark:bg-slate-900/80 border-b border-zinc-200/90 dark:border-white/10 text-zinc-700 dark:text-zinc-200">
             {columns.map((col) => {
               const width = colWidths[col.key] || col.defaultWidth || 140;
               return (
