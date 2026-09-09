@@ -233,37 +233,46 @@ export default function DailyAttendancePage() {
 
     setMarkingPresent(student.id);
     try {
-      // First open the session if it's closed
-      if (selectedGroup?.sessionStatus === 'COMPLETED' || selectedGroup?.sessionStatus === 'NOT_STARTED') {
+      let targetSessionId = selectedGroup?.sessionId;
+
+      // If no session exists yet for this group on the selected date, create or get it
+      if (!targetSessionId) {
         const openRes = await fetch('/api/attendance/today-groups/open', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ groupId }),
         });
         const openData = await openRes.json();
-        if (!openData.success) {
-          toast.error(openData.error || 'فشل إعادة فتح المجموعة');
+        if (openData.success && openData.session) {
+          targetSessionId = openData.session.id;
+        } else {
+          toast.error(openData.error || 'فشل فتح جلسة للمجموعة');
           return;
         }
       }
 
-      const res = await fetch('/api/attendance/scan', {
+      // Record / update attendance directly for this group session
+      const res = await fetch('/api/attendance/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentCode: student.code,
-          status: 'PRESENT',
-          homeworkStatus: 'NONE',
-          forceDuplicate: true,
-          scanMode: 'ATTENDANCE_ONLY',
+          sessionId: targetSessionId,
+          attendanceRecords: [
+            {
+              studentId: student.id,
+              status: 'PRESENT',
+              notes: 'حضور يدوي من كشف الحضور',
+            },
+          ],
         }),
       });
+
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         toast.success(`✅ تم تسجيل حضور ${student.name} بنجاح`);
         await fetchGroups(selectedDate);
       } else {
-        toast.error(data.error || 'فشل تسجيل الحضور');
+        toast.error(data.error || 'فشل تسجيل الحضور اليدوي');
       }
     } catch {
       toast.error('خطأ في الاتصال بالخادم');

@@ -1303,6 +1303,8 @@ export default function AttendancePage() {
                                       body: JSON.stringify({
                                         studentCode: s.code,
                                         status: 'PRESENT',
+                                        groupId: absenteesGroup,
+                                        forceDuplicate: true,
                                         homeworkStatus,
                                         scanMode,
                                       }),

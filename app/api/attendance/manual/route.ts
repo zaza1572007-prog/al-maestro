@@ -85,8 +85,22 @@ export async function POST(request: NextRequest) {
               status,
               notes,
               recordedById: recordedById,
+              ...(status === 'PRESENT' && !existingAttendance.checkInTime ? { checkInTime: new Date() } : {}),
             },
           });
+
+          // Update subscription if present and status changed to PRESENT
+          const activeSubscription = student.subscriptions[0];
+          if (activeSubscription && status === 'PRESENT' && existingAttendance.status !== 'PRESENT') {
+            await prisma.subscription.update({
+              where: { id: activeSubscription.id },
+              data: {
+                usedSessions: {
+                  increment: 1,
+                },
+              },
+            });
+          }
 
           results.push({
             studentId,

@@ -96,6 +96,8 @@ export async function POST(req: Request) {
       selectedMonth,
       selectedYear,
       skipPayment,
+      groupId: explicitGroupId,
+      sessionId: explicitSessionId,
     } = await req.json();
 
     const actualPayMonth = (payMonth || scanMode === 'PAY_ONLY' || scanMode === 'BOTH') && !skipPayment;
@@ -388,29 +390,35 @@ export async function POST(req: Request) {
     let targetGroup: any = null;
     let isDifferentGroup = false;
 
-    // A. Check if an OPEN session exists for the student's own group today
-    const studentGroupTodaySession = await prisma.lessonSession.findFirst({
-      where: {
-        groupId: student.groupId,
-        date: {
-          gte: todayStart,
-          lt: todayEnd,
-        },
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
-      },
-      include: {
-        group: { include: { academicStage: true } },
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    if (studentGroupTodaySession) {
-      targetSession = studentGroupTodaySession;
-      targetGroup = studentGroupTodaySession.group || student.group;
-    } else {
-      // B. Check if there are open sessions for other groups today
-      const openSessions = await prisma.lessonSession.findMany({
+    if (explicitSessionId) {
+      targetSession = await prisma.lessonSession.findUnique({
+        where: { id: explicitSessionId },
+        include: { group: { include: { academicStage: true } } },
+      });
+      if (targetSession) {
+        targetGroup = targetSession.group;
+        isDifferentGroup = student.groupId !== targetGroup.id;
+      }
+    } else if (explicitGroupId) {
+      targetSession = await prisma.lessonSession.findFirst({
         where: {
+          groupId: explicitGroupId,
+          date: { gte: todayStart, lt: todayEnd },
+        },
+        include: { group: { include: { academicStage: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (targetSession) {
+        targetGroup = targetSession.group;
+        isDifferentGroup = student.groupId !== targetGroup.id;
+      }
+    }
+
+    if (!targetSession) {
+      // A. Check if an OPEN session exists for the student's own group today
+      const studentGroupTodaySession = await prisma.lessonSession.findFirst({
+        where: {
+          groupId: student.groupId,
           date: {
             gte: todayStart,
             lt: todayEnd,
@@ -420,13 +428,51 @@ export async function POST(req: Request) {
         include: {
           group: { include: { academicStage: true } },
         },
+        orderBy: { createdAt: 'desc' }
       });
 
-      if (openSessions.length > 0) {
-        const otherOpenSession = openSessions[0];
-        targetSession = otherOpenSession;
-        targetGroup = otherOpenSession.group;
-        isDifferentGroup = true;
+      if (studentGroupTodaySession) {
+        targetSession = studentGroupTodaySession;
+        targetGroup = studentGroupTodaySession.group || student.group;
+      } else {
+        // Fallback: check if student's own group has a session today (even completed) when forceDuplicate is true
+        if (forceDuplicate && student.groupId) {
+          const ownSessionToday = await prisma.lessonSession.findFirst({
+            where: {
+              groupId: student.groupId,
+              date: { gte: todayStart, lt: todayEnd },
+            },
+            include: { group: { include: { academicStage: true } } },
+            orderBy: { createdAt: 'desc' },
+          });
+          if (ownSessionToday) {
+            targetSession = ownSessionToday;
+            targetGroup = ownSessionToday.group || student.group;
+          }
+        }
+
+        if (!targetSession) {
+          // B. Check if there are open sessions for other groups today
+          const openSessions = await prisma.lessonSession.findMany({
+            where: {
+              date: {
+                gte: todayStart,
+                lt: todayEnd,
+              },
+              status: { in: ['OPEN', 'IN_PROGRESS'] },
+            },
+            include: {
+              group: { include: { academicStage: true } },
+            },
+          });
+
+          if (openSessions.length > 0) {
+            const otherOpenSession = openSessions[0];
+            targetSession = otherOpenSession;
+            targetGroup = otherOpenSession.group;
+            isDifferentGroup = true;
+          }
+        }
       }
     }
 
