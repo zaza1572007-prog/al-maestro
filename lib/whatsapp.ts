@@ -116,10 +116,13 @@ export async function initWhatsApp(forceNew = false): Promise<WASocket> {
               initWhatsApp(true).catch((e) => console.error('Reconnect failed:', e.message));
             }, 3000);
           } else {
-            console.log('❌ [WhatsApp] Session logged out. Clear auth info to re-pair.');
+            console.log('❌ [WhatsApp] Session logged out. Clearing auth info & generating fresh QR Code...');
             try {
               fs.rmSync(AUTH_DIR, { recursive: true, force: true });
             } catch {}
+            setTimeout(() => {
+              initWhatsApp(true).catch((e) => console.error('Regenerate QR failed:', e.message));
+            }, 1500);
           }
         } else if (connection === 'open') {
           global.__waSocket = sock;

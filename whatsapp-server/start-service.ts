@@ -103,10 +103,13 @@ async function initGatewayWhatsApp(forceNew = false): Promise<WASocket> {
               initGatewayWhatsApp(true).catch((e) => console.error('Reconnect failed:', e.message));
             }, 3000);
           } else {
-            console.log('❌ [WhatsApp Gateway] Session logged out.');
+            console.log('❌ [WhatsApp Gateway] Session logged out. Clearing auth info & generating fresh QR Code...');
             try {
               fs.rmSync(AUTH_DIR, { recursive: true, force: true });
             } catch {}
+            setTimeout(() => {
+              initGatewayWhatsApp(true).catch((e) => console.error('Regenerate QR failed:', e.message));
+            }, 1500);
           }
         } else if (connection === 'open') {
           sock = socketInstance;
