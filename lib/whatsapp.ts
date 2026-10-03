@@ -26,7 +26,9 @@ global.__waConnectionStatus = global.__waConnectionStatus ?? 'DISCONNECTED';
 global.__waLastQr = global.__waLastQr ?? null;
 global.__waConnectingPromise = global.__waConnectingPromise ?? null;
 
-const AUTH_DIR = path.join(process.cwd(), 'whatsapp_auth_info');
+const AUTH_DIR = process.env.VERCEL === '1'
+  ? path.join('/tmp', 'whatsapp_auth_info')
+  : path.join(process.cwd(), 'whatsapp_auth_info');
 
 export function formatWhatsAppNumber(phone: string): string {
   if (!phone) return '';
@@ -47,6 +49,10 @@ export function formatWhatsAppNumber(phone: string): string {
 }
 
 export async function initWhatsApp(forceNew = false): Promise<WASocket> {
+  if (process.env.VERCEL === '1') {
+    throw new Error('Direct Baileys initialization is disabled on Vercel serverless. Please run npm run whatsapp:service locally.');
+  }
+
   const settings = await prisma.systemSettings.findFirst({
     select: { enableWhatsApp: true }
   });

@@ -81,6 +81,20 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Direct Baileys Status (Local dev or direct hosting)
+    if (process.env.VERCEL === '1') {
+      return NextResponse.json({
+        success: true,
+        isEnabled: true,
+        isConnected: false,
+        status: 'DISCONNECTED',
+        user: settings?.waSenderNumber || null,
+        hasQr: false,
+        qr: null,
+        gatewayUrl: settings?.waGatewayUrl || null,
+        mode: 'GATEWAY',
+      });
+    }
+
     const directStatus = getWhatsAppStatus();
     return NextResponse.json({
       success: true,
@@ -151,7 +165,14 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 2. Direct Baileys Reconnect
+      // 2. Direct Baileys Reconnect (Only for local dev / non-Vercel)
+      if (process.env.VERCEL === '1') {
+        return NextResponse.json({
+          success: false,
+          error: 'تعذر الاتصال بخادم الواتساب المحلي. يرجى تشغيل أمر npm run whatsapp:service في التيرمنال على جهازك.',
+        }, { status: 503 });
+      }
+
       try {
         await initWhatsApp(true);
         const directStatus = getWhatsAppStatus();
