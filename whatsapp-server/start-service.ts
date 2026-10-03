@@ -1,6 +1,7 @@
 import localtunnel from 'localtunnel';
 import http from 'http';
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
@@ -66,10 +67,14 @@ async function initGatewayWhatsApp(forceNew = false): Promise<WASocket> {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        browser: Browsers.windows('Desktop'),
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000,
+        keepAliveIntervalMs: 25000,
+        getMessage: async () => undefined,
       });
 
       socketInstance.ev.on('creds.update', saveCreds);
@@ -386,6 +391,15 @@ server.listen(PORT, '0.0.0.0', async () => {
     console.log(`4. ضع رمز التوكن: ${API_TOKEN}`);
     console.log('5. اضغط حفظ الإعدادات... وستعمل الرسائل تلقائياً 100%! 🎉');
     console.log('=================================================================\n');
+
+    // Periodic tunnel keepalive ping every 20 seconds to prevent tunnel closing
+    setInterval(async () => {
+      try {
+        await fetch(`${tunnel.url}/health`, {
+          headers: { 'bypass-tunnel-reminder': 'true' },
+        });
+      } catch {}
+    }, 20000);
 
     tunnel.on('close', () => {
       console.log('⚠️ Tunnel closed.');

@@ -2,54 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage as directSendWA } from '@/lib/whatsapp';
 
-// Utility: send a WhatsApp message via Baileys direct connection with HTTP gateway fallback
+// Utility: send a WhatsApp message via centralized lib/whatsapp
 export async function sendWhatsAppMessage(to: string, body: string) {
-  const settings = await prisma.systemSettings.findFirst();
-  if (settings && settings.enableWhatsApp === false) {
-    throw new Error('WhatsApp service is disabled in settings.');
+  const result = await directSendWA(to, body);
+  if (!result.success) {
+    throw new Error(result.error || 'فشل إرسال رسالة الواتساب');
   }
-
-  // 1. Try direct Baileys connection
-  const directResult = await directSendWA(to, body);
-  if (directResult.success) {
-    return { success: true, messageId: directResult.messageId };
-  }
-
-  // 2. Fallback to HTTP gateway if configured
-  if (settings?.waGatewayUrl && settings?.waApiToken) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
-
-      const res = await fetch(settings.waGatewayUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${settings.waApiToken}`,
-        },
-        body: JSON.stringify({
-          token: settings.waApiToken,
-          to,
-          body,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Gateway responded ${res.status}: ${text}`);
-      }
-
-      return await res.json();
-    } catch (err: any) {
-      throw new Error(`Gateway connection failed or timed out: ${err.message}`);
-    }
-  }
-
-  // If Baileys failed and no gateway
-  throw new Error(directResult.error || 'فشل إرسال رسالة الواتساب');
+  return result;
 }
 
 // Replace template placeholders with actual values

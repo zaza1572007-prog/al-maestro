@@ -1,4 +1,5 @@
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
@@ -77,11 +78,15 @@ export async function initWhatsApp(forceNew = false): Promise<WASocket> {
         version,
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false, // handled manually with qrcode-terminal
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        printQRInTerminal: false,
+        browser: Browsers.windows('Desktop'),
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000,
+        keepAliveIntervalMs: 25000,
+        getMessage: async () => undefined,
       });
 
       sock.ev.on('creds.update', saveCreds);
