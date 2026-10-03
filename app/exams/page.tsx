@@ -211,6 +211,7 @@ export default function ExamsPage() {
   const [showAnswersAfterSubmit, setShowAnswersAfterSubmit] = useState(true);
   const [isOpenNow, setIsOpenNow] = useState(true);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [previewQuestionId, setPreviewQuestionId] = useState<string | 'DRAFT'>('DRAFT');
 
   // Current Question being added in builder
   const [currentQText, setCurrentQText] = useState('');
@@ -336,6 +337,7 @@ export default function ExamsPage() {
     });
     setIsOnlineQuiz(false);
     setQuizQuestions([]);
+    setPreviewQuestionId('DRAFT');
     setCurrentQText('');
     setCurrentQExplanation('');
     setCurrentQOptions(['الخيار الأول', 'الخيار الثاني', 'الخيار الثالث', 'الخيار الرابع']);
@@ -360,6 +362,7 @@ export default function ExamsPage() {
     };
 
     setQuizQuestions((prev) => [...prev, newQ]);
+    setPreviewQuestionId('DRAFT');
 
     // Save to bank if checkbox enabled
     if (saveToBankOnAdd) {
@@ -388,6 +391,9 @@ export default function ExamsPage() {
 
   const removeQuestionFromQuiz = (id: string) => {
     setQuizQuestions((prev) => prev.filter((q) => q.id !== id));
+    if (previewQuestionId === id) {
+      setPreviewQuestionId('DRAFT');
+    }
   };
 
   const importFromBankToQuiz = (bankQ: BankQuestion) => {
@@ -577,6 +583,41 @@ export default function ExamsPage() {
       (g) => g.academicStageId === preselectedStageId || g.academicStage?.id === preselectedStageId
     );
   }, [groups, preselectedStageId]);
+
+  const currentPreviewData = useMemo(() => {
+    const isDraft = previewQuestionId === 'DRAFT' || !quizQuestions.some((q) => q.id === previewQuestionId);
+    if (isDraft) {
+      const options = currentQType === 'TRUE_FALSE' 
+        ? ['صح', 'خطأ'] 
+        : currentQOptions.map((opt, i) => opt.trim() || `الخيار ${i + 1}`);
+      return {
+        id: 'DRAFT',
+        isDraft: true,
+        index: quizQuestions.length + 1,
+        total: Math.max(quizQuestions.length + 1, 1),
+        type: currentQType,
+        questionText: currentQText.trim() || 'اكتب نص السؤال في المحرر وسيظهر هنا فوراً كما يراه الطالب...',
+        options,
+        correctAnswer: currentQCorrect,
+        explanation: currentQExplanation.trim(),
+        points: currentQPoints || 1,
+      };
+    }
+    const foundIdx = quizQuestions.findIndex((q) => q.id === previewQuestionId);
+    const foundQ = quizQuestions[foundIdx];
+    return {
+      id: foundQ.id,
+      isDraft: false,
+      index: foundIdx + 1,
+      total: quizQuestions.length,
+      type: foundQ.type || 'MCQ',
+      questionText: foundQ.questionText,
+      options: foundQ.options,
+      correctAnswer: foundQ.correctAnswer,
+      explanation: foundQ.explanation || '',
+      points: foundQ.points,
+    };
+  }, [previewQuestionId, quizQuestions, currentQText, currentQOptions, currentQCorrect, currentQExplanation, currentQPoints, currentQType]);
 
   return (
     <div className="space-y-6 pb-12 text-zinc-100">
@@ -843,21 +884,25 @@ export default function ExamsPage() {
 
       {/* Add Exam / Quiz Modal */}
       {isAddingExam && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-3xl shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+          <div
+            className={`bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 w-full shadow-2xl space-y-5 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar transition-all duration-300 ${
+              isOnlineQuiz ? 'max-w-6xl 2xl:max-w-7xl' : 'max-w-3xl'
+            }`}
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-purple-400" />
-                  إنشاء امتحان جديد / كويز إلكتروني
+                  إنشاء امتحان جديد / كويز إلكتروني تفاعلي
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  اختر ما إذا كان امتحاناً ورقياً عادياً أو كويزاً إلكترونياً تفاعلياً مصححاً ذاتياً
+                  اختر نوع الامتحان ثم أضف الأسئلة مع شاشة المعاينة الحية الفورية المباشرة
                 </p>
               </div>
               <button
                 onClick={() => setIsAddingExam(false)}
-                className="text-slate-400 hover:text-white text-xl"
+                className="text-slate-400 hover:text-white text-xl p-1 rounded-lg hover:bg-slate-800 transition"
               >
                 ✕
               </button>
@@ -870,7 +915,7 @@ export default function ExamsPage() {
                 onClick={() => setIsOnlineQuiz(false)}
                 className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1.5 ${
                   !isOnlineQuiz
-                    ? 'bg-purple-600/20 border-purple-500 text-purple-200 font-bold'
+                    ? 'bg-purple-600/20 border-purple-500 text-purple-200 font-bold shadow-lg shadow-purple-600/10'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
@@ -884,227 +929,594 @@ export default function ExamsPage() {
                 onClick={() => setIsOnlineQuiz(true)}
                 className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1.5 ${
                   isOnlineQuiz
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg shadow-amber-500/10'
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg shadow-amber-500/15 ring-1 ring-amber-500/30'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                 }`}
               >
                 <Zap className="w-5 h-5 text-amber-400" />
-                <span className="text-xs font-bold text-amber-400">⚡ كويز إلكتروني تفاعلي</span>
-                <span className="text-[10px] text-slate-400">مؤقت زمني وتصحيح ذاتي فوري 100%</span>
+                <span className="text-xs font-bold text-amber-400">⚡ كويز إلكتروني تفاعلي + معاينة حية</span>
+                <span className="text-[10px] text-slate-400">مؤقت زمني وتصحيح ذاتي فوري 100% مع محاكي الطالب</span>
               </button>
             </div>
 
             <form onSubmit={handleCreateExam} className="space-y-4 text-sm">
-              {/* Basic Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="md:col-span-2">
-                  <label className="block text-slate-300 mb-1 text-xs font-semibold">عنوان الامتحان / الكويز *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: كويز قوانين الحركة والقوة"
-                    value={newExam.title}
-                    onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 text-xs font-semibold">المجموعة التعليمية *</label>
-                  <select
-                    required
-                    value={newExam.groupId}
-                    onChange={(e) => setNewExam({ ...newExam, groupId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
-                  >
-                    <option value="">اختر المجموعة...</option>
-                    {availableGroupsForModal.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} {g.academicStage?.name ? `(${g.academicStage.name})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 text-xs font-semibold">تاريخ الامتحان</label>
-                  <input
-                    type="date"
-                    value={newExam.examDate}
-                    onChange={(e) => setNewExam({ ...newExam, examDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Online Quiz Specific Options */}
-              {isOnlineQuiz && (
-                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                      <Timer className="w-4 h-4" />
-                      إعدادات الكويز الإلكتروني
+              {/* Main Content Grid: 2 Columns if Online Quiz */}
+              <div className={`grid grid-cols-1 ${isOnlineQuiz ? 'lg:grid-cols-12 gap-6' : 'gap-4'} items-start`}>
+                {/* Right Column: Editor & Inputs */}
+                <div className={`${isOnlineQuiz ? 'lg:col-span-7 space-y-4' : 'space-y-4'}`}>
+                  {/* Basic Fields Card */}
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-purple-400" />
+                      البيانات الأساسية للاختبار
                     </h4>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {quizQuestions.length} أسئلة مضافة (إجمالي الدرجات:{' '}
-                      {quizQuestions.reduce((acc, q) => acc + (q.points || 1), 0)})
-                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-slate-300 mb-1 text-xs font-semibold">عنوان الامتحان / الكويز *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: كويز قوانين الحركة والقوة والسرعة"
+                          value={newExam.title}
+                          onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 text-xs font-semibold">المجموعة التعليمية *</label>
+                        <select
+                          required
+                          value={newExam.groupId}
+                          onChange={(e) => setNewExam({ ...newExam, groupId: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
+                        >
+                          <option value="">اختر المجموعة...</option>
+                          {availableGroupsForModal.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} {g.academicStage?.name ? `(${g.academicStage.name})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 mb-1 text-xs font-semibold">تاريخ الامتحان</label>
+                        <input
+                          type="date"
+                          value={newExam.examDate}
+                          onChange={(e) => setNewExam({ ...newExam, examDate: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-slate-300 mb-1 text-xs font-semibold">المدة بالدقائق (المؤقت)</label>
+                  {/* Traditional Exam Score Field (if not online) */}
+                  {!isOnlineQuiz && (
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                      <label className="block text-slate-300 mb-1 text-xs font-semibold">الدرجة العظمى (النهائية) *</label>
                       <input
                         type="number"
                         min={1}
-                        max={180}
-                        value={quizDuration}
-                        onChange={(e) => setQuizDuration(parseInt(e.target.value) || 15)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-sm font-mono"
+                        required
+                        value={newExam.maxScore}
+                        onChange={(e) => setNewExam({ ...newExam, maxScore: parseFloat(e.target.value) || 10 })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
                       />
                     </div>
+                  )}
 
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950 border border-slate-800">
-                      <span className="text-xs text-slate-300">خلط الأسئلة عشوائياً</span>
-                      <input
-                        type="checkbox"
-                        checked={shuffleQuestions}
-                        onChange={(e) => setShuffleQuestions(e.target.checked)}
-                        className="rounded text-purple-600 focus:ring-purple-500"
-                      />
-                    </div>
+                  {/* Online Quiz Settings & Builder */}
+                  {isOnlineQuiz && (
+                    <div className="space-y-4">
+                      {/* Online Options Banner */}
+                      <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                            <Timer className="w-4 h-4" />
+                            إعدادات الكويز والمؤقت
+                          </h4>
+                          <span className="text-[10px] text-amber-300/80 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                            {quizQuestions.length} أسئلة مضافة (إجمالي الدرجات:{' '}
+                            {quizQuestions.reduce((acc, q) => acc + (q.points || 1), 0)})
+                          </span>
+                        </div>
 
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950 border border-slate-800">
-                      <span className="text-xs text-slate-300">إظهار الحل النموذجي</span>
-                      <input
-                        type="checkbox"
-                        checked={showAnswersAfterSubmit}
-                        onChange={(e) => setShowAnswersAfterSubmit(e.target.checked)}
-                        className="rounded text-purple-600 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Interactive Question Builder */}
-                  <div className="pt-3 border-t border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-200">إضافة أسئلة الكويز:</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          fetchBankQuestions();
-                          setIsBankOpen(true);
-                        }}
-                        className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-bold"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        استيراد من بنك الأسئلة
-                      </button>
-                    </div>
-
-                    {/* Question Input Card */}
-                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
-                      <textarea
-                        rows={2}
-                        placeholder="اكتب نص السؤال هنا..."
-                        value={currentQText}
-                        onChange={(e) => setCurrentQText(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:border-amber-500 focus:outline-none"
-                      />
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {currentQOptions.map((opt, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <div>
+                            <label className="block text-slate-300 mb-1 text-[11px] font-semibold">مدة الكويز (بالدقائق)</label>
                             <input
-                              type="radio"
-                              name="correctAnswer"
-                              checked={currentQCorrect === String(idx)}
-                              onChange={() => setCurrentQCorrect(String(idx))}
-                              className="text-amber-500"
-                              title="حدد هذا الخيار كإجابة صحيحة"
-                            />
-                            <input
-                              type="text"
-                              value={opt}
-                              onChange={(e) => {
-                                const updated = [...currentQOptions];
-                                updated[idx] = e.target.value;
-                                setCurrentQOptions(updated);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200"
+                              type="number"
+                              min={1}
+                              max={180}
+                              value={quizDuration}
+                              onChange={(e) => setQuizDuration(parseInt(e.target.value) || 15)}
+                              className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-sm font-mono text-center focus:border-amber-500 focus:outline-none"
                             />
                           </div>
-                        ))}
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <input
-                          type="text"
-                          placeholder="تفسير أو شرح الحل النموذجي (اختياري)..."
-                          value={currentQExplanation}
-                          onChange={(e) => setCurrentQExplanation(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200"
-                        />
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            placeholder="الدرجة"
-                            value={currentQPoints}
-                            onChange={(e) => setCurrentQPoints(parseFloat(e.target.value) || 1)}
-                            className="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={addQuestionToQuiz}
-                            className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-lg text-xs transition"
-                          >
-                            + إضافة السؤال للكويز
-                          </button>
+                          <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                            <span className="text-xs text-slate-300">خلط الأسئلة</span>
+                            <input
+                              type="checkbox"
+                              checked={shuffleQuestions}
+                              onChange={(e) => setShuffleQuestions(e.target.checked)}
+                              className="rounded text-amber-500 focus:ring-amber-500"
+                            />
+                          </label>
+
+                          <label className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                            <span className="text-xs text-slate-300">إظهار الحل النموذجي</span>
+                            <input
+                              type="checkbox"
+                              checked={showAnswersAfterSubmit}
+                              onChange={(e) => setShowAnswersAfterSubmit(e.target.checked)}
+                              className="rounded text-amber-500 focus:ring-amber-500"
+                            />
+                          </label>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Added Questions List */}
-                    {quizQuestions.length > 0 && (
-                      <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                        {quizQuestions.map((q, idx) => (
-                          <div
-                            key={q.id}
-                            className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs"
+                      {/* Interactive Question Builder Card */}
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                              محرر كتابة الأسئلة
+                            </span>
+                            <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">
+                              مسوّدة السؤال #{quizQuestions.length + 1}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              fetchBankQuestions();
+                              setIsBankOpen(true);
+                            }}
+                            className="text-xs text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 font-bold transition"
                           >
-                            <div className="truncate flex-1">
-                              <span className="font-bold text-amber-400 ml-1">س{idx + 1}:</span>
-                              <span className="text-slate-200">{q.questionText}</span>
-                              <span className="text-[10px] text-slate-400 mr-2">({q.points} درجات)</span>
+                            <BookOpen className="w-3.5 h-3.5" />
+                            استيراد من بنك الأسئلة
+                          </button>
+                        </div>
+
+                        {/* Question Type Switch */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentQType('MCQ');
+                              setCurrentQCorrect('0');
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                              currentQType === 'MCQ'
+                                ? 'bg-amber-500 text-slate-950 shadow'
+                                : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+                            }`}
+                          >
+                            اختيار من متعدد (4 خيارات)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCurrentQType('TRUE_FALSE');
+                              setCurrentQCorrect('0');
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                              currentQType === 'TRUE_FALSE'
+                                ? 'bg-amber-500 text-slate-950 shadow'
+                                : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+                            }`}
+                          >
+                            صح / خطأ (خياران)
+                          </button>
+                        </div>
+
+                        {/* Question Textarea */}
+                        <div>
+                          <label className="block text-slate-300 mb-1 text-xs font-semibold">
+                            نص السؤال * (يظهر فوراً في شاشة المعاينة):
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="اكتب نص السؤال هنا بدقة..."
+                            value={currentQText}
+                            onChange={(e) => {
+                              setCurrentQText(e.target.value);
+                              if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:border-amber-500 focus:outline-none leading-relaxed"
+                          />
+                        </div>
+
+                        {/* Question Options with Radio for Correct Answer */}
+                        <div className="space-y-2">
+                          <label className="block text-slate-300 text-xs font-semibold">
+                            خيارات الإجابة (حدد النقطة الخضراء بجانب الإجابة الصحيحة):
+                          </label>
+
+                          {currentQType === 'MCQ' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {currentQOptions.map((opt, idx) => {
+                                const isSelected = currentQCorrect === String(idx);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`flex items-center gap-2 p-1.5 rounded-xl border transition ${
+                                      isSelected
+                                        ? 'bg-emerald-950/40 border-emerald-500/70 ring-1 ring-emerald-500/30'
+                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="correctAnswer"
+                                      checked={isSelected}
+                                      onChange={() => {
+                                        setCurrentQCorrect(String(idx));
+                                        if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                                      }}
+                                      className="text-emerald-500 focus:ring-emerald-500 cursor-pointer ml-1"
+                                      title="حدد هذا الخيار كإجابة صحيحة"
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                      {['أ', 'ب', 'ج', 'د'][idx] || idx + 1}:
+                                    </span>
+                                    <input
+                                      type="text"
+                                      value={opt}
+                                      onChange={(e) => {
+                                        const updated = [...currentQOptions];
+                                        updated[idx] = e.target.value;
+                                        setCurrentQOptions(updated);
+                                        if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                                      }}
+                                      placeholder={`الخيار ${idx + 1}`}
+                                      className="w-full bg-transparent border-0 p-1 text-xs text-slate-200 focus:outline-none"
+                                    />
+                                    {isSelected && (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mr-1" />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              {['صح', 'خطأ'].map((label, idx) => {
+                                const isSelected = currentQCorrect === String(idx);
+                                return (
+                                  <label
+                                    key={idx}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition ${
+                                      isSelected
+                                        ? 'bg-emerald-950/40 border-emerald-500/70 ring-1 ring-emerald-500/30'
+                                        : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="radio"
+                                        name="tfCorrectAnswer"
+                                        checked={isSelected}
+                                        onChange={() => {
+                                          setCurrentQCorrect(String(idx));
+                                          if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                                        }}
+                                        className="text-emerald-500 focus:ring-emerald-500"
+                                      />
+                                      <span className="text-xs font-bold text-white">{label}</span>
+                                    </div>
+                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Explanation and Points */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+                          <div className="sm:col-span-8">
+                            <input
+                              type="text"
+                              placeholder="💡 شرح وتفسير الحل النموذجي (اختياري - يظهر للطالب بعد التسليم)..."
+                              value={currentQExplanation}
+                              onChange={(e) => {
+                                setCurrentQExplanation(e.target.value);
+                                if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+                            />
+                          </div>
+                          <div className="sm:col-span-4 flex items-center gap-1.5">
+                            <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1">
+                              <span className="text-[10px] text-slate-400 font-semibold">الدرجة:</span>
+                              <input
+                                type="number"
+                                min={0.5}
+                                step={0.5}
+                                value={currentQPoints}
+                                onChange={(e) => {
+                                  setCurrentQPoints(parseFloat(e.target.value) || 1);
+                                  if (previewQuestionId !== 'DRAFT') setPreviewQuestionId('DRAFT');
+                                }}
+                                className="w-12 bg-transparent text-xs text-white font-mono text-center focus:outline-none"
+                              />
                             </div>
                             <button
                               type="button"
-                              onClick={() => removeQuestionFromQuiz(q.id)}
-                              className="text-slate-500 hover:text-rose-400 mr-2"
+                              onClick={addQuestionToQuiz}
+                              className="flex-1 py-2 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs transition shadow-md flex items-center justify-center gap-1 shrink-0"
                             >
-                              ✕
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>إضافة السؤال</span>
                             </button>
                           </div>
+                        </div>
+
+                        {/* Save to Bank Option */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id="saveToBankCheckbox"
+                            checked={saveToBankOnAdd}
+                            onChange={(e) => setSaveToBankOnAdd(e.target.checked)}
+                            className="rounded text-amber-500 focus:ring-amber-500"
+                          />
+                          <label htmlFor="saveToBankCheckbox" className="text-[11px] text-slate-400 cursor-pointer">
+                            حفظ نسخة تلقائياً في بنك الأسئلة المركزي للاستخدام المستقبلي
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Added Questions List */}
+                      {quizQuestions.length > 0 && (
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-200">
+                              📋 الأسئلة المضافة للاختبار ({quizQuestions.length})
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              اضغط على أي سؤال لمعاينته في الشاشة المقابلة
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                            {quizQuestions.map((q, idx) => {
+                              const isCurrentlyPreviewed = previewQuestionId === q.id;
+                              return (
+                                <div
+                                  key={q.id}
+                                  onClick={() => setPreviewQuestionId(q.id)}
+                                  className={`p-2.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition ${
+                                    isCurrentlyPreviewed
+                                      ? 'bg-purple-950/40 border-purple-500 text-white ring-1 ring-purple-500/40 shadow'
+                                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700 text-slate-300'
+                                  }`}
+                                >
+                                  <div className="truncate flex-1 flex items-center gap-2">
+                                    <span className="font-bold text-amber-400 font-mono ml-1">س{idx + 1}:</span>
+                                    <span className="truncate">{q.questionText}</span>
+                                    <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono shrink-0">
+                                      {q.points} {q.points > 2 ? 'درجات' : 'درجة'}
+                                    </span>
+                                    {isCurrentlyPreviewed && (
+                                      <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/30 shrink-0">
+                                        👁️ معروض بالمعاينة
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 mr-2">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeQuestionFromQuiz(q.id);
+                                      }}
+                                      className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition"
+                                      title="حذف السؤال"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Left Column: Live Interactive Preview Panel (Student Card Simulator) */}
+                {isOnlineQuiz && (
+                  <div className="lg:col-span-5 sticky top-2 space-y-3">
+                    <div className="bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-slate-900/95 border border-amber-500/30 rounded-3xl p-4 sm:p-5 shadow-2xl space-y-4 backdrop-blur-xl relative overflow-hidden">
+                      {/* Top Bar: Live Indicator & Mock Timer */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                          </span>
+                          <span className="text-xs font-black text-white flex items-center gap-1">
+                            معاينة حية لشاشة الطالب
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold">
+                          <Clock className="w-3.5 h-3.5 animate-pulse" />
+                          <span>{quizDuration || 15}:00 دقيقة</span>
+                        </div>
+                      </div>
+
+                      {/* Question Navigation Tabs */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewQuestionId('DRAFT')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 flex items-center gap-1 ${
+                            previewQuestionId === 'DRAFT'
+                              ? 'bg-amber-500 text-slate-950 shadow-md'
+                              : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'
+                          }`}
+                        >
+                          <span>✏️ المسوّدة الحالية</span>
+                        </button>
+
+                        {quizQuestions.map((q, idx) => (
+                          <button
+                            key={q.id}
+                            type="button"
+                            onClick={() => setPreviewQuestionId(q.id)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition shrink-0 font-mono ${
+                              previewQuestionId === q.id
+                                ? 'bg-purple-600 text-white shadow-md'
+                                : 'bg-slate-800/80 text-slate-400 hover:text-white border border-slate-700/50'
+                            }`}
+                          >
+                            س{idx + 1}
+                          </button>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                      {/* Mock Student Question Card */}
+                      <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-inner">
+                        {/* Question Metadata Header */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-amber-400">
+                              السؤال {currentPreviewData.index} من {currentPreviewData.total}
+                            </span>
+                            {currentPreviewData.isDraft ? (
+                              <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
+                                مسوّدة جارية
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
+                                سؤال معتمد
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-bold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2.5 py-0.5 rounded-full font-mono">
+                            ⭐ {currentPreviewData.points} {currentPreviewData.points > 2 ? 'درجات' : 'درجة'}
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-amber-500 h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${(currentPreviewData.index / currentPreviewData.total) * 100}%`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Question Body */}
+                        <div className="py-1">
+                          <h4 className="text-sm md:text-base font-bold text-white leading-relaxed whitespace-pre-wrap">
+                            {currentPreviewData.questionText}
+                          </h4>
+                        </div>
+
+                        {/* Options Simulation */}
+                        <div className="space-y-2">
+                          {currentPreviewData.options.map((opt, idx) => {
+                            const isCorrect = String(idx) === String(currentPreviewData.correctAnswer);
+                            const letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و'];
+                            return (
+                              <div
+                                key={idx}
+                                className={`p-3 rounded-xl border flex items-center justify-between transition ${
+                                  isCorrect
+                                    ? 'bg-emerald-950/60 border-emerald-500/80 text-emerald-100 ring-1 ring-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                                    : 'bg-slate-900/80 border-slate-800/80 text-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 flex-1 truncate">
+                                  <span
+                                    className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0 ${
+                                      isCorrect
+                                        ? 'bg-emerald-500 text-slate-950 font-black'
+                                        : 'bg-slate-800 text-slate-400'
+                                    }`}
+                                  >
+                                    {letters[idx] || idx + 1}
+                                  </span>
+                                  <span className="text-xs font-semibold truncate">{opt}</span>
+                                </div>
+
+                                {isCorrect && (
+                                  <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-bold shrink-0 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>الإجابة النموذجية</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation Box Preview */}
+                        {currentPreviewData.explanation && (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1">
+                            <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>تفسير الحل النموذجي (يظهر للطالب بعد إنهاء الكويز):</span>
+                            </div>
+                            <p className="text-xs text-amber-200/90 leading-relaxed">
+                              {currentPreviewData.explanation}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Mock Student Actions */}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-500">
+                          <button
+                            type="button"
+                            disabled
+                            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 cursor-not-allowed text-[11px]"
+                          >
+                            ‹ السابق
+                          </button>
+                          <span className="text-[10px] text-slate-500 font-mono">محاكاة واجهة الطالب 📱</span>
+                          <button
+                            type="button"
+                            disabled
+                            className="px-3 py-1.5 rounded-lg bg-purple-600/30 border border-purple-500/30 text-purple-300 cursor-not-allowed text-[11px]"
+                          >
+                            التالي ›
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Footer Real-Time Notice */}
+                      <p className="text-[10px] text-center text-slate-400">
+                        ⚡ تنعكس كتابتك وتعديل الإجابات فوراً في هذه المعاينة بدقة 100%.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Actions Footer */}
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddingExam(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm"
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg text-sm flex items-center gap-2 transition disabled:opacity-50"
                 >
                   {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>{isOnlineQuiz ? 'نشر الكويز الإلكتروني 🚀' : 'إضافة الامتحان ➕'}</span>
