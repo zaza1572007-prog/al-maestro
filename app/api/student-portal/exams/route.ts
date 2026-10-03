@@ -12,13 +12,33 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const results = await prisma.examResult.findMany({
-      where: { studentId: payload.userId as string },
-      include: { exam: true },
-      orderBy: { exam: { examDate: 'desc' } }
+    const studentId = payload.userId;
+
+    // Get student details (groupId, academicStageId)
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, name: true, groupId: true, academicStageId: true }
     });
 
-    const examIds = results.map((r) => r.examId);
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+    }
+
+    // 1. Fetch all exams assigned to this student's group
+    const groupExams = await prisma.exam.findMany({
+      where: {
+        groupId: student.groupId,
+      },
+      include: {
+        results: {
+          where: { studentId },
+        }
+      },
+      orderBy: { examDate: 'desc' }
+    });
+
+    // Rank calculations for exams with results
+    const examIds = groupExams.map(e => e.id);
     const allResultsForExams = examIds.length > 0
       ? await prisma.examResult.findMany({
           where: { examId: { in: examIds } },
@@ -35,32 +55,79 @@ export async function GET(req: Request) {
     }
 
     let totalPercentage = 0;
+    let gradedCount = 0;
 
-    const exams = results.map((r) => {
-      totalPercentage += r.percentage;
-      const allScores = scoresByExamMap.get(r.examId) || [];
-      const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
-      const rankIdx = uniqueScores.indexOf(r.score);
+    const availableQuizzes: any[] = [];
+    const completedExams: any[] = [];
 
-      let rankLabel: string | null = null;
-      if (rankIdx === 0) rankLabel = 'المركز الأول على المجموعة 🥇';
-      else if (rankIdx === 1) rankLabel = 'المركز الثاني على المجموعة 🥈';
-      else if (rankIdx === 2) rankLabel = 'المركز الثالث على المجموعة 🥉';
+    for (const exam of groupExams) {
+      const myResult = exam.results?.[0] || null;
+      const questions = Array.isArray(exam.questions) ? (exam.questions as any[]) : [];
 
-      return {
-        id: r.id,
-        title: r.exam.title,
-        date: new Date(r.exam.examDate).toLocaleDateString('ar-EG'),
-        score: `${r.score} من ${r.exam.maxScore}`,
-        rank: rankLabel,
-        evaluation: r.percentage >= 90 ? 'ممتاز' : r.percentage >= 75 ? 'جيد جداً' : r.percentage >= 60 ? 'جيد' : 'بحاجة لمتابعة',
-      };
+      if (myResult) {
+        // Exam was taken or graded
+        totalPercentage += myResult.percentage;
+        gradedCount++;
+
+        const allScores = scoresByExamMap.get(exam.id) || [];
+        const uniqueScores = Array.from(new Set(allScores)).sort((a, b) => b - a);
+        const rankIdx = uniqueScores.indexOf(myResult.score);
+
+        let rankLabel: string | null = null;
+        if (rankIdx === 0) rankLabel = 'الأول على المجموعة 🥇';
+        else if (rankIdx === 1) rankLabel = 'الثاني على المجموعة 🥈';
+        else if (rankIdx === 2) rankLabel = 'الثالث على المجموعة 🥉';
+
+        completedExams.push({
+          id: exam.id,
+          resultId: myResult.id,
+          title: exam.title,
+          description: exam.description,
+          type: exam.type,
+          isOnline: exam.isOnline,
+          isAutoGraded: myResult.isAutoGraded,
+          date: new Date(exam.examDate).toLocaleDateString('ar-EG'),
+          score: myResult.score,
+          maxScore: exam.maxScore,
+          percentage: Math.round(myResult.percentage),
+          rank: rankLabel,
+          timeSpentSeconds: myResult.timeSpentSeconds,
+          showAnswers: exam.showAnswersAfterSubmit,
+          evaluation:
+            myResult.percentage >= 90
+              ? 'ممتاز 🌟'
+              : myResult.percentage >= 75
+              ? 'جيد جداً 👏'
+              : myResult.percentage >= 60
+              ? 'جيد 👍'
+              : 'بحاجة لمتابعة ⚠️',
+        });
+      } else if (exam.isOnline && exam.isOpen) {
+        // Active Online Quiz waiting to be taken
+        availableQuizzes.push({
+          id: exam.id,
+          title: exam.title,
+          description: exam.description,
+          questionsCount: questions.length,
+          duration: exam.duration || 15,
+          maxScore: exam.maxScore,
+          closesAt: exam.closesAt,
+          date: new Date(exam.examDate).toLocaleDateString('ar-EG'),
+        });
+      }
+    }
+
+    const average = gradedCount > 0 ? Math.round(totalPercentage / gradedCount) : 0;
+
+    return NextResponse.json({
+      success: true,
+      availableQuizzes,
+      completedExams,
+      average: `${average}%`,
+      totalGraded: gradedCount,
     });
-
-    const average = results.length > 0 ? Math.round(totalPercentage / results.length) : 0;
-
-    return NextResponse.json({ success: true, exams, average: `${average}%` });
   } catch (e: any) {
+    console.error('Error fetching student exams:', e);
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }

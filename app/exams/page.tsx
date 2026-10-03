@@ -19,18 +19,38 @@ import {
   Layers,
   Clock,
   TrendingUp,
+  Zap,
+  HelpCircle,
+  FolderPlus,
+  Check,
+  X,
+  Lock,
+  Unlock,
+  Eye,
+  Edit,
+  Save,
+  Loader2,
+  Timer,
+  Shuffle,
+  AlertCircle
 } from 'lucide-react';
 
 interface Student {
   id: string;
   name: string;
   code: string;
+  phone?: string;
 }
 
 interface ExamResult {
+  id?: string;
   score: number;
   percentage: number;
   student: Student;
+  answers?: any;
+  startedAt?: string;
+  timeSpentSeconds?: number;
+  isAutoGraded?: boolean;
 }
 
 interface AcademicStage {
@@ -51,6 +71,17 @@ interface Group {
   _count?: { students?: number; lessonSessions?: number };
 }
 
+interface QuizQuestion {
+  id: string;
+  questionText: string;
+  image?: string | null;
+  type: 'MCQ' | 'TRUE_FALSE';
+  options: string[];
+  correctAnswer: string;
+  explanation?: string | null;
+  points: number;
+}
+
 interface Exam {
   id: string;
   title: string;
@@ -66,6 +97,13 @@ interface Exam {
   examDate: string;
   type: string;
   maxScore: number;
+  duration?: number | null;
+  isOnline?: boolean;
+  questions?: QuizQuestion[] | null;
+  shuffleQuestions?: boolean;
+  showAnswersAfterSubmit?: boolean;
+  isOpen?: boolean;
+  closesAt?: string | null;
   results: ExamResult[];
 }
 
@@ -74,6 +112,21 @@ interface Stage {
   name: string;
   level: string;
   grade: string;
+}
+
+interface BankQuestion {
+  id: string;
+  academicStageId?: string | null;
+  academicStage?: { id: string; name: string };
+  title: string;
+  questionText: string;
+  image?: string | null;
+  type: string;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string | null;
+  points: number;
+  tags: string[];
 }
 
 const typeLabels: Record<string, string> = {
@@ -94,12 +147,6 @@ const typeColors: Record<string, string> = {
   PLACEMENT: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 };
 
-const levelBadgeColors: Record<string, string> = {
-  Primary: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30 text-emerald-400',
-  Middle: 'from-blue-500/20 to-indigo-500/20 border-blue-500/30 text-blue-400',
-  High: 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400',
-};
-
 export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -117,20 +164,75 @@ export default function ExamsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [preselectedStageId, setPreselectedStageId] = useState<string>('');
 
-  // Grades entry panel
+  // Question Bank Modal State
+  const [isBankOpen, setIsBankOpen] = useState(false);
+  const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankStageFilter, setBankStageFilter] = useState('ALL');
+  const [bankSearch, setBankSearch] = useState('');
+  const [isAddingBankQuestion, setIsAddingBankQuestion] = useState(false);
+
+  // New Bank Question form
+  const [newBankQ, setNewBankQ] = useState<{
+    title: string;
+    questionText: string;
+    academicStageId: string;
+    type: 'MCQ' | 'TRUE_FALSE';
+    options: string[];
+    correctAnswer: string;
+    explanation: string;
+    points: number;
+  }>({
+    title: '',
+    questionText: '',
+    academicStageId: '',
+    type: 'MCQ',
+    options: ['الخيار الأول', 'الخيار الثاني', 'الخيار الثالث', 'الخيار الرابع'],
+    correctAnswer: '0',
+    explanation: '',
+    points: 1,
+  });
+
+  // Grades entry panel (Manual)
   const [gradingExam, setGradingExam] = useState<Exam | null>(null);
   const [groupStudents, setGroupStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [isSavingGrades, setIsSavingGrades] = useState(false);
   const [gradingSearchQuery, setGradingSearchQuery] = useState('');
 
+  // Live Online Results Monitor Modal
+  const [monitorExam, setMonitorExam] = useState<Exam | null>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<ExamResult | null>(null);
+
+  // Exam Builder State
+  const [isOnlineQuiz, setIsOnlineQuiz] = useState(false);
+  const [quizDuration, setQuizDuration] = useState<number>(15);
+  const [shuffleQuestions, setShuffleQuestions] = useState(true);
+  const [showAnswersAfterSubmit, setShowAnswersAfterSubmit] = useState(true);
+  const [isOpenNow, setIsOpenNow] = useState(true);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+
+  // Current Question being added in builder
+  const [currentQText, setCurrentQText] = useState('');
+  const [currentQType, setCurrentQType] = useState<'MCQ' | 'TRUE_FALSE'>('MCQ');
+  const [currentQOptions, setCurrentQOptions] = useState<string[]>([
+    'الخيار الأول',
+    'الخيار الثاني',
+    'الخيار الثالث',
+    'الخيار الرابع',
+  ]);
+  const [currentQCorrect, setCurrentQCorrect] = useState('0');
+  const [currentQExplanation, setCurrentQExplanation] = useState('');
+  const [currentQPoints, setCurrentQPoints] = useState(1);
+  const [saveToBankOnAdd, setSaveToBankOnAdd] = useState(false);
+
   const [newExam, setNewExam] = useState({
     title: '',
     description: '',
     groupId: '',
     examDate: new Date().toISOString().split('T')[0],
-    type: 'MONTHLY',
-    maxScore: 100,
+    type: 'QUIZ',
+    maxScore: 10,
   });
 
   const fetchData = async () => {
@@ -155,6 +257,21 @@ export default function ExamsPage() {
     }
   };
 
+  const fetchBankQuestions = async () => {
+    setBankLoading(true);
+    try {
+      const res = await fetch('/api/question-bank');
+      const data = await res.json();
+      if (data.success) {
+        setBankQuestions(data.questions || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -165,25 +282,39 @@ export default function ExamsPage() {
       alert('الرجاء اختيار المجموعة التعليمية');
       return;
     }
+
+    if (isOnlineQuiz && quizQuestions.length === 0) {
+      alert('الرجاء إضافة سؤال واحد على الأقل للاختبار الإلكتروني');
+      return;
+    }
+
     setIsSaving(true);
     try {
+      const payload: any = {
+        ...newExam,
+        isOnline: isOnlineQuiz,
+        duration: isOnlineQuiz ? quizDuration : null,
+        questions: isOnlineQuiz ? quizQuestions : null,
+        shuffleQuestions,
+        showAnswersAfterSubmit,
+        isOpen: isOpenNow,
+      };
+
+      if (isOnlineQuiz) {
+        const calculatedTotal = quizQuestions.reduce((acc, q) => acc + (q.points || 1), 0);
+        payload.maxScore = calculatedTotal || newExam.maxScore;
+      }
+
       const res = await fetch('/api/exams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newExam),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
         await fetchData();
         setIsAddingExam(false);
-        setNewExam({
-          title: '',
-          description: '',
-          groupId: '',
-          examDate: new Date().toISOString().split('T')[0],
-          type: 'MONTHLY',
-          maxScore: 100,
-        });
+        resetExamForm();
       } else {
         alert(data.error || 'حدث خطأ أثناء إضافة الامتحان');
       }
@@ -194,49 +325,176 @@ export default function ExamsPage() {
     }
   };
 
-  const openAddExamForGroup = (groupId: string, stageId?: string) => {
+  const resetExamForm = () => {
     setNewExam({
       title: '',
       description: '',
-      groupId,
+      groupId: '',
       examDate: new Date().toISOString().split('T')[0],
-      type: 'MONTHLY',
-      maxScore: 100,
+      type: 'QUIZ',
+      maxScore: 10,
     });
-    if (stageId) setPreselectedStageId(stageId);
-    setIsAddingExam(true);
+    setIsOnlineQuiz(false);
+    setQuizQuestions([]);
+    setCurrentQText('');
+    setCurrentQExplanation('');
+    setCurrentQOptions(['الخيار الأول', 'الخيار الثاني', 'الخيار الثالث', 'الخيار الرابع']);
+    setCurrentQCorrect('0');
+    setCurrentQPoints(1);
   };
 
-  const handleDeleteExam = async (id: string, title: string) => {
-    if (!confirm(`هل أنت متأكد من حذف امتحان "${title}"؟`)) return;
+  const addQuestionToQuiz = () => {
+    if (!currentQText.trim()) {
+      alert('يرجى كتابة نص السؤال أولاً');
+      return;
+    }
+
+    const newQ: QuizQuestion = {
+      id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      questionText: currentQText.trim(),
+      type: currentQType,
+      options: currentQType === 'TRUE_FALSE' ? ['صح', 'خطأ'] : currentQOptions,
+      correctAnswer: currentQType === 'TRUE_FALSE' ? currentQCorrect : currentQCorrect,
+      explanation: currentQExplanation.trim() || null,
+      points: Number(currentQPoints) || 1,
+    };
+
+    setQuizQuestions((prev) => [...prev, newQ]);
+
+    // Save to bank if checkbox enabled
+    if (saveToBankOnAdd) {
+      fetch('/api/question-bank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newExam.title || 'سؤال كويز',
+          academicStageId: preselectedStageId || null,
+          questionText: newQ.questionText,
+          type: newQ.type,
+          options: newQ.options,
+          correctAnswer: newQ.correctAnswer,
+          explanation: newQ.explanation,
+          points: newQ.points,
+        }),
+      }).catch(console.error);
+    }
+
+    // Reset current question input
+    setCurrentQText('');
+    setCurrentQExplanation('');
+    setCurrentQPoints(1);
+    setCurrentQCorrect('0');
+  };
+
+  const removeQuestionFromQuiz = (id: string) => {
+    setQuizQuestions((prev) => prev.filter((q) => q.id !== id));
+  };
+
+  const importFromBankToQuiz = (bankQ: BankQuestion) => {
+    const newQ: QuizQuestion = {
+      id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      questionText: bankQ.questionText,
+      type: (bankQ.type as any) || 'MCQ',
+      options: bankQ.options || [],
+      correctAnswer: bankQ.correctAnswer,
+      explanation: bankQ.explanation,
+      points: bankQ.points || 1,
+    };
+    setQuizQuestions((prev) => [...prev, newQ]);
+    alert('تم إضافة السؤال للكويز بنجاح ✅');
+  };
+
+  const handleSaveBankQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBankQ.questionText.trim()) return;
+
     try {
-      const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+      const res = await fetch('/api/question-bank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBankQ),
+      });
       const data = await res.json();
-      if (data.success) fetchData();
-      else alert(data.error || 'خطأ في حذف الامتحان');
+      if (data.success) {
+        setIsAddingBankQuestion(false);
+        setNewBankQ({
+          title: '',
+          questionText: '',
+          academicStageId: '',
+          type: 'MCQ',
+          options: ['الخيار الأول', 'الخيار الثاني', 'الخيار الثالث', 'الخيار الرابع'],
+          correctAnswer: '0',
+          explanation: '',
+          points: 1,
+        });
+        fetchBankQuestions();
+      } else {
+        alert(data.error || 'تعذر الحفظ');
+      }
     } catch {
-      alert('خطأ في الاتصال بالخادم');
+      alert('حدث خطأ');
     }
   };
 
-  const openGrading = async (exam: Exam) => {
+  const handleDeleteBankQuestion = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا السؤال من بنك الأسئلة؟')) return;
+    try {
+      const res = await fetch(`/api/question-bank/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setBankQuestions((prev) => prev.filter((q) => q.id !== id));
+      }
+    } catch {
+      alert('تعذر الحذف');
+    }
+  };
+
+  const toggleExamStatus = async (exam: Exam) => {
+    try {
+      const newStatus = !exam.isOpen;
+      const res = await fetch(`/api/exams/${exam.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isOpen: newStatus }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setExams((prev) =>
+          prev.map((e) => (e.id === exam.id ? { ...e, isOpen: newStatus } : e))
+        );
+      }
+    } catch {
+      alert('تعذر تغيير حالة الاختبار');
+    }
+  };
+
+  const handleDeleteExam = async (id: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا الامتحان وكافة نتائجه؟')) return;
+    try {
+      const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setExams((prev) => prev.filter((e) => e.id !== id));
+      }
+    } catch {
+      alert('تعذر الحذف');
+    }
+  };
+
+  const openGradingModal = async (exam: Exam) => {
     setGradingExam(exam);
     setGradingSearchQuery('');
-    const existing: Record<string, string> = {};
-    exam.results?.forEach((r) => {
-      if (r?.student?.id) existing[r.student.id] = String(r.score);
-    });
-
-    const targetGroupId = exam.group?.id || exam.groupId;
     try {
-      const res = await fetch(`/api/students?groupId=${targetGroupId}`);
+      const res = await fetch(`/api/groups/${exam.groupId}`);
       const data = await res.json();
-      const studs: Student[] = data.students || [];
-      setGroupStudents(studs);
-      studs.forEach((s) => {
-        if (existing[s.id] === undefined) existing[s.id] = '';
-      });
-      setGrades(existing);
+      if (data.success && data.group?.students) {
+        setGroupStudents(data.group.students);
+        const existingGrades: Record<string, string> = {};
+        exam.results.forEach((r) => {
+          existingGrades[r.student.id] = String(r.score);
+        });
+        setGrades(existingGrades);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -245,25 +503,27 @@ export default function ExamsPage() {
   const handleSaveGrades = async () => {
     if (!gradingExam) return;
     setIsSavingGrades(true);
-    const entries = Object.entries(grades).filter(
-      ([, v]) => v !== '' && !isNaN(Number(v)) && Number(v) >= 0
-    );
     try {
-      await Promise.all(
-        entries.map(([studentId, score]) =>
-          fetch('/api/exam-results', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              examId: gradingExam.id,
-              studentId,
-              score: parseFloat(score),
-            }),
-          })
-        )
-      );
-      await fetchData();
-      setGradingExam(null);
+      const resultsArray = Object.entries(grades)
+        .filter(([_, score]) => score !== '' && !isNaN(parseFloat(score)))
+        .map(([studentId, score]) => ({
+          studentId,
+          score: parseFloat(score),
+          percentage: (parseFloat(score) / gradingExam.maxScore) * 100,
+        }));
+
+      const res = await fetch(`/api/exams/${gradingExam.id}/results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: resultsArray }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchData();
+        setGradingExam(null);
+      } else {
+        alert(data.error || 'تعذر حفظ الدرجات');
+      }
     } catch {
       alert('حدث خطأ أثناء حفظ الدرجات');
     } finally {
@@ -271,121 +531,42 @@ export default function ExamsPage() {
     }
   };
 
-  const getStats = (exam: Exam) => {
-    if (!exam.results || exam.results.length === 0) return null;
-    const scores = exam.results.map((r) => r.score);
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    return {
-      avg: avg.toFixed(1),
-      high: Math.max(...scores),
-      low: Math.min(...scores),
-      count: scores.length,
-    };
-  };
-
-  const toggleGroupCollapse = (groupId: string) => {
-    setCollapsedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
-  };
-
-  // Structured Hierarchy: Stages -> Groups -> Exams
+  // Filtered Hierarchy Data
   const hierarchyData = useMemo(() => {
-    const q = (searchQuery || '').trim().toLowerCase();
-
-    // Map all exams by groupId
-    const examsByGroupId = new Map<string, Exam[]>();
-    exams.forEach((exam) => {
-      const gId = exam.group?.id || exam.groupId || 'unknown';
-      if (!examsByGroupId.has(gId)) examsByGroupId.set(gId, []);
-      examsByGroupId.get(gId)!.push(exam);
+    const filteredExams = exams.filter((e) => {
+      const matchesSearch =
+        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.group?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = selectedType === 'ALL' || e.type === selectedType;
+      return matchesSearch && matchesType;
     });
 
-    // Known stages from stages API & from groups
-    const stageMap = new Map<string, { stage: Stage; groups: Array<{ group: Group; exams: Exam[] }> }>();
-
-    stages.forEach((st) => {
-      stageMap.set(st.id, { stage: st, groups: [] });
-    });
-
-    // Populate groups into stages
-    const unassignedGroups: Array<{ group: Group; exams: Exam[] }> = [];
-
-    groups.forEach((grp) => {
-      let grpExams = examsByGroupId.get(grp.id) || [];
-
-      // Filter by type & search query
-      if (selectedType !== 'ALL') {
-        grpExams = grpExams.filter((e) => e.type === selectedType);
-      }
-      if (q) {
-        grpExams = grpExams.filter(
-          (e) =>
-            (e.title || '').toLowerCase().includes(q) ||
-            (grp.name || '').toLowerCase().includes(q) ||
-            (grp.academicStage?.name || '').toLowerCase().includes(q) ||
-            (e.description || '').toLowerCase().includes(q) ||
-            e.results?.some((r) => (r.student?.name || '').toLowerCase().includes(q))
-        );
-      }
-
-      const stageId = grp.academicStageId || grp.academicStage?.id;
-      if (stageId && stageMap.has(stageId)) {
-        stageMap.get(stageId)!.groups.push({ group: grp, exams: grpExams });
-      } else {
-        unassignedGroups.push({ group: grp, exams: grpExams });
-      }
-    });
-
-    // Check for any orphaned exams whose group was deleted or not in groups list
-    const knownGroupIds = new Set(groups.map((g) => g.id));
-    const orphanedExams = exams.filter((e) => {
-      const gId = e.group?.id || e.groupId || '';
-      return !knownGroupIds.has(gId);
-    });
-
-    if (orphanedExams.length > 0) {
-      let filteredOrphans = orphanedExams;
-      if (selectedType !== 'ALL') filteredOrphans = filteredOrphans.filter((e) => e.type === selectedType);
-      if (q) {
-        filteredOrphans = filteredOrphans.filter(
-          (e) =>
-            (e.title || '').toLowerCase().includes(q) ||
-            (e.group?.name || '').toLowerCase().includes(q)
-        );
-      }
-      if (filteredOrphans.length > 0) {
-        unassignedGroups.push({
-          group: {
-            id: 'orphaned',
-            name: 'امتحانات سابقة / مجموعات أخرى',
-            academicStage: { id: 'other', name: 'أخرى' },
-          },
-          exams: filteredOrphans,
-        });
-      }
-    }
-
-    const structuredStages = Array.from(stageMap.values()).filter((item) => {
-      // If filtering by stageId
-      if (activeStageId !== 'ALL' && item.stage.id !== activeStageId) return false;
-      // If search query is active, only show stage if it matches or has matching groups/exams
-      if (q) {
-        const stageMatches = (item.stage.name || '').toLowerCase().includes(q);
-        const hasMatchingExams = item.groups.some((g) => g.exams.length > 0);
-        return stageMatches || hasMatchingExams;
-      }
-      return true;
-    });
+    const structuredStages = stages
+      .filter((st) => activeStageId === 'ALL' || st.id === activeStageId)
+      .map((st) => {
+        const stageGroups = groups
+          .filter(
+            (g) => g.academicStageId === st.id || (g.academicStage && g.academicStage.id === st.id)
+          )
+          .map((g) => ({
+            ...g,
+            exams: filteredExams.filter((e) => e.groupId === g.id),
+          }));
+        return {
+          stage: st,
+          groups: stageGroups,
+        };
+      });
 
     return {
       stages: structuredStages,
-      unassigned: activeStageId === 'ALL' || activeStageId === 'UNASSIGNED' ? unassignedGroups : [],
     };
   }, [exams, groups, stages, activeStageId, searchQuery, selectedType]);
 
   const totalExamsCount = exams.length;
+  const onlineExamsCount = exams.filter((e) => e.isOnline).length;
   const totalGradedCount = exams.reduce((acc, e) => acc + (e.results?.length || 0), 0);
 
-  // Group selection list for Add Modal filtered by preselected stage
   const availableGroupsForModal = useMemo(() => {
     if (!preselectedStageId) return groups;
     return groups.filter(
@@ -394,7 +575,7 @@ export default function ExamsPage() {
   }, [groups, preselectedStageId]);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 text-zinc-100">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -402,36 +583,43 @@ export default function ExamsPage() {
             <span className="p-2.5 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
               📝
             </span>
-            الامتحانات والاختبارات
+            الامتحانات والكويزات الإلكترونية
           </h1>
           <p className="text-slate-400 text-sm mt-1.5">
-            إدارة الامتحانات ورصد درجات الطلاب مقسمة ومنظمة حسب المراحل والمجموعات التعليمية
+            إدارة الاختبارات الورقية والكويزات التفاعلية المصححة ذاتياً وبنك الأسئلة المركزي
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => {
+              fetchBankQuestions();
+              setIsBankOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-amber-300 font-bold rounded-2xl text-sm transition border border-amber-500/30 shadow-sm"
+          >
+            <BookOpen className="w-4 h-4 text-amber-400" />
+            <span>بنك الأسئلة المركزي 📚</span>
+          </button>
+
           <button
             onClick={fetchData}
             title="تحديث البيانات"
-            className="p-3 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-2xl transition border border-slate-700/50"
+            className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-2xl transition border border-slate-700/50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
           <button
             onClick={() => {
               setPreselectedStageId('');
-              setNewExam({
-                title: '',
-                description: '',
-                groupId: groups[0]?.id || '',
-                examDate: new Date().toISOString().split('T')[0],
-                type: 'MONTHLY',
-                maxScore: 100,
-              });
+              resetExamForm();
               setIsAddingExam(true);
             }}
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-2xl text-sm transition shadow-lg shadow-purple-600/25"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-2xl text-sm transition shadow-lg shadow-purple-600/25"
           >
-            <Plus className="w-4 h-4" /> إضافة امتحان جديد
+            <Plus className="w-4 h-4" />
+            <span>إنشاء امتحان / كويز ⚡</span>
           </button>
         </div>
       </div>
@@ -444,152 +632,91 @@ export default function ExamsPage() {
             <BookOpen className="w-4 h-4 text-purple-400" />
           </div>
           <p className="text-2xl font-black text-white mt-2">{totalExamsCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">امتحان مسجل بالنظام</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">امتحان وكويز مسجل</p>
         </div>
+
         <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">المراحل الدراسية</span>
-            <GraduationCap className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-semibold text-slate-400">كويزات أونلاين ⚡</span>
+            <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <p className="text-2xl font-black text-white mt-2">{stages.length}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">مرحلة تعليمية</p>
+          <p className="text-2xl font-black text-amber-400 mt-2">{onlineExamsCount}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">مصححة ذاتياً بنسبة 100%</p>
         </div>
-        <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">المجموعات</span>
-            <Users className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-black text-white mt-2">{groups.length}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">مجموعة نشطة</p>
-        </div>
+
         <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400">الدرجات المرصودة</span>
-            <Award className="w-4 h-4 text-amber-400" />
+            <Award className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-black text-white mt-2">{totalGradedCount}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">نتيجة مسجلة للطلاب</p>
+          <p className="text-2xl font-black text-emerald-400 mt-2">{totalGradedCount}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">طالب تم تقييمهم</p>
+        </div>
+
+        <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400">المجموعات الدراسية</span>
+            <Users className="w-4 h-4 text-blue-400" />
+          </div>
+          <p className="text-2xl font-black text-blue-400 mt-2">{groups.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">مجموعة تعليمية</p>
         </div>
       </div>
 
-      {/* Search and Filters Bar */}
-      <div className="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-4 md:p-5 shadow-xl space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-          {/* Search Input */}
+      {/* Filter Bar */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-4 shadow-xl space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="relative md:col-span-6">
             <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="البحث باسم الامتحان، المجموعة، المرحلة، أو الطالب..."
+              placeholder="ابحث باسم الامتحان، الكويز، أو المجموعة..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl pr-10 pl-9 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
+              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl pr-10 pl-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs px-1"
-                title="مسح البحث"
-              >
-                ✕
-              </button>
-            )}
           </div>
 
-          {/* Academic Stage Select Dropdown */}
           <div className="relative md:col-span-3">
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-purple-400 flex items-center">
-              <GraduationCap className="w-4 h-4" />
-            </div>
             <select
               value={activeStageId}
               onChange={(e) => setActiveStageId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl pr-10 pl-8 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
+              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-purple-500 transition cursor-pointer"
             >
-              <option value="ALL">🌟 جميع المراحل الدراسية ({totalExamsCount})</option>
-              {stages.map((st) => {
-                const stageExamsCount = exams.filter(
-                  (e) => e.group?.academicStageId === st.id || e.group?.academicStage?.id === st.id
-                ).length;
-                return (
-                  <option key={st.id} value={st.id}>
-                    🎓 {st.name} ({stageExamsCount} امتحان)
-                  </option>
-                );
-              })}
+              <option value="ALL">🌟 جميع المراحل الدراسية</option>
+              {stages.map((st) => (
+                <option key={st.id} value={st.id}>
+                  🎓 {st.name}
+                </option>
+              ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Exam Type Select Dropdown */}
           <div className="relative md:col-span-3">
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400 flex items-center">
-              <SlidersHorizontal className="w-4 h-4" />
-            </div>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl pr-10 pl-8 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-purple-500 transition appearance-none cursor-pointer"
+              className="w-full bg-slate-950 border border-slate-700/70 rounded-2xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-purple-500 transition cursor-pointer"
             >
               <option value="ALL">📋 جميع أنواع الامتحانات</option>
-              {Object.entries(typeLabels).map(([k, label]) => {
-                const count = exams.filter((e) => e.type === k).length;
-                return (
-                  <option key={k} value={k}>
-                    {label} ({count})
-                  </option>
-                );
-              })}
+              {Object.entries(typeLabels).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
-
-        {/* Active Filters summary if filtered */}
-        {(activeStageId !== 'ALL' || selectedType !== 'ALL' || searchQuery) && (
-          <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/80 text-xs flex-wrap gap-2">
-            <div className="flex items-center gap-2 text-slate-400 flex-wrap">
-              <span>الفلاتر النشطة:</span>
-              {activeStageId !== 'ALL' && (
-                <span className="px-2 py-0.5 bg-purple-500/15 text-purple-300 border border-purple-500/30 rounded-lg">
-                  المرحلة: {stages.find((s) => s.id === activeStageId)?.name}
-                </span>
-              )}
-              {selectedType !== 'ALL' && (
-                <span className="px-2 py-0.5 bg-blue-500/15 text-blue-300 border border-blue-500/30 rounded-lg">
-                  النوع: {typeLabels[selectedType]}
-                </span>
-              )}
-              {searchQuery && (
-                <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg">
-                  البحث: "{searchQuery}"
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setActiveStageId('ALL');
-                setSelectedType('ALL');
-                setSearchQuery('');
-              }}
-              className="text-xs text-purple-400 hover:text-purple-300 font-bold underline cursor-pointer"
-            >
-              إعادة ضبط الفلاتر ✕
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Main Hierarchical Content */}
       {loading ? (
         <div className="text-center py-20 text-slate-400 space-y-3">
-          <div className="animate-spin w-10 h-10 border-3 border-purple-500 border-t-transparent rounded-full mx-auto" />
-          <p className="text-sm font-semibold">جارٍ تنظيم الامتحانات والمجموعات الدراسية...</p>
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto" />
+          <p className="text-sm font-semibold">جارٍ تحميل الامتحانات والكويزات...</p>
         </div>
       ) : (
         <div className="space-y-8">
-          {/* Loop Stages */}
           {hierarchyData.stages.map(({ stage, groups: stageGroups }) => {
             const totalStageExams = stageGroups.reduce((acc, g) => acc + g.exams.length, 0);
 
@@ -598,354 +725,132 @@ export default function ExamsPage() {
                 key={stage.id}
                 className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-5 md:p-6 shadow-2xl space-y-5"
               >
-                {/* Stage Header Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/30 to-indigo-500/30 flex items-center justify-center border border-purple-500/30 text-purple-400">
-                      <GraduationCap className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
+                      🎓
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-black text-white">{stage.name}</h2>
-                        {stage.level && (
-                          <span
-                            className={`text-[11px] px-2.5 py-0.5 rounded-full border font-semibold ${
-                              levelBadgeColors[stage.level] || 'bg-slate-800 text-slate-300 border-slate-700'
-                            }`}
-                          >
-                            {stage.level === 'Primary'
-                              ? 'ابتدائي'
-                              : stage.level === 'Middle'
-                              ? 'إعدادي'
-                              : 'ثانوي'}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {stageGroups.length} مجموعات تعليمية · {totalStageExams} امتحانات مسجلة
+                      <h2 className="text-lg font-bold text-white">{stage.name}</h2>
+                      <p className="text-xs text-slate-400">
+                        {stageGroups.length} مجموعات • {totalStageExams} امتحانات
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setPreselectedStageId(stage.id);
-                      const firstGrp = stageGroups[0]?.group;
-                      setNewExam({
-                        title: '',
-                        description: '',
-                        groupId: firstGrp ? firstGrp.id : '',
-                        examDate: new Date().toISOString().split('T')[0],
-                        type: 'MONTHLY',
-                        maxScore: 100,
-                      });
-                      setIsAddingExam(true);
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition border border-purple-500/30 self-start sm:self-auto"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> إضافة امتحان لهذه المرحلة
-                  </button>
                 </div>
 
-                {/* Groups List in this Stage */}
-                {stageGroups.length === 0 ? (
-                  <div className="text-center py-10 bg-slate-950/40 rounded-2xl border border-slate-800/60 text-slate-500">
-                    <p className="text-sm">لا توجد مجموعات مسجلة في هذه المرحلة بعد.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    {stageGroups.map(({ group, exams: groupExams }) => {
-                      const isCollapsed = !!collapsedGroups[group.id];
+                {/* Groups Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {stageGroups.map((grp) => (
+                    <div
+                      key={grp.id}
+                      className="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-400" />
+                          <h3 className="font-bold text-sm text-white">{grp.name}</h3>
+                        </div>
+                        <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md">
+                          {grp.exams.length} اختبارات
+                        </span>
+                      </div>
 
-                      return (
-                        <div
-                          key={group.id}
-                          className="bg-slate-950/60 border border-slate-800/90 rounded-2xl p-4 md:p-5 shadow-lg space-y-4"
-                        >
-                          {/* Group Header Row */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {/* Exams list in group */}
+                      {grp.exams.length === 0 ? (
+                        <p className="text-xs text-slate-500 py-3 text-center">لا توجد امتحانات مسجلة لهذه المجموعة</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {grp.exams.map((ex) => (
                             <div
-                              onClick={() => toggleGroupCollapse(group.id)}
-                              className="flex items-center gap-3 cursor-pointer select-none flex-1"
+                              key={ex.id}
+                              className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between gap-3 hover:border-slate-700 transition"
                             >
-                              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30 flex-shrink-0">
-                                <BookOpen className="w-4 h-4" />
-                              </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h3 className="font-bold text-white text-base hover:text-purple-300 transition">
-                                    {group.name}
-                                  </h3>
-                                  <span className="px-2 py-0.5 bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full text-[10px] font-bold">
-                                    {groupExams.length} امتحانات
+                                  <span className="text-xs font-bold text-slate-200">{ex.title}</span>
+                                  {ex.isOnline && (
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                                      <Zap className="w-2.5 h-2.5" /> أونلاين
+                                    </span>
+                                  )}
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${typeColors[ex.type] || ''}`}>
+                                    {typeLabels[ex.type] || ex.type}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-slate-400 mt-1 flex-wrap">
-                                  {group.scheduleDays && group.scheduleDays.length > 0 && (
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="w-3.5 h-3.5 text-slate-500" />
-                                      {group.scheduleDays.join(' - ')} {group.startTime ? `(${group.startTime})` : ''}
-                                    </span>
-                                  )}
-                                  {group._count?.students !== undefined && (
-                                    <span className="flex items-center gap-1">
-                                      <Users className="w-3.5 h-3.5 text-slate-500" />
-                                      {group._count.students} طالب
-                                    </span>
-                                  )}
-                                </div>
+                                <p className="text-[11px] text-slate-400 mt-1">
+                                  الدرجة: {ex.maxScore} | تم رصد: {ex.results?.length || 0} طالب | التاريخ:{' '}
+                                  {new Date(ex.examDate).toLocaleDateString('ar-EG')}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
+                                {ex.isOnline && (
+                                  <button
+                                    onClick={() => toggleExamStatus(ex)}
+                                    className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                                      ex.isOpen
+                                        ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                        : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                                    }`}
+                                    title={ex.isOpen ? 'الاختبار متاح (اضغط للإغلاق)' : 'الاختبار مغلق (اضغط للفتح)'}
+                                  >
+                                    {ex.isOpen ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+
+                                {ex.isOnline ? (
+                                  <button
+                                    onClick={() => setMonitorExam(ex)}
+                                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition flex items-center gap-1"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>النتائج ({ex.results?.length || 0})</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => openGradingModal(ex)}
+                                    className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/40 text-purple-300 text-xs font-bold transition"
+                                  >
+                                    رصد يدوي
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => handleDeleteExam(ex.id)}
+                                  className="p-1 rounded-lg text-slate-500 hover:text-rose-400 transition"
+                                  title="حذف الامتحان"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
-
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => openAddExamForGroup(group.id, stage.id)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl text-xs font-bold transition border border-emerald-500/30"
-                              >
-                                <Plus className="w-3.5 h-3.5" /> امتحان جديد
-                              </button>
-                              <button
-                                onClick={() => toggleGroupCollapse(group.id)}
-                                className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition border border-slate-800"
-                                title={isCollapsed ? 'توسيع' : 'طي'}
-                              >
-                                {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Group Exams Grid (Collapsible) */}
-                          {!isCollapsed && (
-                            <div className="pt-2">
-                              {groupExams.length === 0 ? (
-                                <div className="text-center py-8 bg-slate-900/40 rounded-xl border border-dashed border-slate-800 text-slate-500 space-y-2">
-                                  <p className="text-xs">لا توجد امتحانات مسجلة لهذه المجموعة حتى الآن</p>
-                                  <button
-                                    onClick={() => openAddExamForGroup(group.id, stage.id)}
-                                    className="text-xs text-purple-400 hover:text-purple-300 font-bold underline"
-                                  >
-                                    + إنشاء أول امتحان الآن
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                                  {groupExams.map((exam) => {
-                                    const stats = getStats(exam);
-                                    return (
-                                      <div
-                                        key={exam.id}
-                                        className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3.5 hover:border-purple-500/40 transition-all flex flex-col justify-between"
-                                      >
-                                        <div className="space-y-2.5">
-                                          {/* Exam Card Top */}
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                              <span
-                                                className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
-                                                  typeColors[exam.type] || 'bg-slate-800 text-slate-300'
-                                                }`}
-                                              >
-                                                {typeLabels[exam.type] || exam.type}
-                                              </span>
-                                              <h4 className="font-bold text-white text-sm mt-1.5 leading-snug">
-                                                {exam.title}
-                                              </h4>
-                                            </div>
-                                            <div className="flex items-center gap-1 flex-shrink-0">
-                                              <button
-                                                onClick={() => openGrading(exam)}
-                                                className="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs transition"
-                                                title="رصد الدرجات"
-                                              >
-                                                <Award className="w-3.5 h-3.5" />
-                                              </button>
-                                              <button
-                                                onClick={() => handleDeleteExam(exam.id, exam.title)}
-                                                className="p-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs transition"
-                                                title="حذف الامتحان"
-                                              >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          {/* Exam Info */}
-                                          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
-                                            <span className="flex items-center gap-1">
-                                              <Calendar className="w-3 h-3 text-slate-500" />
-                                              {new Date(exam.examDate).toLocaleDateString('ar-EG')}
-                                            </span>
-                                            <span className="font-mono text-purple-300 font-semibold">
-                                              الدرجة من: {exam.maxScore}
-                                            </span>
-                                          </div>
-
-                                          {/* Stats Summary */}
-                                          {stats ? (
-                                            <div className="grid grid-cols-3 gap-1.5 text-center text-[11px]">
-                                              <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
-                                                <p className="text-slate-500 text-[10px]">المتوسط</p>
-                                                <p className="font-black text-white mt-0.5">{stats.avg}</p>
-                                              </div>
-                                              <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
-                                                <p className="text-slate-500 text-[10px]">الأعلى</p>
-                                                <p className="font-black text-emerald-400 mt-0.5">{stats.high}</p>
-                                              </div>
-                                              <div className="bg-slate-950/80 p-2 rounded-xl border border-slate-800/80">
-                                                <p className="text-slate-500 text-[10px]">الأدنى</p>
-                                                <p className="font-black text-rose-400 mt-0.5">{stats.low}</p>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <div className="p-2.5 rounded-xl bg-slate-950/50 text-center text-xs text-slate-500">
-                                              لم يتم رصد درجات بعد
-                                            </div>
-                                          )}
-
-                                          {/* Results Mini List */}
-                                          {exam.results && exam.results.length > 0 && (
-                                            <div className="space-y-1 max-h-24 overflow-y-auto pr-0.5">
-                                              {exam.results.slice(0, 4).map((r, i) => (
-                                                <div
-                                                  key={i}
-                                                  className="flex items-center justify-between text-[11px] bg-slate-950/60 rounded-lg px-2.5 py-1"
-                                                >
-                                                  <span className="text-slate-300 truncate max-w-[120px]">
-                                                    {r.student?.name}
-                                                  </span>
-                                                  <span
-                                                    className={`font-black font-mono ${
-                                                      r.percentage >= 60 ? 'text-emerald-400' : 'text-rose-400'
-                                                    }`}
-                                                  >
-                                                    {r.score}/{exam.maxScore}{' '}
-                                                    <span className="text-[10px] text-slate-500 font-normal">
-                                                      ({r.percentage.toFixed(0)}%)
-                                                    </span>
-                                                  </span>
-                                                </div>
-                                              ))}
-                                              {exam.results.length > 4 && (
-                                                <p className="text-[10px] text-center text-purple-400 pt-0.5">
-                                                  + {exam.results.length - 4} طلاب آخرين
-                                                </p>
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Action Button */}
-                                        <button
-                                          onClick={() => openGrading(exam)}
-                                          className="w-full mt-2 py-2 bg-purple-600/15 hover:bg-purple-600 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition border border-purple-500/25 flex items-center justify-center gap-1.5"
-                                        >
-                                          <Award className="w-3.5 h-3.5" />
-                                          {exam.results.length > 0
-                                            ? `تعديل الدرجات (${exam.results.length} مسجل)`
-                                            : 'رصد الدرجات الآن'}
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}
-
-          {/* Unassigned / Other Groups Section if any */}
-          {hierarchyData.unassigned.length > 0 && (
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-5 md:p-6 shadow-2xl space-y-5">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-white">مجموعات عامة / أخرى</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    امتحانات مسجلة بمجموعات عامة أو غير مرتبطة بمرحلة محددة
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {hierarchyData.unassigned.map(({ group, exams: groupExams }) => (
-                  <div
-                    key={group.id}
-                    className="bg-slate-950/60 border border-slate-800/90 rounded-2xl p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-white text-sm">{group.name}</h3>
-                      <span className="text-xs px-2.5 py-0.5 bg-slate-900 text-slate-300 rounded-lg">
-                        {groupExams.length} امتحانات
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-                      {groupExams.map((exam) => (
-                        <div
-                          key={exam.id}
-                          className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2"
-                        >
-                          <div className="flex justify-between items-start">
-                            <h4 className="font-bold text-white text-xs">{exam.title}</h4>
-                            <button
-                              onClick={() => openGrading(exam)}
-                              className="p-1 bg-emerald-600/20 text-emerald-400 rounded"
-                            >
-                              <Award className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <p className="text-[11px] text-slate-400">الدرجة من: {exam.maxScore}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Empty State */}
-          {hierarchyData.stages.length === 0 && hierarchyData.unassigned.length === 0 && (
-            <div className="text-center py-20 text-slate-500 bg-slate-900/40 rounded-3xl border border-slate-800/80 space-y-3">
-              <BookOpen className="w-12 h-12 mx-auto opacity-30 text-purple-400" />
-              <p className="text-base font-semibold text-slate-300">
-                {searchQuery ? `لا توجد امتحانات مطابقة لبحثك عن "${searchQuery}"` : 'لا توجد امتحانات مسجلة'}
-              </p>
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setActiveStageId('ALL');
-                    setSelectedType('ALL');
-                  }}
-                  className="text-xs text-purple-400 hover:text-purple-300 font-bold underline"
-                >
-                  إعادة تعيين جميع الفلاتر
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Add Exam Modal */}
+      {/* Add Exam / Quiz Modal */}
       {isAddingExam && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-3xl shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <span className="p-1.5 rounded-xl bg-purple-500/20 text-purple-400">📝</span>
-                إضافة امتحان جديد
-              </h3>
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  إنشاء امتحان جديد / كويز إلكتروني
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  اختر ما إذا كان امتحاناً ورقياً عادياً أو كويزاً إلكترونياً تفاعلياً مصححاً ذاتياً
+                </p>
+              </div>
               <button
                 onClick={() => setIsAddingExam(false)}
                 className="text-slate-400 hover:text-white text-xl"
@@ -954,44 +859,50 @@ export default function ExamsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateExam} className="space-y-3 text-sm">
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs font-semibold">عنوان الامتحان *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: شيت على الاشتقاق الضمني والبارامترى"
-                  value={newExam.title}
-                  onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
-                />
-              </div>
+            {/* Type Selector: Traditional vs Online Quiz */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setIsOnlineQuiz(false)}
+                className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                  !isOnlineQuiz
+                    ? 'bg-purple-600/20 border-purple-500 text-purple-200 font-bold'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <BookOpen className="w-5 h-5" />
+                <span className="text-xs font-bold">📝 امتحان ورقي تقليدي</span>
+                <span className="text-[10px] text-slate-400">رصد الدرجات يدوياً بواسطة المساعدين</span>
+              </button>
 
-              {/* Stage Selector helper */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-300 mb-1 text-xs font-semibold">المرحلة الدراسية</label>
-                  <select
-                    value={preselectedStageId}
-                    onChange={(e) => {
-                      const stId = e.target.value;
-                      setPreselectedStageId(stId);
-                      const matching = groups.filter(
-                        (g) => !stId || g.academicStageId === stId || g.academicStage?.id === stId
-                      );
-                      if (matching.length > 0) {
-                        setNewExam({ ...newExam, groupId: matching[0].id });
-                      }
-                    }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
-                  >
-                    <option value="">جميع المراحل</option>
-                    {stages.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name}
-                      </option>
-                    ))}
-                  </select>
+              <button
+                type="button"
+                onClick={() => setIsOnlineQuiz(true)}
+                className={`p-3.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1.5 ${
+                  isOnlineQuiz
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg shadow-amber-500/10'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <Zap className="w-5 h-5 text-amber-400" />
+                <span className="text-xs font-bold text-amber-400">⚡ كويز إلكتروني تفاعلي</span>
+                <span className="text-[10px] text-slate-400">مؤقت زمني وتصحيح ذاتي فوري 100%</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateExam} className="space-y-4 text-sm">
+              {/* Basic Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-slate-300 mb-1 text-xs font-semibold">عنوان الامتحان / الكويز *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: كويز قوانين الحركة والقوة"
+                    value={newExam.title}
+                    onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm focus:border-purple-500 focus:outline-none"
+                  />
                 </div>
 
                 <div>
@@ -1010,9 +921,7 @@ export default function ExamsPage() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-slate-300 mb-1 text-xs font-semibold">تاريخ الامتحان</label>
                   <input
@@ -1022,33 +931,163 @@ export default function ExamsPage() {
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-slate-300 mb-1 text-xs font-semibold">نوع الامتحان</label>
-                  <select
-                    value={newExam.type}
-                    onChange={(e) => setNewExam({ ...newExam, type: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm"
-                  >
-                    {Object.entries(typeLabels).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 text-xs font-semibold">الدرجة القصوى</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={newExam.maxScore}
-                  onChange={(e) => setNewExam({ ...newExam, maxScore: parseFloat(e.target.value) })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-sm font-mono"
-                />
-              </div>
+              {/* Online Quiz Specific Options */}
+              {isOnlineQuiz && (
+                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                      <Timer className="w-4 h-4" />
+                      إعدادات الكويز الإلكتروني
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {quizQuestions.length} أسئلة مضافة (إجمالي الدرجات:{' '}
+                      {quizQuestions.reduce((acc, q) => acc + (q.points || 1), 0)})
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-300 mb-1 text-xs font-semibold">المدة بالدقائق (المؤقت)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={180}
+                        value={quizDuration}
+                        onChange={(e) => setQuizDuration(parseInt(e.target.value) || 15)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-sm font-mono"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950 border border-slate-800">
+                      <span className="text-xs text-slate-300">خلط الأسئلة عشوائياً</span>
+                      <input
+                        type="checkbox"
+                        checked={shuffleQuestions}
+                        onChange={(e) => setShuffleQuestions(e.target.checked)}
+                        className="rounded text-purple-600 focus:ring-purple-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-slate-950 border border-slate-800">
+                      <span className="text-xs text-slate-300">إظهار الحل النموذجي</span>
+                      <input
+                        type="checkbox"
+                        checked={showAnswersAfterSubmit}
+                        onChange={(e) => setShowAnswersAfterSubmit(e.target.checked)}
+                        className="rounded text-purple-600 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Interactive Question Builder */}
+                  <div className="pt-3 border-t border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-200">إضافة أسئلة الكويز:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fetchBankQuestions();
+                          setIsBankOpen(true);
+                        }}
+                        className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        استيراد من بنك الأسئلة
+                      </button>
+                    </div>
+
+                    {/* Question Input Card */}
+                    <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                      <textarea
+                        rows={2}
+                        placeholder="اكتب نص السؤال هنا..."
+                        value={currentQText}
+                        onChange={(e) => setCurrentQText(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white text-xs focus:border-amber-500 focus:outline-none"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentQOptions.map((opt, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <input
+                              type="radio"
+                              name="correctAnswer"
+                              checked={currentQCorrect === String(idx)}
+                              onChange={() => setCurrentQCorrect(String(idx))}
+                              className="text-amber-500"
+                              title="حدد هذا الخيار كإجابة صحيحة"
+                            />
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => {
+                                const updated = [...currentQOptions];
+                                updated[idx] = e.target.value;
+                                setCurrentQOptions(updated);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <input
+                          type="text"
+                          placeholder="تفسير أو شرح الحل النموذجي (اختياري)..."
+                          value={currentQExplanation}
+                          onChange={(e) => setCurrentQExplanation(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            placeholder="الدرجة"
+                            value={currentQPoints}
+                            onChange={(e) => setCurrentQPoints(parseFloat(e.target.value) || 1)}
+                            className="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white font-mono text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={addQuestionToQuiz}
+                            className="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-lg text-xs transition"
+                          >
+                            + إضافة السؤال للكويز
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Added Questions List */}
+                    {quizQuestions.length > 0 && (
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
+                        {quizQuestions.map((q, idx) => (
+                          <div
+                            key={q.id}
+                            className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs"
+                          >
+                            <div className="truncate flex-1">
+                              <span className="font-bold text-amber-400 ml-1">س{idx + 1}:</span>
+                              <span className="text-slate-200">{q.questionText}</span>
+                              <span className="text-[10px] text-slate-400 mr-2">({q.points} درجات)</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeQuestionFromQuiz(q.id)}
+                              className="text-slate-500 hover:text-rose-400 mr-2"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
@@ -1061,9 +1100,10 @@ export default function ExamsPage() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg text-sm"
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg text-sm flex items-center gap-2"
                 >
-                  {isSaving ? 'جاري الحفظ...' : 'إضافة الامتحان ➕'}
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{isOnlineQuiz ? 'نشر الكويز الإلكتروني 🚀' : 'إضافة الامتحان ➕'}</span>
                 </button>
               </div>
             </form>
@@ -1071,7 +1111,289 @@ export default function ExamsPage() {
         </div>
       )}
 
-      {/* Grading Modal */}
+      {/* Central Question Bank Modal */}
+      {isBankOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-4xl shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-amber-400" />
+                  بنك الأسئلة المركزي 📚
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  تخزين الأسئلة حسب المراحل والدروس وإعادة استخدامها في الكويزات بنقرة واحدة
+                </p>
+              </div>
+              <button onClick={() => setIsBankOpen(false)} className="text-slate-400 hover:text-white text-xl">
+                ✕
+              </button>
+            </div>
+
+            {/* Bank Actions & Search */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <input
+                type="text"
+                placeholder="ابحث في بنك الأسئلة..."
+                value={bankSearch}
+                onChange={(e) => setBankSearch(e.target.value)}
+                className="flex-1 min-w-[200px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+              />
+
+              <select
+                value={bankStageFilter}
+                onChange={(e) => setBankStageFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+              >
+                <option value="ALL">جميع المراحل</option>
+                {stages.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setIsAddingBankQuestion(!isAddingBankQuestion)}
+                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>إضافة سؤال للبنك</span>
+              </button>
+            </div>
+
+            {/* Add Bank Question Form */}
+            {isAddingBankQuestion && (
+              <form onSubmit={handleSaveBankQuestion} className="p-4 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-3">
+                <h4 className="text-xs font-bold text-amber-400">إضافة سؤال جديد لبنك الأسئلة:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="عنوان السؤال أو الدرس (مثال: اشتقاق الدوال المثلثية)"
+                    value={newBankQ.title}
+                    onChange={(e) => setNewBankQ({ ...newBankQ, title: e.target.value })}
+                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                  />
+                  <select
+                    value={newBankQ.academicStageId}
+                    onChange={(e) => setNewBankQ({ ...newBankQ, academicStageId: e.target.value })}
+                    className="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                  >
+                    <option value="">اختر المرحلة الدراسية</option>
+                    {stages.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="نص السؤال..."
+                  value={newBankQ.questionText}
+                  onChange={(e) => setNewBankQ({ ...newBankQ, questionText: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  {newBankQ.options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="bankCorrect"
+                        checked={newBankQ.correctAnswer === String(idx)}
+                        onChange={() => setNewBankQ({ ...newBankQ, correctAnswer: String(idx) })}
+                      />
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => {
+                          const updated = [...newBankQ.options];
+                          updated[idx] = e.target.value;
+                          setNewBankQ({ ...newBankQ, options: updated });
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingBankQuestion(false)}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs"
+                  >
+                    حفظ في البنك 💾
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Questions List */}
+            {bankLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
+              </div>
+            ) : bankQuestions.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-8">لا توجد أسئلة محفوظة في بنك الأسئلة حتى الآن</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                {bankQuestions
+                  .filter((q) => {
+                    const matchStage = bankStageFilter === 'ALL' || q.academicStageId === bankStageFilter;
+                    const matchSearch =
+                      q.questionText.toLowerCase().includes(bankSearch.toLowerCase()) ||
+                      q.title?.toLowerCase().includes(bankSearch.toLowerCase());
+                    return matchStage && matchSearch;
+                  })
+                  .map((q) => (
+                    <div
+                      key={q.id}
+                      className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-3"
+                    >
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white">{q.title || 'سؤال'}</span>
+                          {q.academicStage && (
+                            <span className="text-[10px] bg-slate-800 text-purple-300 px-2 py-0.5 rounded">
+                              {q.academicStage.name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-300">{q.questionText}</p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {q.options?.map((opt, i) => (
+                            <span
+                              key={i}
+                              className={`text-[10px] px-2 py-0.5 rounded ${
+                                String(i) === q.correctAnswer
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold'
+                                  : 'bg-slate-900 text-slate-400'
+                              }`}
+                            >
+                              {opt} {String(i) === q.correctAnswer ? '✓' : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {isAddingExam && isOnlineQuiz && (
+                          <button
+                            type="button"
+                            onClick={() => importFromBankToQuiz(q)}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg transition"
+                          >
+                            + إضافة للكويز
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBankQuestion(q.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Online Quiz Live Results Monitor Modal */}
+      {monitorExam && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-4xl shadow-2xl space-y-5 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                  مراقبة نتائج الكويز التفاعلي: {monitorExam.title}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  المجموعة: <span className="text-white font-bold">{monitorExam.group?.name}</span> • إجمالي التسليمات:{' '}
+                  <span className="text-amber-400 font-bold">{monitorExam.results?.length || 0} طالب</span>
+                </p>
+              </div>
+              <button onClick={() => setMonitorExam(null)} className="text-slate-400 hover:text-white text-xl">
+                ✕
+              </button>
+            </div>
+
+            {/* Submissions Table */}
+            {(!monitorExam.results || monitorExam.results.length === 0) ? (
+              <div className="text-center py-12 bg-slate-950 rounded-2xl border border-slate-800">
+                <AlertCircle className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                <p className="text-sm text-slate-400 font-bold">لم يقم أي طالب بتسليم الكويز حتى الآن</p>
+                <p className="text-xs text-slate-500 mt-1">تظهر النتائج والدرجات هنا تلقائياً بمجرد تسليم الطلاب للكويز من بواباتهم.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 font-bold">
+                        <th className="pb-2">اسم الطالب</th>
+                        <th className="pb-2">الكود</th>
+                        <th className="pb-2">الدرجة</th>
+                        <th className="pb-2">النسبة</th>
+                        <th className="pb-2">المدة</th>
+                        <th className="pb-2">الحالة</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {monitorExam.results.map((res) => (
+                        <tr key={res.student.id} className="hover:bg-slate-800/40">
+                          <td className="py-2.5 font-bold text-white">{res.student.name}</td>
+                          <td className="py-2.5 font-mono text-slate-400">{res.student.code}</td>
+                          <td className="py-2.5 font-mono font-bold text-purple-300">
+                            {res.score} / {monitorExam.maxScore}
+                          </td>
+                          <td className="py-2.5">
+                            <span
+                              className={`px-2 py-0.5 rounded font-bold ${
+                                res.percentage >= 85
+                                  ? 'bg-emerald-500/20 text-emerald-300'
+                                  : res.percentage >= 50
+                                  ? 'bg-blue-500/20 text-blue-300'
+                                  : 'bg-rose-500/20 text-rose-300'
+                              }`}
+                            >
+                              {Math.round(res.percentage)}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-slate-400">
+                            {res.timeSpentSeconds ? `${Math.round(res.timeSpentSeconds / 60)} دقيقة` : '—'}
+                          </td>
+                          <td className="py-2.5">
+                            <span className="text-[10px] text-emerald-400 font-bold">مصرح آلياً ✅</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Manual Grading Modal */}
       {gradingExam && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-xl shadow-2xl space-y-4">
@@ -1079,116 +1401,74 @@ export default function ExamsPage() {
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <Award className="w-5 h-5 text-emerald-400" />
-                  رصد الدرجات: {gradingExam.title}
+                  رصد الدرجات يدوياً: {gradingExam.title}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   الدرجة القصوى: <span className="font-bold text-purple-300">{gradingExam.maxScore}</span> | المجموعة:{' '}
                   <span className="font-bold text-white">{gradingExam.group?.name}</span>
                 </p>
               </div>
-              <button
-                onClick={() => setGradingExam(null)}
-                className="text-slate-400 hover:text-white text-xl"
-              >
+              <button onClick={() => setGradingExam(null)} className="text-slate-400 hover:text-white text-xl">
                 ✕
               </button>
             </div>
 
             <div className="space-y-3">
-              {/* Search bar inside grading modal */}
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="ابحث بالاسم أو كود الطالب..."
+                  placeholder="ابحث عن طالب في هذه المجموعة..."
                   value={gradingSearchQuery}
                   onChange={(e) => setGradingSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pr-10 pl-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pr-10 pl-4 py-2 text-xs text-white"
                 />
-                {gradingSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setGradingSearchQuery('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs px-1"
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
 
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                {groupStudents.length === 0 ? (
-                  <p className="text-center text-slate-500 py-8">لا يوجد طلاب في هذه المجموعة</p>
-                ) : (
-                  (() => {
-                    const q = (gradingSearchQuery || '').trim().toLowerCase();
-                    const filtered = groupStudents.filter(
-                      (stu) =>
-                        !q ||
-                        (stu.name || '').toLowerCase().includes(q) ||
-                        (stu.code || '').toLowerCase().includes(q)
-                    );
-
-                    if (filtered.length === 0) {
-                      return (
-                        <p className="text-center text-slate-500 py-8">
-                          لا توجد نتائج مطابقة لبحثك عن "{gradingSearchQuery}"
-                        </p>
-                      );
-                    }
-
-                    return filtered.map((stu) => (
-                      <div
-                        key={stu.id}
-                        className="flex items-center gap-3 bg-slate-950 rounded-xl px-4 py-2.5 border border-slate-800 hover:border-slate-700 transition"
-                      >
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-white">{stu.name}</p>
-                          <p className="text-xs text-slate-500 font-mono">{stu.code}</p>
-                        </div>
-                        <input
-                          type="number"
-                          min={0}
-                          max={gradingExam.maxScore}
-                          step="0.5"
-                          placeholder={`/ ${gradingExam.maxScore}`}
-                          value={grades[stu.id] ?? ''}
-                          onChange={(e) => setGrades({ ...grades, [stu.id]: e.target.value })}
-                          className="w-24 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-sm text-center font-mono focus:border-purple-500 focus:outline-none"
-                        />
-                        {grades[stu.id] !== undefined &&
-                          grades[stu.id] !== '' &&
-                          !isNaN(Number(grades[stu.id])) && (
-                            <span
-                              className={`text-xs font-bold w-12 text-center font-mono ${
-                                (parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100 >= 60
-                                  ? 'text-emerald-400'
-                                  : 'text-rose-400'
-                              }`}
-                            >
-                              {((parseFloat(grades[stu.id]) / gradingExam.maxScore) * 100).toFixed(0)}%
-                            </span>
-                          )}
+              <div className="max-h-72 overflow-y-auto space-y-2 custom-scrollbar">
+                {groupStudents
+                  .filter((stu) =>
+                    stu.name.toLowerCase().includes(gradingSearchQuery.toLowerCase()) ||
+                    stu.code.includes(gradingSearchQuery)
+                  )
+                  .map((stu) => (
+                    <div
+                      key={stu.id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800"
+                    >
+                      <div>
+                        <p className="text-xs font-bold text-white">{stu.name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">كود: {stu.code}</p>
                       </div>
-                    ));
-                  })()
-                )}
+                      <input
+                        type="number"
+                        min={0}
+                        max={gradingExam.maxScore}
+                        value={grades[stu.id] || ''}
+                        onChange={(e) => setGrades({ ...grades, [stu.id]: e.target.value })}
+                        placeholder="الدرجة"
+                        className="w-20 bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white text-center font-mono"
+                      />
+                    </div>
+                  ))}
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
               <button
+                type="button"
                 onClick={() => setGradingExam(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm"
+                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold"
               >
                 إلغاء
               </button>
               <button
-                onClick={handleSaveGrades}
+                type="button"
                 disabled={isSavingGrades}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg text-sm"
+                onClick={handleSaveGrades}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg"
               >
-                {isSavingGrades ? 'جاري الحفظ...' : 'حفظ الدرجات ✓'}
+                {isSavingGrades ? 'جاري الحفظ...' : 'حفظ الدرجات 💾'}
               </button>
             </div>
           </div>

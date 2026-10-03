@@ -85,6 +85,42 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "assignedGroupIds" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "notes" TEXT;`);
+  
+  // Online Quiz & Exam Columns
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "isOnline" BOOLEAN DEFAULT false;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "questions" JSONB;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "shuffleQuestions" BOOLEAN DEFAULT true;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "showAnswersAfterSubmit" BOOLEAN DEFAULT true;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "isOpen" BOOLEAN DEFAULT true;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "closesAt" TIMESTAMP(3);`);
+
+  // ExamResult Columns
+  await prisma.$executeRawUnsafe(`ALTER TABLE "ExamResult" ADD COLUMN IF NOT EXISTS "answers" JSONB;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "ExamResult" ADD COLUMN IF NOT EXISTS "startedAt" TIMESTAMP(3);`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "ExamResult" ADD COLUMN IF NOT EXISTS "timeSpentSeconds" INTEGER;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "ExamResult" ADD COLUMN IF NOT EXISTS "isAutoGraded" BOOLEAN DEFAULT false;`);
+
+  // QuestionBank Table
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "QuestionBank" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "academicStageId" TEXT,
+      "title" TEXT NOT NULL,
+      "questionText" TEXT NOT NULL,
+      "image" TEXT,
+      "type" TEXT NOT NULL DEFAULT 'MCQ',
+      "options" TEXT[] DEFAULT ARRAY[]::TEXT[],
+      "correctAnswer" TEXT NOT NULL,
+      "explanation" TEXT,
+      "points" DOUBLE PRECISION NOT NULL DEFAULT 1,
+      "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "QuestionBank_academicStageId_fkey" FOREIGN KEY ("academicStageId") REFERENCES "AcademicStage"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "QuestionBank_academicStageId_idx" ON "QuestionBank"("academicStageId");`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "QuestionBank_type_idx" ON "QuestionBank"("type");`);
 
   // Parent qrCode — add column first (nullable, no constraint), fill with UUID, then add UNIQUE
   await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" ADD COLUMN IF NOT EXISTS "qrCode" TEXT;`);

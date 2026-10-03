@@ -25,16 +25,37 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { title, description, groupId, examDate, type, maxScore } = await req.json();
+    const {
+      title,
+      description,
+      groupId,
+      examDate,
+      type,
+      maxScore,
+      duration,
+      isOnline,
+      questions,
+      shuffleQuestions,
+      showAnswersAfterSubmit,
+      isOpen,
+      closesAt
+    } = await req.json();
 
     const exam = await prisma.exam.create({
       data: {
-        title,
-        description,
+        title: title?.trim(),
+        description: description?.trim() || null,
         groupId,
-        examDate: new Date(examDate),
+        examDate: examDate ? new Date(examDate) : new Date(),
         type: type || 'QUIZ',
         maxScore: parseFloat(maxScore) || 100,
+        duration: duration ? parseInt(duration) : null,
+        isOnline: Boolean(isOnline),
+        questions: questions || null,
+        shuffleQuestions: shuffleQuestions !== undefined ? Boolean(shuffleQuestions) : true,
+        showAnswersAfterSubmit: showAnswersAfterSubmit !== undefined ? Boolean(showAnswersAfterSubmit) : true,
+        isOpen: isOpen !== undefined ? Boolean(isOpen) : true,
+        closesAt: closesAt ? new Date(closesAt) : null,
       },
     });
 

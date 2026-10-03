@@ -239,6 +239,7 @@ model AcademicStage {
   files                File[]
   registrationRequests RegistrationRequest[]
   vacations            Vacation[]
+  questions            QuestionBank[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -362,43 +363,74 @@ model HomeworkSubmission {
 }
 
 model Exam {
-  id          String    @id @default(uuid())
-  title       String
-  description String?   @db.Text
-  groupId     String
-  group       Group     @relation(fields: [groupId], references: [id])
-  sessionId   String?
-  session     LessonSession? @relation(fields: [sessionId], references: [id])
-  examDate    DateTime
-  type        ExamType  @default(QUIZ)
-  maxScore    Float
-  duration    Int?      // in minutes
-  results     ExamResult[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                     String        @id @default(uuid())
+  title                  String
+  description            String?       @db.Text
+  groupId                String
+  group                  Group         @relation(fields: [groupId], references: [id])
+  sessionId              String?
+  session                LessonSession? @relation(fields: [sessionId], references: [id])
+  examDate               DateTime
+  type                   ExamType      @default(QUIZ)
+  maxScore               Float
+  duration               Int?          // in minutes
+  isOnline               Boolean       @default(false)
+  questions              Json?         // Array of question objects
+  shuffleQuestions       Boolean       @default(true)
+  showAnswersAfterSubmit Boolean       @default(true)
+  isOpen                 Boolean       @default(true)
+  closesAt               DateTime?
+  results                ExamResult[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   @@index([groupId])
   @@index([examDate])
   @@index([type])
+  @@index([isOnline])
 }
 
 model ExamResult {
-  id          String    @id @default(uuid())
-  examId      String
-  exam        Exam      @relation(fields: [examId], references: [id])
-  studentId   String
-  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  score       Float
-  percentage  Float
-  rank        Int?
-  notes       String?   @db.Text
-  gradedAt    DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  examId           String
+  exam             Exam      @relation(fields: [examId], references: [id])
+  studentId        String
+  student          Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score            Float
+  percentage       Float
+  rank             Int?
+  notes            String?   @db.Text
+  answers          Json?     // Student's submitted answers
+  startedAt        DateTime?
+  timeSpentSeconds Int?
+  isAutoGraded     Boolean   @default(false)
+  gradedAt         DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@unique([studentId, examId])
   @@index([examId])
   @@index([studentId])
+}
+
+model QuestionBank {
+  id              String         @id @default(uuid())
+  academicStageId String?
+  academicStage   AcademicStage? @relation(fields: [academicStageId], references: [id], onDelete: SetNull)
+  title           String         // e.g. "مراجعة شاملة - الفصل الأول"
+  questionText    String         @db.Text
+  image           String?
+  type            String         @default("MCQ") // MCQ, TRUE_FALSE
+  options         String[]       @default([])
+  correctAnswer   String         // option index or value
+  explanation     String?        @db.Text
+  points          Float          @default(1)
+  tags            String[]       @default([])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([academicStageId])
+  @@index([type])
 }
 
 model Subscription {
