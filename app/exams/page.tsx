@@ -487,16 +487,20 @@ export default function ExamsPage() {
     try {
       const res = await fetch(`/api/groups/${exam.groupId}`);
       const data = await res.json();
-      if (data.success && data.group?.students) {
-        setGroupStudents(data.group.students);
-        const existingGrades: Record<string, string> = {};
+      const studentsList = data.group?.students || data.students || [];
+      setGroupStudents(studentsList);
+      
+      const existingGrades: Record<string, string> = {};
+      if (exam.results) {
         exam.results.forEach((r) => {
-          existingGrades[r.student.id] = String(r.score);
+          if (r.student?.id) {
+            existingGrades[r.student.id] = String(r.score);
+          }
         });
-        setGrades(existingGrades);
       }
+      setGrades(existingGrades);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load group students for grading:', err);
     }
   };
 

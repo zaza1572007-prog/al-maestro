@@ -51,10 +51,10 @@ export async function GET(
     });
 
     if (!group) {
-      return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Group not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ group });
+    return NextResponse.json({ success: true, group });
   } catch (error) {
     console.error('Error fetching group:', error);
     return NextResponse.json(
