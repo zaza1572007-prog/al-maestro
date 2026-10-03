@@ -166,8 +166,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Status endpoint
-  if (url.pathname === '/status' && req.method === 'GET') {
+  // Status and QR endpoint
+  if (url.pathname === '/status' || url.pathname === '/qr') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
@@ -176,8 +176,50 @@ const server = http.createServer(async (req, res) => {
         isConnected: connectionStatus === 'CONNECTED',
         user: sock?.user?.id || null,
         hasQr: !!lastQr,
+        qr: lastQr || null,
       })
     );
+    return;
+  }
+
+  // Reconnect / Init / Refresh QR endpoint
+  if ((url.pathname === '/reconnect' || url.pathname === '/init') && (req.method === 'POST' || req.method === 'GET')) {
+    console.log('🔄 [WhatsApp Gateway] Manual reconnect / refresh QR requested...');
+    try {
+      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+    } catch {}
+    initGatewayWhatsApp(true).catch((e) => console.error('Reconnect error:', e.message));
+
+    // Wait briefly for QR to be ready (up to 3 seconds)
+    setTimeout(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          success: true,
+          status: connectionStatus,
+          isConnected: connectionStatus === 'CONNECTED',
+          user: sock?.user?.id || null,
+          hasQr: !!lastQr,
+          qr: lastQr || null,
+          message: 'Initialized / Refreshing QR Code',
+        })
+      );
+    }, 1500);
+    return;
+  }
+
+  // Logout endpoint
+  if (url.pathname === '/logout' && (req.method === 'POST' || req.method === 'GET')) {
+    console.log('🚪 [WhatsApp Gateway] Manual logout requested...');
+    try {
+      sock?.logout().catch(() => {});
+      sock = null;
+      connectionStatus = 'DISCONNECTED';
+      lastQr = null;
+      fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+    } catch {}
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, message: 'Logged out successfully' }));
     return;
   }
 

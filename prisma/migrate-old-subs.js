@@ -62,17 +62,30 @@ async function main() {
     const year = date.getFullYear();
 
     try {
-      await prisma.subscription.update({
-        where: { id: sub.id },
-        data: {
+      const existing = await prisma.subscription.findFirst({
+        where: {
+          studentId: sub.studentId,
           month,
           year,
-          paidAt: sub.paidAt || (sub.status === 'PAID' ? sub.updatedAt : null)
+          id: { not: sub.id }
         }
       });
-      migratedSubsCount++;
+      if (existing) {
+        // If a valid record for that month/year already exists, remove duplicate legacy entry
+        await prisma.subscription.delete({ where: { id: sub.id } });
+      } else {
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: {
+            month,
+            year,
+            paidAt: sub.paidAt || (sub.status === 'PAID' ? sub.updatedAt : null)
+          }
+        });
+        migratedSubsCount++;
+      }
     } catch (err) {
-      console.error(`❌ [Migration] Failed to migrate subscription ${sub.id}:`, err.message);
+      console.error(`⚠️ [Migration] Skip subscription ${sub.id}:`, err.message);
     }
   }
 
