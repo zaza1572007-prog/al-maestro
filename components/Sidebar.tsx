@@ -90,7 +90,13 @@ export default function Sidebar() {
     const fetchUser = () => {
       fetch('/api/auth/me')
         .then(r => r.json())
-        .then(data => { if (data.success) setCurrentUser(data.user); })
+        .then(data => {
+          if (data.success) {
+            setCurrentUser(data.user);
+          } else if (data.error && data.error.includes('معطل')) {
+            window.location.href = '/login';
+          }
+        })
         .catch(console.error);
     };
     fetchUser();

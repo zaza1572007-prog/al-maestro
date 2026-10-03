@@ -144,6 +144,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة' }, { status: 401 });
       }
 
+      if (targetUser.role === 'ASSISTANT' && targetUser.isActive === false) {
+        return NextResponse.json({
+          success: false,
+          error: 'تم تجميد هذا الحساب من قبل الإدارة. يرجى مراجعة الأستاذ لتفعيل حسابك.'
+        }, { status: 403 });
+      }
+
       userRole = targetUser.role;
     }
 

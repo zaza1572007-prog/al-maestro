@@ -32,6 +32,8 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
+import { prisma } from '@/lib/prisma';
+
 export async function verifyStaff(req: Request): Promise<JWTPayload | null> {
   try {
     const cookieHeader = req.headers.get('cookie') || '';
@@ -47,9 +49,21 @@ export async function verifyStaff(req: Request): Promise<JWTPayload | null> {
     const payload = await verifyToken(token);
     if (!payload) return null;
 
-    if (payload.role === 'OWNER' || payload.role === 'ASSISTANT') {
+    if (payload.role === 'OWNER') {
       return payload;
     }
+
+    if (payload.role === 'ASSISTANT') {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { isActive: true }
+      });
+      if (dbUser && dbUser.isActive) {
+        return payload;
+      }
+      return null;
+    }
+
     return null;
   } catch {
     return null;

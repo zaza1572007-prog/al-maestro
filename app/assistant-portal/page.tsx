@@ -87,6 +87,11 @@ export default function AssistantPortalPage() {
         setData(json);
       } else {
         toast.error(json.error || 'تعذر تحميل بيانات البوابة');
+        if (json.error && (json.error.includes('معطل') || json.error.includes('تجميد'))) {
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+        }
       }
     } catch (e) {
       console.error(e);
