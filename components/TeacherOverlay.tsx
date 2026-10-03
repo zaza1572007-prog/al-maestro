@@ -178,8 +178,8 @@ export default function TeacherOverlay() {
 
   const pathname = usePathname();
 
-  // Hide only on printable or public auth receipts if needed
-  if (pathname === '/print-card' || pathname === '/receipt') return null;
+  // Hide only on printable, public auth receipts, or direct quiz portal
+  if (pathname === '/print-card' || pathname === '/receipt' || pathname.startsWith('/quiz')) return null;
 
   if (!hasCustomImage) return null;
 

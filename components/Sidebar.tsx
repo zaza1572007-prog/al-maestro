@@ -134,7 +134,8 @@ export default function Sidebar() {
     pathname === '/login' ||
     pathname === '/select-role' ||
     pathname === '/register' ||
-    pathname.startsWith('/parent-report')
+    pathname.startsWith('/parent-report') ||
+    pathname.startsWith('/quiz')
   ) return null;
 
   const isStudentPortal = pathname.startsWith('/student-portal');

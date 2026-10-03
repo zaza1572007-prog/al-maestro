@@ -105,7 +105,8 @@ export default function FloatingBottomNav() {
     pathname === '/qr-login' ||
     pathname === '/qr-print' ||
     pathname === '/cards' ||
-    pathname.startsWith('/parent-report')
+    pathname.startsWith('/parent-report') ||
+    pathname.startsWith('/quiz')
   ) {
     return null;
   }
