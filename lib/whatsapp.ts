@@ -152,7 +152,11 @@ export async function sendWhatsAppMessage(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const settings = await prisma.systemSettings.findFirst({
-      select: { enableWhatsApp: true }
+      select: {
+        enableWhatsApp: true,
+        waGatewayUrl: true,
+        waApiToken: true,
+      }
     });
     if (settings && settings.enableWhatsApp === false) {
       return { success: false, error: 'WhatsApp service is disabled in settings.' };
@@ -167,10 +171,60 @@ export async function sendWhatsAppMessage(
       return { success: false, error: 'Invalid phone number format' };
     }
 
+    // 1. If HTTP Gateway is configured, use it first (handles Vercel & remote servers)
+    if (settings?.waGatewayUrl && settings?.waApiToken) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const res = await fetch(settings.waGatewayUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${settings.waApiToken}`,
+            'bypass-tunnel-reminder': 'true',
+          },
+          body: JSON.stringify({
+            token: settings.waApiToken,
+            to: phone,
+            body: message,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json().catch(() => ({ success: true }));
+          return {
+            success: true,
+            messageId: data.messageId || 'gw_' + Date.now(),
+          };
+        } else {
+          const errText = await res.text().catch(() => 'Gateway error');
+          console.warn(`[WhatsApp Gateway] Status ${res.status}: ${errText}`);
+          if (process.env.VERCEL === '1') {
+            return {
+              success: false,
+              error: `فشل الإرسال عبر خادم الواتساب (${res.status}): ${errText}`,
+            };
+          }
+        }
+      } catch (gwErr: any) {
+        console.warn('[WhatsApp Gateway Error]:', gwErr.message);
+        if (process.env.VERCEL === '1') {
+          return {
+            success: false,
+            error: `تعذر الاتصال بخادم الواتساب: ${gwErr.message}`,
+          };
+        }
+      }
+    }
+
     if (process.env.VERCEL === '1') {
       return {
         success: false,
-        error: 'Direct WhatsApp connection is disabled in production (Vercel serverless). Please configure the HTTP Gateway.',
+        error: 'Direct WhatsApp connection is disabled in production (Vercel serverless). Please configure the HTTP Gateway or run npm run whatsapp:service.',
       };
     }
 
@@ -179,10 +233,10 @@ export async function sendWhatsAppMessage(
       initWhatsApp().catch(() => {});
     }
 
-    // Wait up to 12s for socket to connect if in progress
+    // Wait up to 10s for socket to connect if in progress
     if (global.__waConnectionStatus !== 'CONNECTED') {
       await new Promise<void>((resolve) => {
-        const timeout = setTimeout(resolve, 12000);
+        const timeout = setTimeout(resolve, 10000);
         const interval = setInterval(() => {
           if (global.__waConnectionStatus === 'CONNECTED') {
             clearTimeout(timeout);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { whatsappQueue } from '@/lib/message-queue';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 function cleanPhone(phone: string | null | undefined): string {
   if (!phone) return '';
@@ -203,16 +203,25 @@ export async function POST(
 ⭐ *نتمنى لك التوفيق والدرجة النهائية في اختبار اليوم!*`;
 
     try {
+      const waPromises: Promise<any>[] = [];
       // Send to student
       if (student.phone) {
-        whatsappQueue.enqueue(student.phone, waMessage);
+        waPromises.push(sendWhatsAppMessage(student.phone, waMessage));
       }
       // Send to parent as well
       if (student.parent?.phone && student.parent.phone !== student.phone) {
-        whatsappQueue.enqueue(student.parent.phone, waMessage);
+        waPromises.push(sendWhatsAppMessage(student.parent.phone, waMessage));
+      }
+
+      if (waPromises.length > 0) {
+        // Await with a 3.5s timeout so quiz start is never blocked or delayed on serverless
+        await Promise.race([
+          Promise.allSettled(waPromises),
+          new Promise((resolve) => setTimeout(resolve, 3500)),
+        ]);
       }
     } catch (waErr) {
-      console.error('Failed to enqueue WhatsApp activation message:', waErr);
+      console.error('Failed to dispatch WhatsApp activation message:', waErr);
     }
 
     // 7. Prepare questions (hide correct answers and explanations until submission)
