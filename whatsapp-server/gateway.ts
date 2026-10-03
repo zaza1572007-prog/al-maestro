@@ -1,5 +1,6 @@
 import http from 'http';
 import makeWASocket, {
+  Browsers,
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
@@ -12,7 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import { Boom } from '@hapi/boom';
 
-const PORT = parseInt(process.env.WA_PORT || '5005', 10);
+const PORT = parseInt(process.env.PORT || process.env.WA_PORT || '5005', 10);
 const API_TOKEN = process.env.WA_API_TOKEN || 'almaestro_wa_secret_token_2026';
 const AUTH_DIR = path.join(process.cwd(), 'whatsapp_auth_info');
 
@@ -65,10 +66,14 @@ async function initGatewayWhatsApp(forceNew = false): Promise<WASocket> {
         auth: state,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        browser: Browsers.windows('Desktop'),
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000,
+        keepAliveIntervalMs: 25000,
+        getMessage: async () => undefined,
       });
 
       socketInstance.ev.on('creds.update', saveCreds);
