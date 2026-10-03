@@ -32,7 +32,10 @@ import {
   Loader2,
   Timer,
   Shuffle,
-  AlertCircle
+  AlertCircle,
+  Share2,
+  Send,
+  Copy
 } from 'lucide-react';
 
 interface Student {
@@ -829,19 +832,47 @@ export default function ExamsPage() {
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 {ex.isOnline && (
-                                  <button
-                                    onClick={() => toggleExamStatus(ex)}
-                                    className={`p-1.5 rounded-lg text-xs font-bold transition ${
-                                      ex.isOpen
-                                        ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                                        : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-                                    }`}
-                                    title={ex.isOpen ? 'الاختبار متاح (اضغط للإغلاق)' : 'الاختبار مغلق (اضغط للفتح)'}
-                                  >
-                                    {ex.isOpen ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        const url = `${window.location.origin}/quiz/${ex.id}`;
+                                        navigator.clipboard.writeText(url);
+                                        alert('تم نسخ رابط الكويز المباشر بنجاح! 📋\n\n' + url);
+                                      }}
+                                      className="px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition flex items-center gap-1 border border-blue-500/20"
+                                      title="نسخ رابط الكويز المباشر لمشاركته مع الطلاب"
+                                    >
+                                      <Share2 className="w-3 h-3" />
+                                      <span className="hidden sm:inline">نسخ الرابط</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => {
+                                        const url = `${window.location.origin}/quiz/${ex.id}`;
+                                        const text = `📝 *كويز إلكتروني جديد: ${ex.title}*\n👥 المجموعة: ${ex.group?.name || ''}\n⏱️ المدة: ${ex.duration || 15} دقيقة\n⭐ إجمالي الدرجات: ${ex.maxScore}\n\n🔗 *رابط الدخول المباشر للكويز:*\n${url}\n\n💡 _ملاحظة: اختر اسمك واكتب رقم هاتفك ورقم ولي أمرك لتفعيل حسابك واستلام بيانات الدخول والبدء فوراً._`;
+                                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                      }}
+                                      className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition flex items-center gap-1 border border-emerald-500/20"
+                                      title="مشاركة الكويز مباشرة على جروب الواتساب"
+                                    >
+                                      <Send className="w-3 h-3" />
+                                      <span className="hidden sm:inline">واتساب</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => toggleExamStatus(ex)}
+                                      className={`p-1.5 rounded-lg text-xs font-bold transition ${
+                                        ex.isOpen
+                                          ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                          : 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                                      }`}
+                                      title={ex.isOpen ? 'الاختبار متاح (اضغط للإغلاق)' : 'الاختبار مغلق (اضغط للفتح)'}
+                                    >
+                                      {ex.isOpen ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                                    </button>
+                                  </>
                                 )}
 
                                 {ex.isOnline ? (
@@ -1745,9 +1776,38 @@ export default function ExamsPage() {
                   <span className="text-amber-400 font-bold">{monitorExam.results?.length || 0} طالب</span>
                 </p>
               </div>
-              <button onClick={() => setMonitorExam(null)} className="text-slate-400 hover:text-white text-xl">
-                ✕
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/quiz/${monitorExam.id}`;
+                    navigator.clipboard.writeText(url);
+                    alert('تم نسخ رابط الكويز المباشر بنجاح! 📋\n\n' + url);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition flex items-center gap-1.5 border border-blue-500/20"
+                  title="نسخ الرابط المباشر"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">نسخ الرابط</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/quiz/${monitorExam.id}`;
+                    const text = `📝 *كويز إلكتروني جديد: ${monitorExam.title}*\n👥 المجموعة: ${monitorExam.group?.name || ''}\n⏱️ المدة: ${monitorExam.duration || 15} دقيقة\n⭐ إجمالي الدرجات: ${monitorExam.maxScore}\n\n🔗 *رابط الدخول المباشر للكويز:*\n${url}\n\n💡 _ملاحظة: اختر اسمك واكتب رقم هاتفك ورقم ولي أمرك لتفعيل حسابك واستلام بيانات الدخول والبدء فوراً._`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition flex items-center gap-1.5 border border-emerald-500/20"
+                  title="مشاركة عبر واتساب"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">مشاركة واتساب</span>
+                </button>
+
+                <button onClick={() => setMonitorExam(null)} className="text-slate-400 hover:text-white text-xl p-1 rounded-lg hover:bg-slate-800 transition">
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Submissions Table */}
