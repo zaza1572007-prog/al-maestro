@@ -13,7 +13,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch user details from DB to get the most up-to-date name and phone
+    // Fetch user details from DB to get the most up-to-date name, phone, and permissions
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
@@ -22,11 +22,19 @@ export async function GET(req: Request) {
         phone: true,
         role: true,
         profileImage: true,
+        isActive: true,
+        permissions: true,
+        assignedGroupIds: true,
+        notes: true,
       }
     });
 
     if (!dbUser) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    if (!dbUser.isActive) {
+      return NextResponse.json({ success: false, error: 'الحساب معطل، يرجى التواصل مع الإدارة' }, { status: 403 });
     }
 
     return NextResponse.json({

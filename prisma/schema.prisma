@@ -125,21 +125,26 @@ enum RegistrationStatus {
 
 // Models
 model User {
-  id            String        @id @default(uuid())
-  name          String
-  phone         String        @unique
-  password      String
-  role          Role          @default(ASSISTANT)
-  profileImage  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  activityLogs  ActivityLog[]
-  payments      Payment[]
-  groups        Group[]
-  lessonSessions LessonSession[]
-  attendances   Attendance[]
-  tasks         Task[]
-  staffAttendance StaffAttendance[]
+  id               String            @id @default(uuid())
+  name             String
+  phone            String            @unique
+  password         String
+  passwordPlain    String?
+  role             Role              @default(ASSISTANT)
+  profileImage     String?
+  isActive         Boolean           @default(true)
+  permissions      String[]          @default([])
+  assignedGroupIds String[]          @default([])
+  notes            String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  activityLogs     ActivityLog[]
+  payments         Payment[]
+  groups           Group[]
+  lessonSessions   LessonSession[]
+  attendances      Attendance[]
+  tasks            Task[]
+  staffAttendance  StaffAttendance[]
 }
 
 model Student {

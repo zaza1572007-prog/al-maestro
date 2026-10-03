@@ -55,3 +55,12 @@ export async function verifyStaff(req: Request): Promise<JWTPayload | null> {
     return null;
   }
 }
+
+export async function verifyOwner(req: Request): Promise<JWTPayload | null> {
+  const staff = await verifyStaff(req);
+  if (staff && staff.role === 'OWNER') {
+    return staff;
+  }
+  return null;
+}
+

@@ -80,6 +80,15 @@ export async function middleware(request: NextRequest) {
       return addSecurityHeaders(NextResponse.redirect(new URL('/parent-portal', request.url)));
     }
 
+    if (role === 'ASSISTANT') {
+      if (pathname === '/dashboard') {
+        return addSecurityHeaders(NextResponse.redirect(new URL('/assistant-portal', request.url)));
+      }
+      if (pathname.startsWith('/settings') || pathname.startsWith('/assistants')) {
+        return addSecurityHeaders(NextResponse.redirect(new URL('/assistant-portal', request.url)));
+      }
+    }
+
   } catch (err) {
     if (pathname.startsWith('/api/')) {
       return addSecurityHeaders(NextResponse.json({ success: false, error: 'جلسة الدخول منتهية أو غير صالحة' }, { status: 401 }));

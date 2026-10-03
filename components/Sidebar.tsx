@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ToastProvider';
 import { useSidebar } from '@/components/SidebarContext';
+import { hasPermission } from '@/lib/permissions';
 
 import {
   LayoutDashboard,
@@ -34,7 +35,8 @@ import {
   FileText,
   UserPlus,
   User,
-  ClipboardList
+  ClipboardList,
+  ShieldCheck
 } from 'lucide-react';
 
 // ── Nav item separator marker ──
@@ -154,6 +156,7 @@ export default function Sidebar() {
     SEPARATOR,
     { label: 'المكتبة والملفات', path: '/files', icon: FolderArchive },
     { label: 'إدارة المهام', path: '/tasks', icon: CheckSquare },
+    { label: 'فريق المساعدين والصلاحيات', path: '/assistants', icon: ShieldCheck },
     { label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare },
     { label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 },
     { label: 'مركز التنبيهات', path: '/notifications', icon: BellRing },
@@ -199,6 +202,63 @@ export default function Sidebar() {
     portalTitle = "بوابة ولي الأمر";
     portalSubtitle = "منظومة متابعة الأبناء";
     roleBadge = "ولي أمر";
+  } else if (currentUser?.role === 'ASSISTANT') {
+    portalTitle = "بوابة المساعد";
+    portalSubtitle = currentUser.name || "الكادر الإداري";
+    roleBadge = "مساعد معتمد";
+
+    const allowedItems: (NavItem | typeof SEPARATOR)[] = [
+      { label: 'لوحة تحكم المساعد', path: '/assistant-portal', icon: LayoutDashboard },
+    ];
+
+    const canRegistrations = hasPermission(currentUser, 'registrations.view') || hasPermission(currentUser, 'registrations.manage');
+    if (canRegistrations) allowedItems.push({ label: 'طلبات الحجز والتسجيل', path: '/registration-requests', icon: UserPlus });
+
+    const canStages = hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.manage');
+    const canGroups = hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.view_assigned') || hasPermission(currentUser, 'groups.manage');
+    const canStudents = hasPermission(currentUser, 'students.view') || hasPermission(currentUser, 'students.create') || hasPermission(currentUser, 'students.edit');
+
+    if (canStages || canGroups || canStudents) allowedItems.push(SEPARATOR);
+    if (canStages) allowedItems.push({ label: 'المراحل الدراسية', path: '/stages', icon: Layers });
+    if (canGroups) allowedItems.push({ label: 'المجموعات التعليمية', path: '/groups', icon: Users });
+    if (canStudents) allowedItems.push({ label: 'قائمة الطلاب', path: '/students', icon: GraduationCap });
+
+    const canScan = hasPermission(currentUser, 'attendance.scan') || hasPermission(currentUser, 'attendance.manual');
+    const canDailyAtt = hasPermission(currentUser, 'attendance.daily');
+    const canHw = hasPermission(currentUser, 'homework.manage');
+    const canExams = hasPermission(currentUser, 'exams.manage');
+
+    if (canScan || canDailyAtt || canHw || canExams) allowedItems.push(SEPARATOR);
+    if (canScan) allowedItems.push({ label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode });
+    if (canDailyAtt) allowedItems.push({ label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList });
+    if (canHw) allowedItems.push({ label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck });
+    if (canExams) allowedItems.push({ label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet });
+
+    const canSubs = hasPermission(currentUser, 'subscriptions.view') || hasPermission(currentUser, 'subscriptions.manage');
+    const canPayments = hasPermission(currentUser, 'payments.collect');
+    const canCards = hasPermission(currentUser, 'cards.print');
+    const canQrPrint = hasPermission(currentUser, 'qr.print');
+
+    if (canSubs || canPayments || canCards || canQrPrint) allowedItems.push(SEPARATOR);
+    if (canSubs) allowedItems.push({ label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard });
+    if (canPayments) allowedItems.push({ label: 'المدفوعات والسداد', path: '/payments', icon: Banknote });
+    if (canCards) allowedItems.push({ label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard });
+    if (canQrPrint) allowedItems.push({ label: 'طباعة QR', path: '/qr-print', icon: QrCode });
+
+    const canFiles = hasPermission(currentUser, 'files.manage');
+    const canTasks = hasPermission(currentUser, 'tasks.manage');
+    const canParentComm = hasPermission(currentUser, 'parent_comm.manage');
+    const canReports = hasPermission(currentUser, 'reports.view');
+    const canNotifications = hasPermission(currentUser, 'notifications.send');
+
+    if (canFiles || canTasks || canParentComm || canReports || canNotifications) allowedItems.push(SEPARATOR);
+    if (canFiles) allowedItems.push({ label: 'المكتبة والملفات', path: '/files', icon: FolderArchive });
+    if (canTasks) allowedItems.push({ label: 'إدارة المهام', path: '/tasks', icon: CheckSquare });
+    if (canParentComm) allowedItems.push({ label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare });
+    if (canReports) allowedItems.push({ label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 });
+    if (canNotifications) allowedItems.push({ label: 'مركز التنبيهات', path: '/notifications', icon: BellRing });
+
+    currentNavItems = allowedItems;
   }
 
   return (
