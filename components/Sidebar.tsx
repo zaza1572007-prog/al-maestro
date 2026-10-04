@@ -28,6 +28,7 @@ import {
   Settings,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   LogOut,
   Sparkles,
   Award,
@@ -36,11 +37,30 @@ import {
   UserPlus,
   User,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  Compass,
+  SlidersHorizontal
 } from 'lucide-react';
 
 // ── Nav item separator marker ──
 const SEPARATOR = '__sep__';
+
+export type SidebarStyle = 'grouped' | 'classic';
+
+export interface NavItem {
+  label: string;
+  path: string;
+  icon: any;
+  isComingSoon?: boolean;
+  badge?: string | number;
+  badgeColor?: 'amber' | 'purple' | 'emerald' | 'blue';
+}
+
+export interface NavSection {
+  id: string;
+  title: string;
+  items: NavItem[];
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -53,6 +73,49 @@ export default function Sidebar() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoScale, setLogoScale] = useState<number>(1.0);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  // Sidebar Layout Style ('grouped' | 'classic')
+  const [sidebarStyle, setSidebarStyle] = useState<SidebarStyle>('grouped');
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  // Dynamic live badges data
+  const [pendingRegistrations, setPendingRegistrations] = useState<number>(0);
+
+  // Sync sidebar style from localStorage & event listener
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('maestro_sidebar_style') as SidebarStyle;
+      if (saved === 'classic' || saved === 'grouped') {
+        setSidebarStyle(saved);
+      }
+    } catch {}
+
+    const handleStyleChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && (customEvent.detail === 'classic' || customEvent.detail === 'grouped')) {
+        setSidebarStyle(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('maestro-sidebar-style-changed', handleStyleChange);
+    return () => window.removeEventListener('maestro-sidebar-style-changed', handleStyleChange);
+  }, []);
+
+  // Fetch live stats for badges (e.g. pending registration requests)
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (currentUser?.role === 'OWNER' || currentUser?.role === 'ASSISTANT') {
+        try {
+          const res = await fetch('/api/dashboard/stats');
+          const data = await res.json();
+          if (data.success && data.stats) {
+            setPendingRegistrations(data.stats.pendingRegistrations || 0);
+          }
+        } catch {}
+      }
+    };
+    fetchStats();
+  }, [currentUser]);
 
   // Load logo from DB
   useEffect(() => {
@@ -141,132 +204,350 @@ export default function Sidebar() {
   const isStudentPortal = pathname.startsWith('/student-portal');
   const isParentPortal = pathname.startsWith('/parent-portal');
 
-  interface NavItem { label: string; path: string; icon: any; isComingSoon?: boolean; badge?: string; }
-
-  const teacherNavItems: (NavItem | typeof SEPARATOR)[] = [
-    { label: 'لوحة التحكم الرئيسي', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'طلبات الحجز والتسجيل', path: '/registration-requests', icon: UserPlus },
-    SEPARATOR,
-    { label: 'المراحل الدراسية', path: '/stages', icon: Layers },
-    { label: 'المجموعات التعليمية', path: '/groups', icon: Users },
-    { label: 'قائمة الطلاب', path: '/students', icon: GraduationCap },
-    SEPARATOR,
-    { label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode },
-    { label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList },
-    { label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck },
-    { label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet },
-    SEPARATOR,
-    { label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard },
-    { label: 'المدفوعات والسداد', path: '/payments', icon: Banknote },
-    { label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard },
-    { label: 'طباعة QR', path: '/qr-print', icon: QrCode },
-    SEPARATOR,
-    { label: 'المكتبة والملفات', path: '/files', icon: FolderArchive },
-    { label: 'إدارة المهام', path: '/tasks', icon: CheckSquare },
-    { label: 'فريق المساعدين والصلاحيات', path: '/assistants', icon: ShieldCheck },
-    { label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare },
-    { label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 },
-    { label: 'مركز التنبيهات', path: '/notifications', icon: BellRing },
-    SEPARATOR,
-    { label: 'إعدادات المنصة', path: '/settings', icon: Settings },
+  // ── 1. TEACHER NAV DEFINITIONS ──
+  const teacherSections: NavSection[] = [
+    {
+      id: 'main',
+      title: 'الرئيسية والقبول',
+      items: [
+        { label: 'لوحة التحكم الرئيسي', path: '/dashboard', icon: LayoutDashboard },
+        {
+          label: 'طلبات الحجز والتسجيل',
+          path: '/registration-requests',
+          icon: UserPlus,
+          badge: pendingRegistrations > 0 ? pendingRegistrations : undefined,
+          badgeColor: 'amber',
+        },
+      ],
+    },
+    {
+      id: 'academic',
+      title: 'الشؤون الأكاديمية',
+      items: [
+        { label: 'المراحل الدراسية', path: '/stages', icon: Layers },
+        { label: 'المجموعات التعليمية', path: '/groups', icon: Users },
+        { label: 'قائمة الطلاب', path: '/students', icon: GraduationCap },
+      ],
+    },
+    {
+      id: 'daily',
+      title: 'العمليات والمتابعة اليومية',
+      items: [
+        { label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode },
+        { label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList },
+        { label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck },
+        { label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet },
+      ],
+    },
+    {
+      id: 'finance',
+      title: 'الماليات والطباعة',
+      items: [
+        { label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard },
+        { label: 'المدفوعات والسداد', path: '/payments', icon: Banknote },
+        { label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard },
+        { label: 'طباعة QR', path: '/qr-print', icon: QrCode },
+      ],
+    },
+    {
+      id: 'admin',
+      title: 'الإدارة والتواصل',
+      items: [
+        { label: 'المكتبة والملفات', path: '/files', icon: FolderArchive },
+        { label: 'إدارة المهام', path: '/tasks', icon: CheckSquare },
+        { label: 'فريق المساعدين والصلاحيات', path: '/assistants', icon: ShieldCheck },
+        { label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare },
+        { label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 },
+        { label: 'مركز التنبيهات', path: '/notifications', icon: BellRing },
+        { label: 'إعدادات المنصة', path: '/settings', icon: Settings },
+      ],
+    },
   ];
 
-  const studentNavItems: NavItem[] = [
-    { label: 'لوحة الطالب', path: '/student-portal', icon: LayoutDashboard },
-    { label: 'سجل الحضور والغياب', path: '/student-portal/attendance', icon: QrCode },
-    { label: 'واجباتي والتقييمات', path: '/student-portal/homework', icon: BookOpenCheck },
-    { label: 'امتحاناتي ونتائجي', path: '/student-portal/exams', icon: Award },
-    { label: 'اشتراكي المالي', path: '/student-portal/subscription', icon: CreditCard },
-    { label: 'المكتبة والملفات', path: '/student-portal/files', icon: FileText },
-    { label: 'الإشعارات والتنبيهات', path: '/student-portal/notifications', icon: BellRing },
-    { label: 'ملفي الشخصي', path: '/student-portal/profile', icon: User },
+  // ── 2. STUDENT NAV DEFINITIONS ──
+  const studentSections: NavSection[] = [
+    {
+      id: 'student_learn',
+      title: 'التعلم والمتابعة',
+      items: [
+        { label: 'لوحة الطالب', path: '/student-portal', icon: LayoutDashboard },
+        { label: 'سجل الحضور والغياب', path: '/student-portal/attendance', icon: QrCode },
+        { label: 'واجباتي والتقييمات', path: '/student-portal/homework', icon: BookOpenCheck },
+        { label: 'امتحاناتي ونتائجي', path: '/student-portal/exams', icon: Award },
+      ],
+    },
+    {
+      id: 'student_services',
+      title: 'الخدمات والملف الشخصي',
+      items: [
+        { label: 'اشتراكي المالي', path: '/student-portal/subscription', icon: CreditCard },
+        { label: 'المكتبة والملفات', path: '/student-portal/files', icon: FileText },
+        { label: 'الإشعارات والتنبيهات', path: '/student-portal/notifications', icon: BellRing },
+        { label: 'ملفي الشخصي', path: '/student-portal/profile', icon: User },
+      ],
+    },
   ];
 
-  const parentNavItems: NavItem[] = [
-    { label: 'لوحة ولي الأمر', path: '/parent-portal', icon: LayoutDashboard },
-    { label: 'متابعة الأبناء', path: '/parent-portal/children', icon: Users },
-    { label: 'سجل الحضور والغياب', path: '/parent-portal/attendance', icon: QrCode },
-    { label: 'متابعة الواجبات', path: '/parent-portal/homework', icon: BookOpenCheck },
-    { label: 'نتائج الامتحانات', path: '/parent-portal/exams', icon: Award },
-    { label: 'الاشتراكات والرسوم', path: '/parent-portal/subscription', icon: CreditCard },
-    { label: 'التواصل والملاحظات', path: '/parent-portal/messages', icon: MessageSquare },
-    { label: 'الإشعارات', path: '/parent-portal/notifications', icon: BellRing },
-    { label: 'الملف الشخصي', path: '/parent-portal/profile', icon: User },
+  // ── 3. PARENT NAV DEFINITIONS ──
+  const parentSections: NavSection[] = [
+    {
+      id: 'parent_track',
+      title: 'متابعة الأبناء',
+      items: [
+        { label: 'لوحة ولي الأمر', path: '/parent-portal', icon: LayoutDashboard },
+        { label: 'متابعة الأبناء', path: '/parent-portal/children', icon: Users },
+        { label: 'سجل الحضور والغياب', path: '/parent-portal/attendance', icon: QrCode },
+        { label: 'متابعة الواجبات', path: '/parent-portal/homework', icon: BookOpenCheck },
+        { label: 'نتائج الامتحانات', path: '/parent-portal/exams', icon: Award },
+      ],
+    },
+    {
+      id: 'parent_services',
+      title: 'الماليات والتواصل',
+      items: [
+        { label: 'الاشتراكات والرسوم', path: '/parent-portal/subscription', icon: CreditCard },
+        { label: 'التواصل والملاحظات', path: '/parent-portal/messages', icon: MessageSquare },
+        { label: 'الإشعارات', path: '/parent-portal/notifications', icon: BellRing },
+        { label: 'الملف الشخصي', path: '/parent-portal/profile', icon: User },
+      ],
+    },
   ];
 
-  let currentNavItems: (NavItem | typeof SEPARATOR)[] = teacherNavItems;
+  // ── 4. ASSISTANT FILTERING ──
+  let assistantSections: NavSection[] = [];
+  if (currentUser?.role === 'ASSISTANT') {
+    const mainItems: NavItem[] = [{ label: 'لوحة تحكم المساعد', path: '/assistant-portal', icon: LayoutDashboard }];
+    const canRegistrations = hasPermission(currentUser, 'registrations.view') || hasPermission(currentUser, 'registrations.manage');
+    if (canRegistrations) {
+      mainItems.push({
+        label: 'طلبات الحجز والتسجيل',
+        path: '/registration-requests',
+        icon: UserPlus,
+        badge: pendingRegistrations > 0 ? pendingRegistrations : undefined,
+        badgeColor: 'amber',
+      });
+    }
+
+    const academicItems: NavItem[] = [];
+    if (hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.manage')) academicItems.push({ label: 'المراحل الدراسية', path: '/stages', icon: Layers });
+    if (hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.view_assigned') || hasPermission(currentUser, 'groups.manage')) academicItems.push({ label: 'المجموعات التعليمية', path: '/groups', icon: Users });
+    if (hasPermission(currentUser, 'students.view') || hasPermission(currentUser, 'students.create') || hasPermission(currentUser, 'students.edit')) academicItems.push({ label: 'قائمة الطلاب', path: '/students', icon: GraduationCap });
+
+    const dailyItems: NavItem[] = [];
+    if (hasPermission(currentUser, 'attendance.scan') || hasPermission(currentUser, 'attendance.manual')) dailyItems.push({ label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode });
+    if (hasPermission(currentUser, 'attendance.daily')) dailyItems.push({ label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList });
+    if (hasPermission(currentUser, 'homework.manage')) dailyItems.push({ label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck });
+    if (hasPermission(currentUser, 'exams.manage')) dailyItems.push({ label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet });
+
+    const financeItems: NavItem[] = [];
+    if (hasPermission(currentUser, 'subscriptions.view') || hasPermission(currentUser, 'subscriptions.manage')) financeItems.push({ label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard });
+    if (hasPermission(currentUser, 'payments.collect')) financeItems.push({ label: 'المدفوعات والسداد', path: '/payments', icon: Banknote });
+    if (hasPermission(currentUser, 'cards.print')) financeItems.push({ label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard });
+    if (hasPermission(currentUser, 'qr.print')) financeItems.push({ label: 'طباعة QR', path: '/qr-print', icon: QrCode });
+
+    const adminItems: NavItem[] = [];
+    if (hasPermission(currentUser, 'files.manage')) adminItems.push({ label: 'المكتبة والملفات', path: '/files', icon: FolderArchive });
+    if (hasPermission(currentUser, 'tasks.manage')) adminItems.push({ label: 'إدارة المهام', path: '/tasks', icon: CheckSquare });
+    if (hasPermission(currentUser, 'parent_comm.manage')) adminItems.push({ label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare });
+    if (hasPermission(currentUser, 'reports.view')) adminItems.push({ label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 });
+    if (hasPermission(currentUser, 'notifications.send')) adminItems.push({ label: 'مركز التنبيهات', path: '/notifications', icon: BellRing });
+
+    assistantSections = [
+      { id: 'main', title: 'الرئيسية والقبول', items: mainItems },
+      ...(academicItems.length > 0 ? [{ id: 'academic', title: 'الشؤون الأكاديمية', items: academicItems }] : []),
+      ...(dailyItems.length > 0 ? [{ id: 'daily', title: 'العمليات والمتابعة اليومية', items: dailyItems }] : []),
+      ...(financeItems.length > 0 ? [{ id: 'finance', title: 'الماليات والطباعة', items: financeItems }] : []),
+      ...(adminItems.length > 0 ? [{ id: 'admin', title: 'الإدارة والتقارير', items: adminItems }] : []),
+    ];
+  }
+
+  // Active portal details
+  let activeSections: NavSection[] = teacherSections;
   let portalTitle = "منصة المايسترو";
   let portalSubtitle = "أ. أحمد راضي كحلة";
   let roleBadge = "المعلم والإدارة";
 
   if (currentUser?.role === 'STUDENT' || isStudentPortal) {
-    currentNavItems = studentNavItems;
+    activeSections = studentSections;
     portalTitle = "بوابة الطالب";
     portalSubtitle = "منصة التعلم الذكي";
     roleBadge = "طالب";
   } else if (currentUser?.role === 'PARENT' || isParentPortal) {
-    currentNavItems = parentNavItems;
+    activeSections = parentSections;
     portalTitle = "بوابة ولي الأمر";
     portalSubtitle = "منظومة متابعة الأبناء";
     roleBadge = "ولي أمر";
   } else if (currentUser?.role === 'ASSISTANT') {
+    activeSections = assistantSections;
     portalTitle = "بوابة المساعد";
     portalSubtitle = currentUser.name || "الكادر الإداري";
     roleBadge = "مساعد معتمد";
-
-    const allowedItems: (NavItem | typeof SEPARATOR)[] = [
-      { label: 'لوحة تحكم المساعد', path: '/assistant-portal', icon: LayoutDashboard },
-    ];
-
-    const canRegistrations = hasPermission(currentUser, 'registrations.view') || hasPermission(currentUser, 'registrations.manage');
-    if (canRegistrations) allowedItems.push({ label: 'طلبات الحجز والتسجيل', path: '/registration-requests', icon: UserPlus });
-
-    const canStages = hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.manage');
-    const canGroups = hasPermission(currentUser, 'groups.view_all') || hasPermission(currentUser, 'groups.view_assigned') || hasPermission(currentUser, 'groups.manage');
-    const canStudents = hasPermission(currentUser, 'students.view') || hasPermission(currentUser, 'students.create') || hasPermission(currentUser, 'students.edit');
-
-    if (canStages || canGroups || canStudents) allowedItems.push(SEPARATOR);
-    if (canStages) allowedItems.push({ label: 'المراحل الدراسية', path: '/stages', icon: Layers });
-    if (canGroups) allowedItems.push({ label: 'المجموعات التعليمية', path: '/groups', icon: Users });
-    if (canStudents) allowedItems.push({ label: 'قائمة الطلاب', path: '/students', icon: GraduationCap });
-
-    const canScan = hasPermission(currentUser, 'attendance.scan') || hasPermission(currentUser, 'attendance.manual');
-    const canDailyAtt = hasPermission(currentUser, 'attendance.daily');
-    const canHw = hasPermission(currentUser, 'homework.manage');
-    const canExams = hasPermission(currentUser, 'exams.manage');
-
-    if (canScan || canDailyAtt || canHw || canExams) allowedItems.push(SEPARATOR);
-    if (canScan) allowedItems.push({ label: 'ماسح الـ QR والحضور', path: '/attendance', icon: QrCode });
-    if (canDailyAtt) allowedItems.push({ label: 'تحصيل غياب اليوم', path: '/daily-attendance', icon: ClipboardList });
-    if (canHw) allowedItems.push({ label: 'الواجبات والتقييمات', path: '/homework', icon: BookOpenCheck });
-    if (canExams) allowedItems.push({ label: 'الامتحانات والنتائج', path: '/exams', icon: FileSpreadsheet });
-
-    const canSubs = hasPermission(currentUser, 'subscriptions.view') || hasPermission(currentUser, 'subscriptions.manage');
-    const canPayments = hasPermission(currentUser, 'payments.collect');
-    const canCards = hasPermission(currentUser, 'cards.print');
-    const canQrPrint = hasPermission(currentUser, 'qr.print');
-
-    if (canSubs || canPayments || canCards || canQrPrint) allowedItems.push(SEPARATOR);
-    if (canSubs) allowedItems.push({ label: 'الاشتراكات الشهرية', path: '/subscriptions', icon: CreditCard });
-    if (canPayments) allowedItems.push({ label: 'المدفوعات والسداد', path: '/payments', icon: Banknote });
-    if (canCards) allowedItems.push({ label: 'طباعة بطاقات الطلاب', path: '/cards', icon: IdCard });
-    if (canQrPrint) allowedItems.push({ label: 'طباعة QR', path: '/qr-print', icon: QrCode });
-
-    const canFiles = hasPermission(currentUser, 'files.manage');
-    const canTasks = hasPermission(currentUser, 'tasks.manage');
-    const canParentComm = hasPermission(currentUser, 'parent_comm.manage');
-    const canReports = hasPermission(currentUser, 'reports.view');
-    const canNotifications = hasPermission(currentUser, 'notifications.send');
-
-    if (canFiles || canTasks || canParentComm || canReports || canNotifications) allowedItems.push(SEPARATOR);
-    if (canFiles) allowedItems.push({ label: 'المكتبة والملفات', path: '/files', icon: FolderArchive });
-    if (canTasks) allowedItems.push({ label: 'إدارة المهام', path: '/tasks', icon: CheckSquare });
-    if (canParentComm) allowedItems.push({ label: 'تواصل أولياء الأمور', path: '/parent-comm', icon: MessageSquare });
-    if (canReports) allowedItems.push({ label: 'التقارير والإحصائيات', path: '/reports', icon: BarChart3 });
-    if (canNotifications) allowedItems.push({ label: 'مركز التنبيهات', path: '/notifications', icon: BellRing });
-
-    currentNavItems = allowedItems;
   }
+
+  // Flattened for Classic View
+  const classicFlatItems: (NavItem | typeof SEPARATOR)[] = [];
+  activeSections.forEach((sec, idx) => {
+    if (idx > 0) classicFlatItems.push(SEPARATOR);
+    sec.items.forEach((item) => classicFlatItems.push(item));
+  });
+
+  const toggleSection = (secId: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [secId]: !prev[secId] }));
+  };
+
+  const renderSingleNavItem = (navItem: NavItem) => {
+    const Icon = navItem.icon;
+    const isActive =
+      pathname === navItem.path ||
+      (navItem.path !== '/dashboard' &&
+        navItem.path !== '/student-portal' &&
+        navItem.path !== '/parent-portal' &&
+        pathname.startsWith(navItem.path));
+
+    const handleNavigation = (e: React.MouseEvent) => {
+      if (navItem.isComingSoon) {
+        e.preventDefault();
+        toast.info('هذه الميزة قريباً في التحديث القادم');
+      }
+    };
+
+    return (
+      <div key={navItem.path} className="relative">
+        <Link
+          href={navItem.path}
+          onClick={handleNavigation}
+          onMouseEnter={() => setHoveredItem(navItem.path)}
+          onMouseLeave={() => setHoveredItem(null)}
+          className="relative block group"
+        >
+          <div
+            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl font-semibold text-[13px] transition-all duration-200 relative overflow-hidden ${
+              isActive
+                ? 'text-white font-bold'
+                : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.03]'
+            }`}
+          >
+            {/* Active Neon Glow & Indicator on right */}
+            {isActive && (
+              <>
+                <motion.div
+                  layoutId="sidebar-active-indicator"
+                  className="absolute inset-0 rounded-xl"
+                  style={{
+                    background: `linear-gradient(to left, rgb(var(--p) / 0.24) 0%, rgb(var(--s) / 0.08) 100%)`,
+                    border: `1px solid rgb(var(--p) / 0.35)`,
+                    boxShadow: `0 0 20px rgb(var(--p) / 0.15)`,
+                  }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+                {/* Right Neon Edge Accent Bar */}
+                <div
+                  className="absolute right-0 top-1.5 bottom-1.5 w-[3.5px] rounded-l-full shadow-sm"
+                  style={{
+                    background: `linear-gradient(to bottom, rgb(var(--p)), rgb(var(--s)))`,
+                    boxShadow: `0 0 10px rgb(var(--p))`,
+                  }}
+                />
+              </>
+            )}
+
+            {/* Hover background */}
+            {!isActive && hoveredItem === navItem.path && (
+              <motion.div
+                layoutId="sidebar-hover-indicator"
+                className="absolute inset-0 rounded-xl bg-white/[0.04]"
+                transition={{ duration: 0.15 }}
+              />
+            )}
+
+            {/* Icon Box */}
+            <div
+              className={`relative z-10 p-1.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0 ${
+                isActive
+                  ? 'border shadow-inner'
+                  : 'text-slate-400 group-hover:text-slate-200 group-hover:bg-white/[0.05]'
+              }`}
+              style={
+                isActive
+                  ? {
+                      backgroundColor: 'rgb(var(--p) / 0.2)',
+                      color: 'rgb(var(--p))',
+                      borderColor: 'rgb(var(--p) / 0.4)',
+                      boxShadow: `0 0 12px rgb(var(--p) / 0.3)`,
+                    }
+                  : undefined
+              }
+            >
+              <motion.div
+                whileHover={{ scale: 1.15, rotate: isActive ? 0 : 3 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              >
+                <Icon className="w-[17px] h-[17px] flex-shrink-0" />
+              </motion.div>
+            </div>
+
+            {/* Label & Dynamic Badges */}
+            <AnimatePresence>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 'auto' }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative z-10 flex-1 flex items-center justify-between min-w-0 overflow-hidden"
+                >
+                  <span className="truncate">{navItem.label}</span>
+                  {navItem.isComingSoon && (
+                    <span className="text-[9px] bg-slate-800/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/80 ml-1 shrink-0">
+                      قريباً
+                    </span>
+                  )}
+                  {navItem.badge !== undefined && (
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-extrabold ml-1 shrink-0 border ${
+                        navItem.badgeColor === 'amber'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.3)] animate-pulse'
+                          : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                      }`}
+                    >
+                      {navItem.badge}
+                    </span>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Link>
+
+        {/* Collapsed Tooltip */}
+        {isCollapsed && hoveredItem === navItem.path && (
+          <div
+            className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap z-[100] pointer-events-none flex items-center gap-1.5"
+            style={{
+              background: 'rgba(15,23,42,0.97)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            }}
+          >
+            <span>{navItem.label}</span>
+            {navItem.badge !== undefined && (
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                {navItem.badge}
+              </span>
+            )}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -left-1 w-2 h-2 rotate-45"
+              style={{
+                background: 'rgba(15,23,42,0.97)',
+                borderRight: '1px solid rgba(255,255,255,0.12)',
+                borderBottom: '1px solid rgba(255,255,255,0.12)',
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -279,8 +560,8 @@ export default function Sidebar() {
       <motion.aside
         animate={
           isMobile
-            ? { x: isMobileOpen ? 0 : '100%', width: 248 }
-            : { x: 0, width: isCollapsed ? 72 : 248 }
+            ? { x: isMobileOpen ? 0 : '100%', width: 256 }
+            : { x: 0, width: isCollapsed ? 72 : 256 }
         }
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col h-screen fixed lg:sticky top-0 right-0 lg:right-auto no-print select-none z-50 lg:z-30 shadow-2xl"
@@ -361,185 +642,100 @@ export default function Sidebar() {
           </motion.button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5 scrollbar-thin scrollbar-thumb-white/10">
-          {currentNavItems.map((item, idx) => {
-            // Separator
-            if (item === SEPARATOR) {
-              return isCollapsed ? (
-                <div key={`sep-${idx}`} className="my-2 mx-2 h-[1px] bg-white/[0.06]" />
-              ) : (
-                <div key={`sep-${idx}`} className="section-divider my-1.5 mx-1" />
-              );
-            }
-
-            const navItem = item as NavItem;
-            const Icon = navItem.icon;
-            const isActive =
-              pathname === navItem.path ||
-              (navItem.path !== '/dashboard' &&
-                navItem.path !== '/student-portal' &&
-                navItem.path !== '/parent-portal' &&
-                pathname.startsWith(navItem.path));
-
-            const handleNavigation = (e: React.MouseEvent) => {
-              if (navItem.isComingSoon) {
-                e.preventDefault();
-                toast.info('هذه الميزة قريباً في التحديث القادم');
-              }
-            };
-
-            return (
-              <div key={navItem.path} className="relative">
-                <Link
-                  href={navItem.path}
-                  onClick={handleNavigation}
-                  onMouseEnter={() => setHoveredItem(navItem.path)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  className="relative block group"
-                >
-                  <div
-                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl font-semibold text-[13px] transition-all duration-200 ${
-                      isActive
-                        ? 'text-white'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {/* Active indicator */}
-                    {isActive && (
-                      <motion.div
-                        layoutId="sidebar-active-indicator"
-                        className="absolute inset-0 rounded-xl"
-                        style={{
-                          background: `linear-gradient(to left, rgb(var(--p) / 0.22) 0%, rgb(var(--s) / 0.08) 100%)`,
-                          border: `1px solid rgb(var(--p) / 0.3)`,
-                          boxShadow: `0 0 20px rgb(var(--p) / 0.12)`,
-                        }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    )}
-
-                    {/* Hover background */}
-                    {!isActive && hoveredItem === navItem.path && (
-                      <motion.div
-                        layoutId="sidebar-hover-indicator"
-                        className="absolute inset-0 rounded-xl bg-white/[0.04]"
-                        transition={{ duration: 0.15 }}
-                      />
-                    )}
-
-                    {/* Icon */}
+        {/* Navigation Content */}
+        <nav className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10">
+          {sidebarStyle === 'grouped' ? (
+            /* ── GROUPED & MODERN LAYOUT ── */
+            activeSections.map((sec, secIdx) => {
+              const isSecCollapsed = !!collapsedSections[sec.id];
+              return (
+                <div key={sec.id} className="space-y-0.5 mb-2">
+                  {/* Section Title Header */}
+                  {!isCollapsed ? (
                     <div
-                      className={`relative z-10 p-1.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0 ${
-                        isActive
-                          ? 'border shadow-inner'
-                          : 'text-slate-400 group-hover:text-slate-200'
-                      }`}
-                      style={
-                        isActive
-                          ? {
-                              backgroundColor: 'rgb(var(--p) / 0.18)',
-                              color: 'rgb(var(--p))',
-                              borderColor: 'rgb(var(--p) / 0.35)',
-                              boxShadow: `0 0 12px rgb(var(--p) / 0.25)`,
-                            }
-                          : undefined
-                      }
+                      onClick={() => toggleSection(sec.id)}
+                      className="flex items-center justify-between px-2 pt-2.5 pb-1 text-[11px] font-bold text-slate-400 hover:text-slate-200 cursor-pointer transition select-none group"
                     >
-                      <motion.div
-                        whileHover={{ scale: 1.15, rotate: isActive ? 0 : 3 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                      >
-                        <Icon className="w-[17px] h-[17px] flex-shrink-0" />
-                      </motion.div>
+                      <span className="flex items-center gap-1.5 tracking-wide">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: 'rgb(var(--p) / 0.7)' }}
+                        />
+                        <span>{sec.title}</span>
+                      </span>
+                      <ChevronDown
+                        className={`w-3 h-3 text-slate-500 transition-transform duration-200 group-hover:text-slate-300 ${
+                          isSecCollapsed ? '-rotate-90' : ''
+                        }`}
+                      />
                     </div>
+                  ) : (
+                    secIdx > 0 && <div className="my-2 mx-2 h-[1px] bg-white/[0.06]" />
+                  )}
 
-                    {/* Label */}
-                    <AnimatePresence>
-                      {!isCollapsed && (
-                        <motion.div
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto' }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="relative z-10 flex-1 flex items-center justify-between min-w-0 overflow-hidden"
-                        >
-                          <span className="truncate">{navItem.label}</span>
-                          {navItem.isComingSoon && (
-                            <span className="text-[9px] bg-slate-800/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700/80 ml-1 shrink-0">
-                              قريباً
-                            </span>
-                          )}
-                          {navItem.badge && (
-                            <span
-                              className="text-[9px] px-1.5 py-0.5 rounded-full font-bold ml-1 shrink-0"
-                              style={{
-                                background: 'rgb(var(--p) / 0.2)',
-                                color: 'rgb(var(--p))',
-                              }}
-                            >
-                              {navItem.badge}
-                            </span>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </Link>
-
-                {/* Collapsed tooltip */}
-                {isCollapsed && hoveredItem === navItem.path && (
-                  <div
-                    className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap z-[100] pointer-events-none"
-                    style={{
-                      background: 'rgba(15,23,42,0.97)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                    }}
-                  >
-                    {navItem.label}
-                    <div
-                      className="absolute top-1/2 -translate-y-1/2 -left-1 w-2 h-2 rotate-45"
-                      style={{
-                        background: 'rgba(15,23,42,0.97)',
-                        borderRight: '1px solid rgba(255,255,255,0.12)',
-                        borderBottom: '1px solid rgba(255,255,255,0.12)',
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  {/* Section Items */}
+                  <AnimatePresence initial={false}>
+                    {(!isSecCollapsed || isCollapsed) && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-0.5 overflow-hidden"
+                      >
+                        {sec.items.map(renderSingleNavItem)}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })
+          ) : (
+            /* ── CLASSIC FLAT LIST LAYOUT ── */
+            classicFlatItems.map((item, idx) => {
+              if (item === SEPARATOR) {
+                return isCollapsed ? (
+                  <div key={`sep-${idx}`} className="my-2 mx-2 h-[1px] bg-white/[0.06]" />
+                ) : (
+                  <div key={`sep-${idx}`} className="section-divider my-1.5 mx-1" />
+                );
+              }
+              return renderSingleNavItem(item as NavItem);
+            })
+          )}
         </nav>
 
-        {/* Footer */}
+        {/* Modern Floating Profile Card Footer */}
         <div
           className="p-2.5 shrink-0"
           style={{
             borderTop: '1px solid rgba(255,255,255,0.06)',
-            background: 'rgba(6,9,19,0.5)',
+            background: 'linear-gradient(180deg, rgba(6,9,19,0.3) 0%, rgba(6,9,19,0.9) 100%)',
           }}
         >
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-md border border-white/15 flex-shrink-0 overflow-hidden"
-                style={{
-                  background: avatarUrl
-                    ? 'transparent'
-                    : `linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)`,
-                  boxShadow: '0 2px 10px rgb(var(--p) / 0.3)',
-                }}
-              >
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt={currentUser?.name} className="w-full h-full object-cover" />
-                ) : (
-                  currentUser?.name?.charAt(0) || 'أ'
-                )}
-              </motion.div>
+              <div className="relative">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-md border border-white/15 flex-shrink-0 overflow-hidden"
+                  style={{
+                    background: avatarUrl
+                      ? 'transparent'
+                      : `linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)`,
+                    boxShadow: '0 2px 10px rgb(var(--p) / 0.3)',
+                  }}
+                >
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt={currentUser?.name} className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser?.name?.charAt(0) || 'أ'
+                  )}
+                </motion.div>
+                {/* Live Online Badge */}
+                <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+              </div>
 
               <AnimatePresence>
                 {!isCollapsed && (
@@ -554,7 +750,7 @@ export default function Sidebar() {
                       {currentUser?.name || 'جاري التحميل...'}
                     </p>
                     <span
-                      className="inline-block text-[10px] px-2 py-0.5 rounded-full border"
+                      className="inline-block text-[10px] px-2 py-0.5 rounded-full border font-semibold mt-0.5"
                       style={{
                         backgroundColor: 'rgb(var(--p) / 0.12)',
                         borderColor: 'rgb(var(--p) / 0.25)',

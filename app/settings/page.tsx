@@ -9,7 +9,7 @@ import {
   Laptop, Tablet, Smartphone, Sliders, ZoomIn, Move, Eye, EyeOff, RotateCcw,
   Trash2, Lock, Unlock, Search, AlertTriangle, CalendarClock,
   Folder, FolderCog, FolderSync, HardDrive, Clock, QrCode, Radio, Send, MessageSquare,
-  ShieldCheck, LogOut, ExternalLink, HelpCircle
+  ShieldCheck, LogOut, ExternalLink, HelpCircle, Layers, LayoutList, Check
 } from 'lucide-react';
 import { extractDominantColors, generatePalettes, getDefaultPalettes, ThemePalette } from '@/lib/colorExtractor';
 import ColorPaletteSelector from '@/components/ColorPaletteSelector';
@@ -156,6 +156,25 @@ export default function SettingsPage() {
 
   // Logo layout configuration
   const [logoScale, setLogoScale] = useState(1.0);
+
+  // Sidebar layout style
+  const [sidebarStyle, setSidebarStyle] = useState<'grouped' | 'classic'>('grouped');
+
+  useEffect(() => {
+    try {
+      const saved = (localStorage.getItem('maestro_sidebar_style') as 'grouped' | 'classic') || 'grouped';
+      setSidebarStyle(saved);
+    } catch {}
+  }, []);
+
+  const handleSidebarStyleChange = (style: 'grouped' | 'classic') => {
+    setSidebarStyle(style);
+    try {
+      localStorage.setItem('maestro_sidebar_style', style);
+    } catch {}
+    window.dispatchEvent(new CustomEvent('maestro-sidebar-style-changed', { detail: style }));
+    toast.success(style === 'grouped' ? 'تم تفعيل النمط المبوب والحديث للقائمة الجانبية ✨' : 'تم تفعيل النمط الكلاسيكي للقائمة الجانبية');
+  };
 
   // Branding uploads
   const [portraitUrl, setPortraitUrl] = useState<string | null>(null);
@@ -1741,6 +1760,74 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* ── Sidebar Navigation Layout Style ── */}
+          <div className="glass-panel p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-5">
+            <div>
+              <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-purple-400" />
+                نمط وتصميم الشريط الجانبي (Sidebar Navigation Style)
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                اختر طريقة العرض المفضلة للشريط الجانبي للمنصة: العرض المبوب العصري أو العرض الكلاسيكي المباشر.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Grouped Modern Option */}
+              <div
+                onClick={() => handleSidebarStyleChange('grouped')}
+                className={`relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-3 ${
+                  sidebarStyle === 'grouped'
+                    ? 'border-purple-500 bg-purple-500/15 shadow-xl shadow-purple-500/10'
+                    : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  {sidebarStyle === 'grouped' && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500 text-white font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> مفعل حالياً
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">النمط المبوب والحديث (Grouped & Modern)</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    تقسيم ذكي للعناصر في مجموعات معنونة (القبول، الشؤون الأكاديمية، العمليات، الماليات، الإدارة) مع عدادات ذكية ومؤشرات نيون.
+                  </p>
+                </div>
+              </div>
+
+              {/* Classic Option */}
+              <div
+                onClick={() => handleSidebarStyleChange('classic')}
+                className={`relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-3 ${
+                  sidebarStyle === 'classic'
+                    ? 'border-purple-500 bg-purple-500/15 shadow-xl shadow-purple-500/10'
+                    : 'border-white/10 bg-slate-900/50 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-slate-800 text-slate-300 border border-white/10">
+                    <LayoutList className="w-5 h-5" />
+                  </div>
+                  {sidebarStyle === 'classic' && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500 text-white font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> مفعل حالياً
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">النمط الكلاسيكي (Classic Flat List)</h4>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    القائمة المباشرة السابقة بدون تصنيفات فرعية وبفواصل خطية بسيطة.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Tips */}
           <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1.5">

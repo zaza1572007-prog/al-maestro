@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, Sun, Sparkles, Check, X, Palette } from 'lucide-react';
+import { Moon, Sun, Sparkles, Check, X, Palette, LayoutList, Layers } from 'lucide-react';
 import {
   ThemeMode,
   AccentColor,
@@ -46,6 +46,7 @@ const ACCENT_OPTIONS: { id: AccentColor; name: string; darkHex: string; lightHex
 export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomizerModalProps) {
   const [mode, setMode] = useState<ThemeMode>('dark');
   const [accent, setAccent] = useState<AccentColor>('purple');
+  const [sidebarStyle, setSidebarStyle] = useState<'grouped' | 'classic'>('grouped');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -57,6 +58,10 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
       const current = getThemeState();
       setMode(current.mode);
       setAccent(current.accent);
+      try {
+        const savedSidebar = (localStorage.getItem('maestro_sidebar_style') as 'grouped' | 'classic') || 'grouped';
+        setSidebarStyle(savedSidebar);
+      } catch {}
     }
   }, [isOpen]);
 
@@ -71,6 +76,15 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
     setAccentColor(newAccent);
     playSuccessChime();
     triggerHaptic('medium');
+  };
+
+  const handleSidebarStyleChange = (style: 'grouped' | 'classic') => {
+    setSidebarStyle(style);
+    try {
+      localStorage.setItem('maestro_sidebar_style', style);
+    } catch {}
+    window.dispatchEvent(new CustomEvent('maestro-sidebar-style-changed', { detail: style }));
+    triggerHaptic('light');
   };
 
   if (!isOpen || !mounted) return null;
@@ -103,7 +117,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
               </div>
               <div>
                 <h3 className="text-base font-black text-white">تخصيص المظهر والثيمات</h3>
-                <p className="text-xs text-slate-400">تحكم بالوضع الليلي ولون التمييز المفضل</p>
+                <p className="text-xs text-slate-400">تحكم بالوضع الليلي ونمط القائمة ولون التمييز</p>
               </div>
             </div>
             <button
@@ -126,7 +140,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
               <button
                 type="button"
                 onClick={() => handleModeChange('dark')}
-                className={`relative p-3.5 rounded-2xl border text-right transition-all flex flex-col gap-1.5 ${
+                className={`relative p-3.5 rounded-2xl border text-right transition-all flex flex-col gap-1.5 cursor-pointer ${
                   mode === 'dark'
                     ? 'border-purple-500 bg-purple-500/15 shadow-lg shadow-purple-500/10'
                     : 'border-white/10 bg-white/5 hover:border-white/20'
@@ -140,7 +154,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
                 </div>
                 <div>
                   <p className="text-xs font-bold text-white">الوضع الليلي الفاخر</p>
-                  <p className="text-[10px] text-slate-400">Obsidian Dark (مانع للتلطيخ)</p>
+                  <p className="text-[10px] text-slate-400">Obsidian Dark (مريح للعين)</p>
                 </div>
               </button>
 
@@ -148,7 +162,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
               <button
                 type="button"
                 onClick={() => handleModeChange('light')}
-                className={`relative p-3.5 rounded-2xl border text-right transition-all flex flex-col gap-1.5 ${
+                className={`relative p-3.5 rounded-2xl border text-right transition-all flex flex-col gap-1.5 cursor-pointer ${
                   mode === 'light'
                     ? 'border-amber-500 bg-amber-500/15 shadow-lg shadow-amber-500/10'
                     : 'border-white/10 bg-white/5 hover:border-white/20'
@@ -168,7 +182,62 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
             </div>
           </div>
 
-          {/* 2. Accent Color Palette */}
+          {/* 2. Sidebar Navigation Layout Style */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-purple-400" />
+                <span>نمط وتصميم الشريط الجانبي</span>
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Grouped Modern */}
+              <button
+                type="button"
+                onClick={() => handleSidebarStyleChange('grouped')}
+                className={`relative p-3 rounded-2xl border text-right transition-all flex flex-col gap-1.5 cursor-pointer ${
+                  sidebarStyle === 'grouped'
+                    ? 'border-purple-500 bg-purple-500/15 shadow-lg shadow-purple-500/10'
+                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-1.5 rounded-xl bg-slate-900 text-purple-400 border border-white/10">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  {sidebarStyle === 'grouped' && <Check className="w-4 h-4 text-purple-400" />}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">النمط المبوب والحديث</p>
+                  <p className="text-[10px] text-slate-400">أقسام معنونة وعدادات ذكية</p>
+                </div>
+              </button>
+
+              {/* Classic Flat List */}
+              <button
+                type="button"
+                onClick={() => handleSidebarStyleChange('classic')}
+                className={`relative p-3 rounded-2xl border text-right transition-all flex flex-col gap-1.5 cursor-pointer ${
+                  sidebarStyle === 'classic'
+                    ? 'border-purple-500 bg-purple-500/15 shadow-lg shadow-purple-500/10'
+                    : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="p-1.5 rounded-xl bg-slate-900 text-slate-400 border border-white/10">
+                    <LayoutList className="w-4 h-4" />
+                  </div>
+                  {sidebarStyle === 'classic' && <Check className="w-4 h-4 text-purple-400" />}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white">النمط الكلاسيكي</p>
+                  <p className="text-[10px] text-slate-400">قائمة مباشرة مستمرة</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Accent Color Palette */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
               <span>لون التمييز (Accent Color)</span>
@@ -183,7 +252,7 @@ export default function ThemeCustomizerModal({ isOpen, onClose }: ThemeCustomize
                     key={opt.id}
                     type="button"
                     onClick={() => handleAccentChange(opt.id)}
-                    className={`w-full p-3 rounded-2xl border transition-all flex items-center justify-between text-right ${
+                    className={`w-full p-3 rounded-2xl border transition-all flex items-center justify-between text-right cursor-pointer ${
                       isSelected
                         ? 'border-white/40 bg-white/10 shadow-lg'
                         : 'border-white/10 bg-white/5 hover:border-white/20'

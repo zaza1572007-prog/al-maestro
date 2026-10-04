@@ -37,6 +37,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/registration/check-phone') || // check phone
     pathname.startsWith('/api/auth/forgot-password') ||
     pathname.startsWith('/parent-report') ||
+    pathname.startsWith('/quiz') ||
+    pathname.startsWith('/api/quiz') ||
     pathname === '/api/settings/whatsapp/update-tunnel';
 
   if (isPublicPath) {
