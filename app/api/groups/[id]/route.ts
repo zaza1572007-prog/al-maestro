@@ -142,7 +142,18 @@ export async function PUT(
       assistantId,
       location,
       description,
+      monthlyPrice,
     } = body;
+
+    let parsedMonthlyPrice: number | null | undefined = undefined;
+    if (monthlyPrice !== undefined) {
+      if (monthlyPrice === null || monthlyPrice === '') {
+        parsedMonthlyPrice = null;
+      } else {
+        const p = parseFloat(monthlyPrice);
+        parsedMonthlyPrice = !isNaN(p) && p >= 0 ? p : null;
+      }
+    }
 
     let finalSchedule = schedule;
     let finalDays = scheduleDays ? parseScheduleDays(scheduleDays) : undefined;
@@ -179,6 +190,7 @@ export async function PUT(
         ...(assistantId !== undefined && { assistantId }),
         ...(location !== undefined && { location }),
         ...(description !== undefined && { description }),
+        ...(parsedMonthlyPrice !== undefined && { monthlyPrice: parsedMonthlyPrice }),
       },
       include: {
         academicStage: true,
@@ -210,7 +222,18 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, days, scheduleDays, time, startTime, endTime, schedule, room, location, price, maxStudents } = body;
+    const { name, days, scheduleDays, time, startTime, endTime, schedule, room, location, price, monthlyPrice, maxStudents } = body;
+
+    let parsedPatchMonthlyPrice: number | null | undefined = undefined;
+    const priceVal = monthlyPrice !== undefined ? monthlyPrice : price;
+    if (priceVal !== undefined) {
+      if (priceVal === null || priceVal === '') {
+        parsedPatchMonthlyPrice = null;
+      } else {
+        const p = parseFloat(priceVal);
+        parsedPatchMonthlyPrice = !isNaN(p) && p >= 0 ? p : null;
+      }
+    }
 
     let finalSchedule = schedule;
     let finalScheduleDays = parseScheduleDays(scheduleDays || days);
@@ -255,6 +278,7 @@ export async function PATCH(
         ...(finalSchedule !== undefined && { schedule: finalSchedule }),
         ...( (room || location) && { location: room || location }),
         ...(maxStudents && { maxCapacity: parseInt(maxStudents, 10) }),
+        ...(parsedPatchMonthlyPrice !== undefined && { monthlyPrice: parsedPatchMonthlyPrice }),
       },
     });
 

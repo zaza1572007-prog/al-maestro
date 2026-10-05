@@ -257,7 +257,7 @@ export async function POST(req: Request) {
         startDate: now,
         endDate: endOfMonth,
         totalSessions: 8,
-        price: student.academicStage?.monthlyPrice ?? 350,
+        price: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
         status: 'UNPAID',
         month: now.getMonth() + 1,
         year: now.getFullYear(),

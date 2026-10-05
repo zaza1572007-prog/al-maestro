@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
             code: student.code,
             groupName: student.group?.name || 'بدون مجموعة',
             stageName: student.academicStage?.name,
-            monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+            monthlyPrice: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
             phone: student.phone || student.parent?.phone,
             hasActiveSub: student.subscriptions.some(s => s.status === 'ACTIVE' || s.status === 'PAID'),
           },
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const price = student.academicStage?.monthlyPrice ?? 350;
+    const price = student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350;
 
     if (!subscription) {
       subscription = await prisma.subscription.create({

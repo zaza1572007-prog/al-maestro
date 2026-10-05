@@ -16,6 +16,7 @@ async function syncSubscriptionStatuses() {
   try {
     const activeStudents = await prisma.student.findMany({
       include: {
+        group: true,
         academicStage: true
       }
     });
@@ -45,7 +46,7 @@ async function syncSubscriptionStatuses() {
           startDate: start,
           endDate: end,
           totalSessions: 8,
-          price: s.academicStage?.monthlyPrice ?? 350,
+          price: s.group?.monthlyPrice ?? s.academicStage?.monthlyPrice ?? 350,
           status: defaultStatus,
           month: currentMonth,
           year: currentYear
@@ -172,9 +173,9 @@ export async function POST(req: Request) {
     } else {
       const student = await prisma.student.findUnique({
         where: { id: studentId },
-        include: { academicStage: true },
+        include: { group: true, academicStage: true },
       });
-      finalPrice = student?.academicStage?.monthlyPrice ?? 350;
+      finalPrice = student?.group?.monthlyPrice ?? student?.academicStage?.monthlyPrice ?? 350;
     }
 
     const subscription = await prisma.subscription.create({

@@ -50,7 +50,15 @@ function parseScheduleDays(daysInput: any): string[] {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, academicStageId, year, scheduleDays, startTime, endTime, schedule, location } = body;
+    const { name, academicStageId, year, scheduleDays, startTime, endTime, schedule, location, monthlyPrice } = body;
+
+    let parsedMonthlyPrice: number | null = null;
+    if (monthlyPrice !== undefined && monthlyPrice !== null && monthlyPrice !== '') {
+      const p = parseFloat(monthlyPrice);
+      if (!isNaN(p) && p >= 0) {
+        parsedMonthlyPrice = p;
+      }
+    }
 
     // Validate required fields
     if (!name || !name.trim()) {
@@ -102,6 +110,7 @@ export async function POST(req: Request) {
         endTime: finalEnd,
         schedule: finalSchedule,
         location,
+        monthlyPrice: parsedMonthlyPrice,
       },
       include: {
         academicStage: true,

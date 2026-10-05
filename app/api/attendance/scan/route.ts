@@ -183,7 +183,7 @@ export async function POST(req: Request) {
             code: student.code,
             groupName: student.group?.name || 'بدون مجموعة',
             stageName: student.academicStage?.name,
-            monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+            monthlyPrice: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
             phone: student.phone || student.parent?.phone,
             hasActiveSub,
           },
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
           },
         });
 
-        const price = student.academicStage?.monthlyPrice ?? 350;
+        const price = student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350;
         if (!subscription) {
           subscription = await prisma.subscription.create({
             data: {
@@ -296,7 +296,7 @@ export async function POST(req: Request) {
             groupName: student.group?.name || 'بدون مجموعة',
             hasActiveSub: true,
             stageName: student.academicStage?.name,
-            monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+            monthlyPrice: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
           },
           message: `تم سداد اشتراك (${targetMonthName} ${targetYear}) وتنبيه ولي الأمر للطالب (${student.name}) بنجاح 💵 (بدون تسجيل حضور)`,
         });
@@ -340,7 +340,7 @@ export async function POST(req: Request) {
             groupName: todayAttendance.session.group.name,
             hasActiveSub,
             stageName: student.academicStage?.name,
-            monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+            monthlyPrice: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
           },
           attendance: updatedAtt,
           message: `تم تسجيل انصراف مبكر للطالب (${student.name}) بنجاح`
@@ -592,7 +592,7 @@ export async function POST(req: Request) {
           },
         });
 
-        const price = student.academicStage?.monthlyPrice ?? 350;
+        const price = student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350;
         if (!subscription) {
           subscription = await prisma.subscription.create({
             data: {
@@ -747,7 +747,7 @@ export async function POST(req: Request) {
         groupName: targetGroup.name,
         hasActiveSub: hasActiveSub || actualPayMonth,
         stageName: student.academicStage?.name,
-        monthlyPrice: student.academicStage?.monthlyPrice ?? 350,
+        monthlyPrice: student.group?.monthlyPrice ?? student.academicStage?.monthlyPrice ?? 350,
       },
       attendance,
       message: `تم تسجيل الحضور ${homeworkNotes ? 'و' + homeworkNotes : ''}${paidMessageSuffix}`,

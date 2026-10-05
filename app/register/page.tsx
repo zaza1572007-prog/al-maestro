@@ -346,9 +346,12 @@ export default function RegisterPage() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                            💰 {grp.monthlyPrice ?? selectedStage?.monthlyPrice ?? 350} ج.م
+                          </span>
                           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/10">
-                            المقاعد المتبقية: {remaining} من {grp.maxCapacity}
+                            المقاعد: {remaining} من {grp.maxCapacity}
                           </span>
                           {isFull ? (
                             <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">

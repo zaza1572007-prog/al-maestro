@@ -24,6 +24,8 @@ interface Group {
   assistant: string;
   attendanceAvg: string;
   maxStudents: number;
+  monthlyPrice?: number | null;
+  stagePrice?: number;
 }
 
 const ALL_WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
@@ -115,6 +117,7 @@ function GroupsContent() {
       { day: 'الثلاثاء', startTime: '16:00', endTime: '18:00' },
     ] as ScheduleSlot[],
     maxCapacity: 30,
+    monthlyPrice: '' as string | number,
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -164,6 +167,8 @@ function GroupsContent() {
             assistant: g.assistant?.name || '—',
             attendanceAvg: '—',
             maxStudents: g.maxCapacity || 30,
+            monthlyPrice: g.monthlyPrice !== null && g.monthlyPrice !== undefined ? g.monthlyPrice : null,
+            stagePrice: g.academicStage?.monthlyPrice ?? 350,
           };
         });
         setGroupsList(formatted);
@@ -231,6 +236,7 @@ function GroupsContent() {
           startTime: payloadSchedule[0]?.startTime || '16:00',
           endTime: payloadSchedule[0]?.endTime || '18:00',
           schedule: payloadSchedule,
+          monthlyPrice: newGroup.monthlyPrice !== '' ? parseFloat(newGroup.monthlyPrice.toString()) : null,
         }),
       });
       const data = await res.json();
@@ -249,6 +255,7 @@ function GroupsContent() {
             { day: 'الثلاثاء', startTime: '16:00', endTime: '18:00' },
           ],
           maxCapacity: 30,
+          monthlyPrice: '',
         });
       } else {
         alert(data.error || 'حدث خطأ أثناء إنشاء المجموعة');
@@ -262,6 +269,7 @@ function GroupsContent() {
           startTime: payloadSchedule[0]?.startTime || '16:00',
           endTime: payloadSchedule[0]?.endTime || '18:00',
           schedule: payloadSchedule,
+          monthlyPrice: newGroup.monthlyPrice !== '' ? parseFloat(newGroup.monthlyPrice.toString()) : null,
         };
 
         const { group: addedOffline } = await addOfflineGroup(groupPayload);
@@ -279,6 +287,7 @@ function GroupsContent() {
             { day: 'الثلاثاء', startTime: '16:00', endTime: '18:00' },
           ],
           maxCapacity: 30,
+          monthlyPrice: '',
         });
         alert(`[أوفلاين] تم حفظ المجموعة (${newGroup.name.trim()}) محلياً بجهازك! 📲 وستنرفع فور توفر النت.`);
       } catch (offlineErr) {
@@ -387,6 +396,9 @@ function GroupsContent() {
           endTime: finalEndTime,
           schedule: payloadSchedule,
           time: `${to12h(finalStartTime)} - ${to12h(finalEndTime)}`,
+          monthlyPrice: editingGroup.monthlyPrice !== '' && editingGroup.monthlyPrice !== null && editingGroup.monthlyPrice !== undefined
+            ? parseFloat(editingGroup.monthlyPrice.toString())
+            : null,
         }),
       });
 
@@ -480,7 +492,19 @@ function GroupsContent() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-zinc-950 dark:text-white tracking-tight">{grp.name}</h3>
-                    <p className="text-xs text-purple-700 dark:text-purple-300 font-bold mt-0.5">{grp.stage}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">{grp.stage}</span>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black border ${
+                        grp.monthlyPrice
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        <span>💰</span>
+                        <span>{grp.monthlyPrice ? `${grp.monthlyPrice} ج.م` : `${grp.stagePrice || 350} ج.م`}</span>
+                        <span className="text-[10px] font-normal opacity-80">{grp.monthlyPrice ? '(مخصص)' : '(المرحلة)'}</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -617,6 +641,25 @@ function GroupsContent() {
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
                 <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
+              </div>
+
+              {/* Monthly Subscription Price */}
+              <div>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">
+                  سعر الاشتراك الشهري للمجموعة (ج.م) <span className="text-zinc-400 font-normal text-[11px]">(اختياري)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder={`اتركه فارغاً لاعتماد سعر المرحلة (${stagesList.find(s => s.id === (newGroup.stageId || stagesList[0]?.id))?.monthlyPrice || 350} ج.م)`}
+                  value={newGroup.monthlyPrice ?? ''}
+                  onChange={(e) => setNewGroup({ ...newGroup, monthlyPrice: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none font-bold"
+                />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                  💡 إذا كانت هذه المجموعة لها سعر مختلف عن باقي الصف، حدد السعر هنا. أو اتركه فارغاً لاعتماد سعر المرحلة.
+                </p>
               </div>
 
               {/* Timing Mode Switch */}
@@ -821,6 +864,25 @@ function GroupsContent() {
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none"
                 />
                 <p className="text-[11px] text-zinc-500 dark:text-slate-400 mt-1">اكتب أسماء الأيام تفصلها "و" (مثال: السبت و الثلاثاء)</p>
+              </div>
+
+              {/* Monthly Subscription Price */}
+              <div>
+                <label className="block text-zinc-700 dark:text-zinc-300 mb-1 font-semibold">
+                  سعر الاشتراك الشهري للمجموعة (ج.م) <span className="text-zinc-400 font-normal text-[11px]">(اختياري)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder={`اتركه فارغاً لاعتماد سعر المرحلة (${editingGroup.stagePrice || 350} ج.م)`}
+                  value={editingGroup.monthlyPrice !== null && editingGroup.monthlyPrice !== undefined ? editingGroup.monthlyPrice : ''}
+                  onChange={(e) => setEditingGroup({ ...editingGroup, monthlyPrice: e.target.value === '' ? null : parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl p-2.5 text-zinc-950 dark:text-white focus:border-primary outline-none font-bold"
+                />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                  💡 إذا كانت هذه المجموعة لها سعر مختلف عن باقي الصف، حدد السعر هنا. أو اتركه فارغاً لاعتماد سعر المرحلة.
+                </p>
               </div>
 
               {/* Timing Mode Selector */}

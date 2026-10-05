@@ -198,7 +198,7 @@ export async function POST(
           startDate,
           endDate,
           totalSessions: 8,
-          price: targetStage.monthlyPrice ?? 350,
+          price: targetGroup.monthlyPrice ?? targetStage.monthlyPrice ?? 350,
           status: 'ACTIVE',
         },
       });

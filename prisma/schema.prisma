@@ -258,6 +258,7 @@ model Group {
   endTime              String
   schedule             Json?                 // [{"day": "السبت", "startTime": "16:00", "endTime": "18:00"}]
   maxCapacity          Int                   @default(30)
+  monthlyPrice         Float?
   assistantId          String?
   assistant            User?                 @relation(fields: [assistantId], references: [id])
   location             String?
