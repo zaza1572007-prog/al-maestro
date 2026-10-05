@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo, useDeferredValue } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from '@/components/ToastProvider';
-import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen, QrCode } from 'lucide-react';
+import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen, QrCode, ChevronLeft, ChevronRight } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import StatusIndicator from '@/components/StatusIndicator';
@@ -255,25 +255,41 @@ function StudentsContent() {
     }
   };
 
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 30;
+
   // Filter students: by groupId, stageId URL params AND search query
-  const filteredStudents = students.filter((s) => {
-    const matchesGroup = groupIdFilter ? s.groupId === groupIdFilter : true;
-    const matchesStage = stageIdFilter ? s.stageId === stageIdFilter : true;
-    const q = (searchQuery || '').trim().toLowerCase();
-    if (!q) return matchesGroup && matchesStage;
+  const filteredStudents = useMemo(() => {
+    const q = (deferredSearchQuery || '').trim().toLowerCase();
+    return students.filter((s) => {
+      const matchesGroup = groupIdFilter ? s.groupId === groupIdFilter : true;
+      const matchesStage = stageIdFilter ? s.stageId === stageIdFilter : true;
+      if (!q) return matchesGroup && matchesStage;
 
-    const matchesSearch =
-      (s.name || '').toLowerCase().includes(q) ||
-      (s.code || '').toLowerCase().includes(q) ||
-      (s.phone || '').toLowerCase().includes(q) ||
-      (s.parentPhone || '').toLowerCase().includes(q) ||
-      (s.parentName || '').toLowerCase().includes(q) ||
-      (s.qrCode || '').toLowerCase().includes(q) ||
-      (s.stage || '').toLowerCase().includes(q) ||
-      (s.group || '').toLowerCase().includes(q);
+      const matchesSearch =
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.code || '').toLowerCase().includes(q) ||
+        (s.phone || '').toLowerCase().includes(q) ||
+        (s.parentPhone || '').toLowerCase().includes(q) ||
+        (s.parentName || '').toLowerCase().includes(q) ||
+        (s.qrCode || '').toLowerCase().includes(q) ||
+        (s.stage || '').toLowerCase().includes(q) ||
+        (s.group || '').toLowerCase().includes(q);
 
-    return matchesGroup && matchesStage && matchesSearch;
-  });
+      return matchesGroup && matchesStage && matchesSearch;
+    });
+  }, [students, groupIdFilter, stageIdFilter, deferredSearchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchQuery, groupIdFilter, stageIdFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredStudents.slice(start, start + PAGE_SIZE);
+  }, [filteredStudents, currentPage, PAGE_SIZE]);
 
   const [selectedDetailStudent, setSelectedDetailStudent] = useState<Student | null>(null);
 
@@ -349,100 +365,154 @@ function StudentsContent() {
           onClose={() => setSelectedDetailStudent(null)}
           title={`معاينة: ${selectedDetailStudent?.name || ''}`}
           master={
-            <ResizableTable
-              columns={columns}
-              data={filteredStudents}
-              storageKey="students_table"
-              rowKey={(stu) => stu.id}
-              selectedRowKey={selectedDetailStudent?.id}
-              onRowClick={(stu) => setSelectedDetailStudent(stu)}
-              emptyState={
-                <EmptyState
-                  variant={searchQuery.trim() ? 'search' : 'students'}
-                  title={searchQuery.trim() ? `لا توجد نتائج لـ "${searchQuery}"` : 'لا يوجد طلاب مسجلون حالياً'}
-                  description="تأكد من البحث بشكل صحيح أو أضف طالباً جديداً."
-                  actionLabel={!searchQuery.trim() ? 'إضافة طالب جديد' : undefined}
-                  onAction={!searchQuery.trim() ? () => setIsAddingStudent(true) : undefined}
-                />
-              }
-              renderCell={(stu, colKey) => {
-                if (colKey === 'code') return <span className="font-mono text-primary font-black text-xs">{stu.code}</span>;
-                if (colKey === 'qrCode') return <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold text-xs">{stu.qrCode}</span>;
-                if (colKey === 'name') return (
-                  <div className="flex items-center gap-2.5">
-                    <Avatar name={stu.name} size="sm" />
-                    <div>
-                      <p className="font-bold text-zinc-950 dark:text-white text-sm leading-tight">{stu.name}</p>
-                      {stu.phone && <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.phone}</p>}
-                    </div>
-                  </div>
-                );
-                if (colKey === 'stage') return (
-                  <div>
-                    <p className="text-zinc-950 dark:text-zinc-200 font-bold text-xs">{stu.stage}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">{stu.group}</p>
-                  </div>
-                );
-                if (colKey === 'parent') return (
-                  <div>
-                    <p className="text-zinc-950 dark:text-zinc-200 font-medium text-xs">{stu.parentName}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.parentPhone}</p>
-                  </div>
-                );
-                if (colKey === 'status') return (
-                  <StatusIndicator
-                    status={stu.subStatus === 'ACTIVE' ? 'active' : 'pending'}
-                    label={stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
-                    size="sm"
+            <div className="space-y-4">
+              <ResizableTable
+                columns={columns}
+                data={paginatedStudents}
+                storageKey="students_table"
+                rowKey={(stu) => stu.id}
+                selectedRowKey={selectedDetailStudent?.id}
+                onRowClick={(stu) => setSelectedDetailStudent(stu)}
+                emptyState={
+                  <EmptyState
+                    variant={searchQuery.trim() ? 'search' : 'students'}
+                    title={searchQuery.trim() ? `لا توجد نتائج لـ "${searchQuery}"` : 'لا يوجد طلاب مسجلون حالياً'}
+                    description="تأكد من البحث بشكل صحيح أو أضف طالباً جديداً."
+                    actionLabel={!searchQuery.trim() ? 'إضافة طالب جديد' : undefined}
+                    onAction={!searchQuery.trim() ? () => setIsAddingStudent(true) : undefined}
                   />
-                );
-                if (colKey === 'actions') return (
-                  <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                    <Link
-                      href={`/students/${stu.id}`}
-                      title="سجل الامتحانات والدرجات"
-                      className="px-2.5 py-1.5 bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>📝</span>
-                      <span>الامتحانات</span>
-                    </Link>
+                }
+                renderCell={(stu, colKey) => {
+                  if (colKey === 'code') return <span className="font-mono text-primary font-black text-xs">{stu.code}</span>;
+                  if (colKey === 'qrCode') return <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold text-xs">{stu.qrCode}</span>;
+                  if (colKey === 'name') return (
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={stu.name} size="sm" />
+                      <div>
+                        <p className="font-bold text-zinc-950 dark:text-white text-sm leading-tight">{stu.name}</p>
+                        {stu.phone && <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.phone}</p>}
+                      </div>
+                    </div>
+                  );
+                  if (colKey === 'stage') return (
+                    <div>
+                      <p className="text-zinc-950 dark:text-zinc-200 font-bold text-xs">{stu.stage}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium mt-0.5">{stu.group}</p>
+                    </div>
+                  );
+                  if (colKey === 'parent') return (
+                    <div>
+                      <p className="text-zinc-950 dark:text-zinc-200 font-medium text-xs">{stu.parentName}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 font-mono mt-0.5">{stu.parentPhone}</p>
+                    </div>
+                  );
+                  if (colKey === 'status') return (
+                    <StatusIndicator
+                      status={stu.subStatus === 'ACTIVE' ? 'active' : 'pending'}
+                      label={stu.subStatus === 'ACTIVE' ? 'نشط' : 'ينتهي قريباً'}
+                      size="sm"
+                    />
+                  );
+                  if (colKey === 'actions') return (
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/students/${stu.id}`}
+                        title="سجل الامتحانات والدرجات"
+                        className="px-2.5 py-1.5 bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>📝</span>
+                        <span>الامتحانات</span>
+                      </Link>
+                      <button
+                        onClick={() => handleEditClick(stu)}
+                        title="تعديل بيانات الطالب"
+                        className="px-2.5 py-1.5 bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>✏️</span>
+                        <span>تعديل</span>
+                      </button>
+                      <button
+                        onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
+                        title="إدارة كلمات المرور وبيانات الدخول"
+                        className="px-2.5 py-1.5 bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(168,85,247,0.3)] flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>🔑</span>
+                        <span>الاعتماديات</span>
+                      </button>
+                      <Link
+                        href={`/students/${stu.id}`}
+                        title="عرض الملف الشخصي الشامل"
+                        className="px-2.5 py-1.5 bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>👁️</span>
+                        <span>الملف</span>
+                      </Link>
+                      <button
+                        onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
+                        title="حذف الطالب من النظام"
+                        className="px-2.5 py-1.5 bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>🗑️</span>
+                        <span>حذف</span>
+                      </button>
+                    </div>
+                  );
+                  return null;
+                }}
+              />
+
+              {/* Pagination Bar */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-2xl p-3 shadow-sm flex-wrap gap-2">
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400">
+                    الصفحة <span className="text-primary font-bold">{currentPage}</span> من <span className="font-bold text-zinc-900 dark:text-white">{totalPages}</span> (إجمالي {filteredStudents.length} طالب)
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => handleEditClick(stu)}
-                      title="تعديل بيانات الطالب"
-                      className="px-2.5 py-1.5 bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] flex items-center gap-1 cursor-pointer"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 rounded-xl text-xs text-zinc-900 dark:text-white font-bold flex items-center gap-1 transition cursor-pointer"
                     >
-                      <span>✏️</span>
-                      <span>تعديل</span>
+                      <ChevronRight className="w-4 h-4" />
+                      السابق
                     </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5) {
+                          if (currentPage > 3 && currentPage < totalPages - 2) {
+                            pageNum = currentPage - 2 + i;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          }
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              currentPage === pageNum
+                                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                                : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
                     <button
-                      onClick={() => { setCredentialsStudent(stu); setCredentialsForm({ studentPassword: '', parentPassword: '' }); }}
-                      title="إدارة كلمات المرور وبيانات الدخول"
-                      className="px-2.5 py-1.5 bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/30 hover:bg-purple-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(168,85,247,0.3)] flex items-center gap-1 cursor-pointer"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 rounded-xl text-xs text-zinc-900 dark:text-white font-bold flex items-center gap-1 transition cursor-pointer"
                     >
-                      <span>🔑</span>
-                      <span>الاعتماديات</span>
-                    </button>
-                    <Link
-                      href={`/students/${stu.id}`}
-                      title="عرض الملف الشخصي الشامل"
-                      className="px-2.5 py-1.5 bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>👁️</span>
-                      <span>الملف</span>
-                    </Link>
-                    <button
-                      onClick={() => setStudentToDelete({ id: stu.id, name: stu.name })}
-                      title="حذف الطالب من النظام"
-                      className="px-2.5 py-1.5 bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-[0_0_12px_rgba(244,63,94,0.3)] flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>🗑️</span>
-                      <span>حذف</span>
+                      التالي
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                   </div>
-                );
-                return null;
-              }}
-            />
+                </div>
+              )}
+            </div>
           }
           detail={
             selectedDetailStudent ? (

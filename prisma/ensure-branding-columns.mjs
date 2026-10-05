@@ -138,6 +138,17 @@ async function main() {
     END $$;
   `);
 
+  // Ensure ExamResult studentId_examId unique constraint
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'ExamResult_studentId_examId_key'
+      ) THEN
+        ALTER TABLE "ExamResult" ADD CONSTRAINT "ExamResult_studentId_examId_key" UNIQUE ("studentId", "examId");
+      END IF;
+    END $$;
+  `);
+
   // Generate plain passwords for legacy students who don't have passwordPlain
   const studentsWithoutPlain = await prisma.student.findMany({
     where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },

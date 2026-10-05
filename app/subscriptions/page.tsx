@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Plus, CreditCard, User, Gift, Search, Bell } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import { RefreshCw, Plus, CreditCard, User, Gift, Search, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
 interface Subscription {
@@ -359,27 +359,48 @@ export default function SubscriptionsPage() {
     }
   };
 
-  const filtered = subs.filter((s) => {
-    const matchesStatus = filterStatus === 'ALL' || s.status === filterStatus;
-    const q = (searchQuery || '').trim().toLowerCase();
-    if (!q) return matchesStatus;
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const deferredStudentQuery = useDeferredValue(searchStudentQuery);
 
-    const matchesSearch =
-      (s.student?.name || '').toLowerCase().includes(q) ||
-      (s.student?.code || '').toLowerCase().includes(q) ||
-      (s.group?.name || '').toLowerCase().includes(q);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 24;
 
-    return matchesStatus && matchesSearch;
-  });
+  const filtered = useMemo(() => {
+    const q = (deferredSearchQuery || '').trim().toLowerCase();
+    return subs.filter((s) => {
+      const matchesStatus = filterStatus === 'ALL' || s.status === filterStatus;
+      if (!q) return matchesStatus;
+
+      const matchesSearch =
+        (s.student?.name || '').toLowerCase().includes(q) ||
+        (s.student?.code || '').toLowerCase().includes(q) ||
+        (s.group?.name || '').toLowerCase().includes(q);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [subs, filterStatus, deferredSearchQuery]);
+
+  // Reset page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, deferredSearchQuery, filterMonth, filterYear]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedSubs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   const totalPaid = (sub: Subscription) => sub.payments?.reduce((acc, p) => acc + p.paidAmount, 0) || 0;
 
-  // Filter students list in combobox by name or code
-  const filteredStudents = students.filter((s) => {
-    const q = searchStudentQuery.trim().toLowerCase();
-    if (!q) return true;
-    return s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q);
-  });
+  // Filter students list in combobox by name or code (limited to 30 for super fast rendering)
+  const filteredStudents = useMemo(() => {
+    const q = deferredStudentQuery.trim().toLowerCase();
+    if (!q) return students.slice(0, 30);
+    return students
+      .filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
+      .slice(0, 30);
+  }, [students, deferredStudentQuery]);
 
   return (
     <div className="space-y-6">
@@ -497,156 +518,210 @@ export default function SubscriptionsPage() {
           جارٍ تحميل الاشتراكات...
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((sub) => {
-            const pct = sub.totalSessions > 0 ? Math.round((sub.usedSessions / sub.totalSessions) * 100) : 0;
-            const paid = totalPaid(sub);
-            const remaining = sub.isExempt ? 0 : (sub.price - paid);
-            return (
-              <div key={sub.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center">
-                        <User className="w-5 h-5 text-emerald-400" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-white text-sm md:text-base">{sub.student?.name}</h3>
-                          {sub.isExempt && (
-                            <span 
-                              className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.7)] flex-shrink-0 animate-pulse" 
-                              title="معفي من دفع الاشتراك"
-                            />
-                          )}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {paginatedSubs.map((sub) => {
+              const pct = sub.totalSessions > 0 ? Math.round((sub.usedSessions / sub.totalSessions) * 100) : 0;
+              const paid = totalPaid(sub);
+              const remaining = sub.isExempt ? 0 : (sub.price - paid);
+              return (
+                <div key={sub.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center">
+                          <User className="w-5 h-5 text-emerald-400" />
                         </div>
-                        <p className="text-xs text-slate-400">{sub.group?.name} · كود الطالب: {sub.student?.code}</p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-white text-sm md:text-base">{sub.student?.name}</h3>
+                            {sub.isExempt && (
+                              <span 
+                                className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.7)] flex-shrink-0 animate-pulse" 
+                                title="معفي من دفع الاشتراك"
+                              />
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">{sub.group?.name} · كود الطالب: {sub.student?.code}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className={`text-xs px-2.5 py-1 rounded-full border font-semibold text-center ${statusColors[sub.status] || ''}`}>
+                          {statusLabels[sub.status] || sub.status}
+                        </span>
+                        {sub.month && sub.year && (
+                          <span className="text-[10px] text-slate-500 font-semibold bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                            شهر {sub.month}/{sub.year}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <span className={`text-xs px-2.5 py-1 rounded-full border font-semibold text-center ${statusColors[sub.status] || ''}`}>
-                        {statusLabels[sub.status] || sub.status}
-                      </span>
-                      {sub.month && sub.year && (
-                        <span className="text-[10px] text-slate-500 font-semibold bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
-                          شهر {sub.month}/{sub.year}
-                        </span>
-                      )}
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[11px] text-slate-400">
+                        <span>الجلسات المستخدمة: {sub.usedSessions}/{sub.totalSessions}</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${pct >= 80 ? 'bg-rose-500' : pct >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 text-center">
+                      <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
+                        <p className="text-[10px] text-slate-500">الرسوم</p>
+                        <p className="font-bold text-xs text-white">{sub.price} ج.م</p>
+                      </div>
+                      <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
+                        <p className="text-[10px] text-slate-500">المدفوع</p>
+                        <p className="font-bold text-xs text-emerald-400">{paid} ج.م</p>
+                      </div>
+                      <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
+                        <p className="text-[10px] text-slate-500">المتبقي</p>
+                        <p className={`font-bold text-xs ${remaining > 0 ? 'text-rose-450 text-rose-400' : 'text-emerald-400'}`}>{remaining} ج.م</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>من: {new Date(sub.startDate).toLocaleDateString('ar-EG')}</span>
+                      <span>إلى: {new Date(sub.endDate).toLocaleDateString('ar-EG')}</span>
+                    </div>
+
+                    {sub.student?.subscriptions && sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).length > 0 && (
+                      <div className="mt-2 text-[10px] text-rose-400 bg-rose-950/20 border border-rose-500/10 rounded-xl p-2 flex flex-col gap-0.5">
+                        <span className="font-bold flex items-center gap-1">⚠️ متأخرات سابقة:</span>
+                        {sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).map((s: any) => (
+                          <span key={s.id}>· لم يدفع اشتراك شهر {s.month}/{s.year} ({s.price} ج.م)</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-slate-400">
-                      <span>الجلسات المستخدمة: {sub.usedSessions}/{sub.totalSessions}</span>
-                      <span>{pct}%</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-1.5">
-                      <div
-                        className={`h-1.5 rounded-full transition-all ${pct >= 80 ? 'bg-rose-500' : pct >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                  <div className="flex items-center gap-1.5 pt-3 border-t border-slate-800/80 flex-wrap">
+                    {sub.status !== 'PAID' && (
+                      <button
+                        onClick={() => handleSendReminder(sub.id, sub.student?.name)}
+                        disabled={remindingSubId === sub.id}
+                        className="px-2.5 py-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                        title="إرسال رسالة تذكير بالواتساب لولي الأمر"
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        {remindingSubId === sub.id ? 'جاري الإرسال...' : 'إنذار ⚠️'}
+                      </button>
+                    )}
+                    {sub.status !== 'PAID' && (
+                      <button
+                        onClick={() => {
+                          setPayingSub(sub);
+                          const rem = sub.price - paid;
+                          setPayAmount(rem > 0 ? rem : sub.price);
+                          setPayMethod('CASH');
+                          setPayDate(new Date().toISOString().split('T')[0]);
+                          setPayNotes('');
+                        }}
+                        className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        دفع الشهر 💰
+                      </button>
+                    )}
+                    {sub.status !== 'SUSPENDED' && (
+                      <button
+                        onClick={() => handleUpdateStatus(sub.id, 'SUSPENDED')}
+                        className="px-2.5 py-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                      >
+                        إيقاف مؤقت
+                      </button>
+                    )}
+                    {sub.status === 'SUSPENDED' && (
+                      <button
+                        onClick={() => handleUpdateStatus(sub.id, 'ACTIVE')}
+                        className="px-2.5 py-1.5 bg-emerald-650/20 bg-emerald-600/25 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                      >
+                        تفعيل
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleExemptStudent(sub.id, sub.student?.name)}
+                      className="px-2.5 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-purple-500/30"
+                      title="تجديد الاشتراك كإعفاء بدون تسجيل مدفوعات"
+                    >
+                      🎁 إعفاء
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSub(sub.id, sub.student?.name)}
+                      className="px-2.5 py-1.5 bg-rose-600/20 text-rose-450 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition mr-auto cursor-pointer"
+                    >
+                      🗑️ حذف
+                    </button>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-1.5 text-center">
-                    <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
-                      <p className="text-[10px] text-slate-500">الرسوم</p>
-                      <p className="font-bold text-xs text-white">{sub.price} ج.م</p>
-                    </div>
-                    <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
-                      <p className="text-[10px] text-slate-500">المدفوع</p>
-                      <p className="font-bold text-xs text-emerald-400">{paid} ج.م</p>
-                    </div>
-                    <div className="bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
-                      <p className="text-[10px] text-slate-500">المتبقي</p>
-                      <p className={`font-bold text-xs ${remaining > 0 ? 'text-rose-450 text-rose-400' : 'text-emerald-400'}`}>{remaining} ج.م</p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between text-[10px] text-slate-500">
-                    <span>من: {new Date(sub.startDate).toLocaleDateString('ar-EG')}</span>
-                    <span>إلى: {new Date(sub.endDate).toLocaleDateString('ar-EG')}</span>
-                  </div>
-
-                  {sub.student?.subscriptions && sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).length > 0 && (
-                    <div className="mt-2 text-[10px] text-rose-400 bg-rose-950/20 border border-rose-500/10 rounded-xl p-2 flex flex-col gap-0.5">
-                      <span className="font-bold flex items-center gap-1">⚠️ متأخرات سابقة:</span>
-                      {sub.student.subscriptions.filter((s: any) => s.id !== sub.id && (s.status === 'UNPAID' || s.status === 'OVERDUE')).map((s: any) => (
-                        <span key={s.id}>· لم يدفع اشتراك شهر {s.month}/{s.year} ({s.price} ج.م)</span>
-                      ))}
-                    </div>
-                  )}
                 </div>
-
-                <div className="flex items-center gap-1.5 pt-3 border-t border-slate-800/80 flex-wrap">
-                  {sub.status !== 'PAID' && (
-                    <button
-                      onClick={() => handleSendReminder(sub.id, sub.student?.name)}
-                      disabled={remindingSubId === sub.id}
-                      className="px-2.5 py-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                      title="إرسال رسالة تذكير بالواتساب لولي الأمر"
-                    >
-                      <Bell className="w-3.5 h-3.5" />
-                      {remindingSubId === sub.id ? 'جاري الإرسال...' : 'إنذار ⚠️'}
-                    </button>
-                  )}
-                  {sub.status !== 'PAID' && (
-                    <button
-                      onClick={() => {
-                        setPayingSub(sub);
-                        const rem = sub.price - paid;
-                        setPayAmount(rem > 0 ? rem : sub.price);
-                        setPayMethod('CASH');
-                        setPayDate(new Date().toISOString().split('T')[0]);
-                        setPayNotes('');
-                      }}
-                      className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      دفع الشهر 💰
-                    </button>
-                  )}
-                  {sub.status !== 'SUSPENDED' && (
-                    <button
-                      onClick={() => handleUpdateStatus(sub.id, 'SUSPENDED')}
-                      className="px-2.5 py-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                    >
-                      إيقاف مؤقت
-                    </button>
-                  )}
-                  {sub.status === 'SUSPENDED' && (
-                    <button
-                      onClick={() => handleUpdateStatus(sub.id, 'ACTIVE')}
-                      className="px-2.5 py-1.5 bg-emerald-650/20 bg-emerald-600/25 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-semibold transition cursor-pointer"
-                    >
-                      تفعيل
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleExemptStudent(sub.id, sub.student?.name)}
-                    className="px-2.5 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600 hover:text-white rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-purple-500/30"
-                    title="تجديد الاشتراك كإعفاء بدون تسجيل مدفوعات"
-                  >
-                    🎁 إعفاء
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSub(sub.id, sub.student?.name)}
-                    className="px-2.5 py-1.5 bg-rose-600/20 text-rose-450 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-semibold transition mr-auto cursor-pointer"
-                  >
-                    🗑️ حذف
-                  </button>
-                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="col-span-1 md:col-span-2 text-center py-16 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
+                <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-base font-semibold text-slate-300">
+                  {searchQuery.trim()
+                    ? `لا توجد اشتراكات مطابقة لبحثك عن "${searchQuery}"`
+                    : 'لا توجد اشتراكات مسجلة في هذا الشهر/القسم'}
+                </p>
               </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div className="col-span-1 md:col-span-2 text-center py-16 text-slate-500 bg-slate-900/40 rounded-2xl border border-slate-800">
-              <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="text-base font-semibold text-slate-300">
-                {searchQuery.trim()
-                  ? `لا توجد اشتراكات مطابقة لبحثك عن "${searchQuery}"`
-                  : 'لا توجد اشتراكات مسجلة في هذا الشهر/القسم'}
-              </p>
+            )}
+          </div>
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl p-3 shadow-md mt-4 flex-wrap gap-2">
+              <div className="text-xs text-slate-400">
+                عرض الصفحات: <span className="text-emerald-400 font-bold">{currentPage}</span> من <span className="font-bold text-slate-200">{totalPages}</span> (إجمالي {filtered.length} اشتراك)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-slate-950 border border-slate-700 hover:bg-slate-800 disabled:opacity-40 rounded-xl text-xs text-white font-bold flex items-center gap-1 transition cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                  السابق
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalPages > 5) {
+                      if (currentPage > 3 && currentPage < totalPages - 2) {
+                        pageNum = currentPage - 2 + i;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      }
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          currentPage === pageNum
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                            : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-slate-950 border border-slate-700 hover:bg-slate-800 disabled:opacity-40 rounded-xl text-xs text-white font-bold flex items-center gap-1 transition cursor-pointer"
+                >
+                  التالي
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>

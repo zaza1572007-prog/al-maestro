@@ -313,50 +313,52 @@ body {
 
 /* ── Glassmorphism & Tinted Surfaces (High Contrast & Readability) ──────── */
 .glass-panel {
-  background: rgba(9, 9, 11, 0.82);
+  background: rgba(9, 9, 11, 0.86);
   background-color: color-mix(in srgb, rgb(var(--bg-theme)) 94%, rgb(var(--p)) 6%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 32px 0 rgba(0, 0, 0, 0.4);
   border-radius: 20px;
+  transform: translateZ(0);
 }
 
 [data-theme="light"] .glass-panel,
 .light .glass-panel {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   background-color: color-mix(in srgb, #ffffff 96%, rgb(var(--p)) 4%);
   border: 1px solid rgba(228, 228, 231, 0.9);
   box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.05);
 }
 
 .glass-card {
-  background: rgba(9, 9, 11, 0.8);
+  background: rgba(9, 9, 11, 0.85);
   background-color: color-mix(in srgb, rgb(var(--bg-theme)) 95%, rgb(var(--p)) 5%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.35);
   border-radius: 20px;
-  transition: all 0.3s var(--ease-out-expo);
+  transition: all 0.25s var(--ease-out-expo);
+  transform: translateZ(0);
 }
 
 [data-theme="light"] .glass-card,
 .light .glass-card {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.94);
   background-color: color-mix(in srgb, #ffffff 97%, rgb(var(--p)) 3%);
   border: 1px solid rgba(228, 228, 231, 0.85);
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.04);
 }
 
 .glass-card:hover {
-  background: rgba(24, 24, 27, 0.9);
+  background: rgba(24, 24, 27, 0.95);
   background-color: color-mix(in srgb, rgb(var(--bg-theme)) 90%, rgb(var(--p)) 10%);
   border-color: rgb(var(--p) / 0.4);
   box-shadow:
     0 14px 40px -10px rgb(var(--p) / 0.3),
     0 0 0 1px rgb(var(--p) / 0.15);
-  transform: translateY(-3px) scale(1.005);
+  transform: translateY(-2px);
 }
 
 [data-theme="light"] .glass-card:hover,
@@ -491,11 +493,12 @@ body {
   top: -10%; right: -5%;
   width: clamp(350px, 45vw, 800px);
   height: clamp(350px, 45vw, 800px);
-  background: radial-gradient(circle, rgb(var(--p) / 0.20) 0%, transparent 68%);
+  background: radial-gradient(circle, rgb(var(--p) / 0.18) 0%, transparent 68%);
   pointer-events: none;
   z-index: 0;
   transition: background 0.8s ease;
-  animation: float 8s ease-in-out infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
 
 .ambient-glow-2 {
@@ -503,11 +506,21 @@ body {
   bottom: -10%; left: -5%;
   width: clamp(350px, 45vw, 800px);
   height: clamp(350px, 45vw, 800px);
-  background: radial-gradient(circle, rgb(var(--s) / 0.16) 0%, transparent 68%);
+  background: radial-gradient(circle, rgb(var(--s) / 0.14) 0%, transparent 68%);
   pointer-events: none;
   z-index: 0;
   transition: background 0.8s ease;
-  animation: float 10s ease-in-out infinite reverse;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (min-width: 1024px) {
+  .ambient-glow-1 {
+    animation: float 14s ease-in-out infinite;
+  }
+  .ambient-glow-2 {
+    animation: float 16s ease-in-out infinite reverse;
+  }
 }
 
 /* ── Section Divider ──────────────────────────────────────────────────────── */
