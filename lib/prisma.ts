@@ -28,6 +28,7 @@ export const safeSettingsSelect: Prisma.SystemSettingsSelect = {
   loginBackground: true,
   enableWhatsApp: true,
   autoSendCredentials: true,
+  autoSendAttendance: true,
   lateThreshold: true,
   enableDarkMode: true,
   waGatewayUrl: true,

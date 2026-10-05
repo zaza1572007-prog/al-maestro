@@ -25,11 +25,13 @@ async function tryDispatchWA(to: string, body: string) {
     const settings = await prisma.systemSettings.findFirst({
       select: {
         enableWhatsApp: true,
+        autoSendAttendance: true,
         waGatewayUrl: true,
         waApiToken: true,
       }
     });
-    if (settings && settings.enableWhatsApp === false) {
+    // Check if WhatsApp is disabled OR auto-sending for attendance/absence is disabled
+    if (settings && (settings.enableWhatsApp === false || settings.autoSendAttendance === false)) {
       return;
     }
 

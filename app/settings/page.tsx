@@ -92,6 +92,7 @@ export default function SettingsPage() {
   const [waApiToken, setWaApiToken] = useState('');
   const [waSenderNumber, setWaSenderNumber] = useState('');
   const [autoSendCredentials, setAutoSendCredentials] = useState(true);
+  const [autoSendAttendance, setAutoSendAttendance] = useState(false);
   const [waSaving, setWaSaving] = useState(false);
   const [waTestStatus, setWaTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [waTestMsg, setWaTestMsg] = useState('');
@@ -345,6 +346,7 @@ export default function SettingsPage() {
           setWaApiToken(waData.settings.apiToken || '');
           setWaSenderNumber(waData.settings.senderNumber || '');
           setAutoSendCredentials(waData.settings.autoSendCredentials ?? true);
+          setAutoSendAttendance(waData.settings.autoSendAttendance ?? false);
           setAutoSendEnabled(waData.settings.autoSendEnabled ?? false);
           setSendMode(waData.settings.sendMode || 'MANUAL');
           setScheduledDay(waData.settings.scheduledDay ?? 28);
@@ -2180,7 +2182,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Top row cards (Gateway, Auto credentials, Cron Job) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch">
             
             {/* Card 1: Gateway Connection */}
             <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
@@ -2274,6 +2276,7 @@ export default function SettingsPage() {
                           apiToken: waApiToken,
                           senderNumber: waSenderNumber,
                           autoSendCredentials,
+                          autoSendAttendance,
                           templates: { student: tplStudent, parent: tplParent, attendance: tplAttendance, absent: tplAbsent, monthlyReport: tplMonthlyReport, payment: tplPayment, reminder: tplReminder },
                         }),
                       });
@@ -2292,7 +2295,61 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Card 2: Auto-send Credentials Toggle (Standalone Card!) */}
+            {/* Card 2: Auto-send Attendance / Absence Notifications (Standalone Card!) */}
+            <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-bold text-base text-white flex items-center gap-2">
+                    <span>📋</span> إرسال رسائل الحضور والغياب
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">التحكم في إرسال رسائل الواتساب الفورية عند تسجيل الحضور والغياب</p>
+                </div>
+
+                <div className="flex items-start gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mt-3">
+                  <input
+                    type="checkbox"
+                    id="autoSendAttendanceCard"
+                    checked={autoSendAttendance}
+                    onChange={(e) => setAutoSendAttendance(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded bg-slate-950 border-slate-800 focus:ring-emerald-500 focus:ring-2 focus:ring-offset-slate-900 mt-0.5 cursor-pointer"
+                  />
+                  <div className="cursor-pointer" onClick={() => setAutoSendAttendance(!autoSendAttendance)}>
+                    <label htmlFor="autoSendAttendanceCard" className="block text-xs font-bold text-white cursor-pointer">
+                      تفعيل الإرسال التلقائي للحضور والغياب
+                    </label>
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                      عند تفعيل هذا الخيار، سيقوم النظام تلقائياً بإرسال رسائل واتساب لأولياء الأمور فور تسجيل حضور أو غياب الطالب. عند إلغاء التفعيل لن يتم إرسال أي رسائل تلقائياً أثناء مسح الحضور.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/5">
+                <button
+                  onClick={async () => {
+                    setWaSaving(true);
+                    try {
+                      const res = await fetch('/api/settings/whatsapp', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ autoSendAttendance }),
+                      });
+                      const data = await res.json();
+                      if (data.success) setSaveMsg('تم حفظ خيار إرسال الحضور والغياب بنجاح ✅');
+                      else setSaveMsg('فشل الحفظ ❌');
+                      setTimeout(() => setSaveMsg(''), 3000);
+                    } catch { setSaveMsg('خطأ في الاتصال'); }
+                    finally { setWaSaving(false); }
+                  }}
+                  disabled={waSaving}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 font-bold text-[10px] rounded-xl disabled:opacity-50 transition cursor-pointer"
+                >
+                  {waSaving ? 'جاري الحفظ...' : '💾 حفظ خيار الحضور والغياب'}
+                </button>
+              </div>
+            </div>
+
+            {/* Card 3: Auto-send Credentials Toggle */}
             <div className="glass-panel p-6 rounded-3xl border border-white/10 flex flex-col justify-between space-y-5 bg-slate-900/40">
               <div className="space-y-4">
                 <div>

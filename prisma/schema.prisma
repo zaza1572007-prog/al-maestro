@@ -604,6 +604,7 @@ model SystemSettings {
   loginBackground     String?
   enableWhatsApp      Boolean  @default(true)
   autoSendCredentials Boolean  @default(true)
+  autoSendAttendance  Boolean  @default(false)
   lateThreshold       Int      @default(15) // minutes
   enableDarkMode      Boolean  @default(true)
   // WhatsApp HTTP Gateway

@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
         apiToken: settings?.waApiToken || '',
         senderNumber: settings?.waSenderNumber || '',
         autoSendCredentials: settings?.autoSendCredentials ?? true,
+        autoSendAttendance: settings?.autoSendAttendance ?? false,
         autoSendEnabled: settings?.autoSendEnabled ?? false,
         sendMode: settings?.sendMode || 'MANUAL',
         scheduledDay: settings?.scheduledDay ?? 28,
@@ -67,7 +68,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { gatewayUrl, apiToken, senderNumber, templates, autoSendEnabled, sendMode, scheduledDay, scheduledTime, autoSendCredentials } = body;
+    const { gatewayUrl, apiToken, senderNumber, templates, autoSendEnabled, sendMode, scheduledDay, scheduledTime, autoSendCredentials, autoSendAttendance } = body;
 
     let settings = await prisma.systemSettings.findFirst();
     const data: Record<string, any> = {};
@@ -84,6 +85,7 @@ export async function PUT(req: NextRequest) {
 
     if (autoSendEnabled !== undefined) data.autoSendEnabled = !!autoSendEnabled;
     if (autoSendCredentials !== undefined) data.autoSendCredentials = !!autoSendCredentials;
+    if (autoSendAttendance !== undefined) data.autoSendAttendance = !!autoSendAttendance;
     if (sendMode !== undefined) data.sendMode = sendMode;
     if (scheduledDay !== undefined) data.scheduledDay = parseInt(scheduledDay) || 28;
     if (scheduledTime !== undefined) data.scheduledTime = scheduledTime;
