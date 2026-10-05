@@ -13,7 +13,70 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch user details from DB to get the most up-to-date name, phone, and permissions
+    // Fetch user details from DB based on role to get the most up-to-date name, phone, and details
+    if (payload.role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { id: payload.userId },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          code: true,
+          status: true,
+          profileImage: true,
+          academicStage: { select: { name: true } },
+          group: { select: { name: true } },
+        }
+      });
+      if (!student) {
+        return NextResponse.json({ success: false, error: 'Student not found' }, { status: 404 });
+      }
+      if (student.status !== 'ACTIVE') {
+        return NextResponse.json({ success: false, error: 'الحساب معطل، يرجى التواصل مع الإدارة' }, { status: 403 });
+      }
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: student.id,
+          name: student.name,
+          phone: student.phone,
+          role: 'STUDENT',
+          code: student.code,
+          profileImage: student.profileImage,
+          stageName: student.academicStage?.name,
+          groupName: student.group?.name,
+        }
+      });
+    }
+
+    if (payload.role === 'PARENT') {
+      const parent = await prisma.parent.findUnique({
+        where: { id: payload.userId },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          isActive: true,
+        }
+      });
+      if (!parent) {
+        return NextResponse.json({ success: false, error: 'Parent not found' }, { status: 404 });
+      }
+      if (!parent.isActive) {
+        return NextResponse.json({ success: false, error: 'الحساب معطل، يرجى التواصل مع الإدارة' }, { status: 403 });
+      }
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: parent.id,
+          name: parent.name,
+          phone: parent.phone,
+          role: 'PARENT',
+        }
+      });
+    }
+
+    // Default Staff / Owner / Assistant user
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {

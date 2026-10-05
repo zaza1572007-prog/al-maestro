@@ -32,7 +32,7 @@ export async function GET(req: Request) {
         examResults: {
           include: { exam: true },
           orderBy: { gradedAt: 'desc' },
-          take: 2,
+          take: 3,
         },
       },
     });
@@ -42,9 +42,32 @@ export async function GET(req: Request) {
     }
 
     const activeSub = student.subscriptions[0];
-    const attendanceRate = student.attendances.length > 0
-      ? Math.round((student.attendances.filter(a => a.status === 'PRESENT').length / student.attendances.length) * 100)
+    const totalAttendances = student.attendances.length;
+    const presentCount = student.attendances.filter(
+      a => a.status === 'PRESENT' || a.status === 'LATE' || a.status === 'LEFT_EARLY'
+    ).length;
+    const attendanceRate = totalAttendances > 0
+      ? Math.round((presentCount / totalAttendances) * 100)
       : 0;
+
+    // Calculate attendance streak (consecutive present sessions from latest)
+    let streak = 0;
+    for (const att of student.attendances) {
+      if (att.status === 'PRESENT' || att.status === 'LATE' || att.status === 'LEFT_EARLY') {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    // Homework stats
+    const totalHomeworkCount = await prisma.homework.count({
+      where: { groupId: student.groupId },
+    });
+    const submittedHomeworkCount = student.submissions.length;
+    const homeworkRate = totalHomeworkCount > 0
+      ? Math.round((submittedHomeworkCount / totalHomeworkCount) * 100)
+      : 100;
 
     const upcomingHomework = await prisma.homework.findMany({
       where: {
@@ -57,7 +80,28 @@ export async function GET(req: Request) {
         },
       },
       orderBy: { dueDate: 'asc' },
-      take: 2,
+      take: 3,
+    });
+
+    // Recent materials / files for this student's stage and group
+    const recentFilesRaw = await prisma.file.findMany({
+      where: {
+        OR: [
+          { academicStageId: null, groupId: null },
+          { academicStageId: student.academicStageId },
+          { groupId: student.groupId },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: {
+        id: true,
+        name: true,
+        url: true,
+        type: true,
+        size: true,
+        createdAt: true,
+      },
     });
 
     // Calculate group rank for exam results based on top 3 distinct scores
@@ -94,26 +138,47 @@ export async function GET(req: Request) {
       ? rankTextMap.get(latestResult.examId)?.(latestResult.score) || null
       : null;
 
+    const latestExamScoreDisplay = latestResult
+      ? `${latestResult.score} من ${latestResult.exam.maxScore}`
+      : 'لا يوجد بعد';
+
     return NextResponse.json({
       success: true,
       student: {
+        id: student.id,
         name: student.name,
         code: student.code,
+        qrCode: student.qrCode,
         stage: student.academicStage?.name || 'مرحلة دراسية',
         group: student.group?.name || 'مجموعة',
+        groupScheduleDays: student.group?.scheduleDays || [],
+        groupStartTime: student.group?.startTime || '',
+        groupEndTime: student.group?.endTime || '',
         attendanceRate: `${attendanceRate}%`,
-        homeworkSubmissions: `${student.submissions.length}`,
-        latestExamScore: latestResult ? `${latestResult.score} / ${latestResult.exam.maxScore}` : 'لا يوجد',
+        attendanceStreak: streak,
+        presentSessions: presentCount,
+        totalSessions: totalAttendances,
+        totalHomework: totalHomeworkCount,
+        homeworkSubmissions: submittedHomeworkCount,
+        homeworkRate,
+        latestExamScore: latestExamScoreDisplay,
+        latestExamScoreRaw: latestResult?.score ?? null,
+        latestExamMaxScore: latestResult?.exam.maxScore ?? null,
         latestExamRank: latestExamRank,
         subscriptionStatus: activeSub ? 'نشط 🟢' : 'غير نشط 🔴',
         subscriptionEndDate: activeSub ? new Date(activeSub.endDate).toLocaleDateString('ar-EG') : null,
       },
       recentExams: student.examResults.map((r) => {
         const rankText = rankTextMap.get(r.examId)?.(r.score) || null;
+        const maxScore = r.exam.maxScore || 1;
+        const percent = Math.min(100, Math.max(0, Math.round((r.score / maxScore) * 100)));
         return {
           id: r.id,
           title: r.exam.title,
-          score: `${r.score} / ${r.exam.maxScore}`,
+          scoreDisplay: `${r.score} من ${maxScore}`,
+          scoreRaw: r.score,
+          maxScore: maxScore,
+          percentage: percent,
           date: new Date(r.gradedAt).toLocaleDateString('ar-EG'),
           rank: rankText,
         };
@@ -124,8 +189,18 @@ export async function GET(req: Request) {
         dueDate: new Date(h.dueDate).toLocaleDateString('ar-EG'),
         status: h.submissions.length > 0 ? 'مكتمل' : 'معلق',
       })),
+      recentFiles: recentFilesRaw.map(f => ({
+        id: f.id,
+        name: f.name,
+        url: f.url,
+        type: f.type,
+        size: f.size,
+        date: new Date(f.createdAt).toLocaleDateString('ar-EG'),
+      })),
     });
   } catch (e: any) {
+    console.error('Error fetching student dashboard:', e);
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
 }
+

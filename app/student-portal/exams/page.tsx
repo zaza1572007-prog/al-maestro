@@ -234,12 +234,11 @@ export default function StudentExamsPage() {
                     </Link>
                   )}
 
-                  <div className="text-left bg-purple-950/40 border border-purple-500/20 px-4 py-2 rounded-2xl">
-                    <span className="text-xl font-black text-purple-300 font-mono">
-                      {exam.score}
-                    </span>
-                    <span className="text-xs text-slate-400 ml-1">/ {exam.maxScore}</span>
-                    <span className="block text-[10px] font-bold text-slate-400 text-center mt-0.5 font-mono">
+                  <div className="text-left bg-purple-950/40 border border-purple-500/20 px-3.5 py-1.5 rounded-2xl shrink-0">
+                    <div className="text-sm md:text-base font-black text-purple-200">
+                      {exam.score} <span className="text-xs text-slate-400 font-normal">من</span> {exam.maxScore}
+                    </div>
+                    <span className="block text-[10px] font-bold text-purple-400 text-center mt-0.5">
                       ({exam.percentage}%)
                     </span>
                   </div>
