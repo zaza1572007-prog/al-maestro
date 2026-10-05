@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, useDeferredValue, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { addOfflineGroup } from '@/lib/offlineSync';
@@ -90,7 +90,10 @@ function GroupsContent() {
   const searchParams = useSearchParams();
   const gradeFilter = searchParams.get('grade');
   const stageIdFilter = searchParams.get('stageId');
-  const [activeTab, setActiveTab] = useState('overview');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearch = useDeferredValue(searchQuery);
+  const [stageFilter, setStageFilter] = useState<'ALL' | 'TODAY' | 'PRIMARY' | 'MIDDLE' | 'HIGH' | string>('ALL');
 
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [stagesList, setStagesList] = useState<any[]>([]);
@@ -416,12 +419,66 @@ function GroupsContent() {
     }
   };
 
-  // Filter groups by grade name OR stageId
-  const groups = groupsList.filter((g) => {
-    if (stageIdFilter) return g.stageId === stageIdFilter;
-    if (gradeFilter) return g.stage.includes(gradeFilter) || gradeFilter.includes(g.stage);
-    return true;
-  });
+  // Determine today's day in Arabic
+  const todayArabicDay = useMemo(() => {
+    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    return days[new Date().getDay()];
+  }, []);
+
+  // Compute live KPIs summary
+  const stats = useMemo(() => {
+    const totalStudents = groupsList.reduce((acc, g) => acc + (g.studentsCount || 0), 0);
+    const totalGroups = groupsList.length;
+    const todayGroups = groupsList.filter((g) => {
+      const dStr = g.days || '';
+      const slots = g.schedule || [];
+      return dStr.includes(todayArabicDay) || slots.some((s) => s.day === todayArabicDay);
+    }).length;
+    const avgPrice =
+      totalGroups > 0
+        ? Math.round(groupsList.reduce((acc, g) => acc + (g.monthlyPrice ?? g.stagePrice ?? 350), 0) / totalGroups)
+        : 0;
+
+    return { totalStudents, totalGroups, todayGroups, avgPrice };
+  }, [groupsList, todayArabicDay]);
+
+  // Compute filtered groups with search and stage pills
+  const filteredGroups = useMemo(() => {
+    return groupsList.filter((g) => {
+      // URL search params filter if present
+      if (stageIdFilter && g.stageId !== stageIdFilter) return false;
+      if (gradeFilter && !g.stage.includes(gradeFilter) && !gradeFilter.includes(g.stage)) return false;
+
+      // Stage Filter Pill
+      if (stageFilter === 'TODAY') {
+        const dStr = g.days || '';
+        const slots = g.schedule || [];
+        const isToday = dStr.includes(todayArabicDay) || slots.some((s) => s.day === todayArabicDay);
+        if (!isToday) return false;
+      } else if (stageFilter === 'PRIMARY') {
+        if (!g.stage.includes('الابتدائي') && !g.stage.includes('ابتدائي')) return false;
+      } else if (stageFilter === 'MIDDLE') {
+        if (!g.stage.includes('الإعدادي') && !g.stage.includes('الاعدادي') && !g.stage.includes('إعدادي')) return false;
+      } else if (stageFilter === 'HIGH') {
+        if (!g.stage.includes('الثانوي') && !g.stage.includes('ثانوي')) return false;
+      } else if (stageFilter !== 'ALL' && stageFilter) {
+        if (g.stageId !== stageFilter) return false;
+      }
+
+      // Search query (case-insensitive substring match)
+      if (deferredSearch.trim()) {
+        const q = deferredSearch.trim().toLowerCase();
+        const matchName = g.name.toLowerCase().includes(q);
+        const matchStage = g.stage.toLowerCase().includes(q);
+        const matchDays = g.days.toLowerCase().includes(q);
+        const matchAssistant = (g.assistant || '').toLowerCase().includes(q);
+        const matchTime = (g.time || '').toLowerCase().includes(q);
+        if (!matchName && !matchStage && !matchDays && !matchAssistant && !matchTime) return false;
+      }
+
+      return true;
+    });
+  }, [groupsList, stageIdFilter, gradeFilter, stageFilter, deferredSearch, todayArabicDay]);
 
   return (
     <div className="space-y-6">
@@ -429,10 +486,12 @@ function GroupsContent() {
         <div>
           <h1 className="text-2xl font-black text-zinc-950 dark:text-white flex items-center gap-2">
             <span>👥</span>
-            <span>إدارة المجموعات (Groups Module)</span>
+            <span>إدارة المجموعات التعليمية</span>
           </h1>
           <p className="text-zinc-600 dark:text-zinc-400 text-sm mt-1">
-            {gradeFilter ? `عرض مجموعات الصف الدراسي: ${gradeFilter}` : 'عرض وإدارة مجموعات الدروس وجداول المواعيد اليومية'}
+            {gradeFilter
+              ? `عرض مجموعات الصف الدراسي: ${gradeFilter}`
+              : `عرض وإدارة مجموعات الدروس، المواعيد والأسعار (${filteredGroups.length} من أصل ${groupsList.length} مجموعة)`}
           </p>
         </div>
         <button
@@ -443,44 +502,204 @@ function GroupsContent() {
             }
             setIsAddingGroup(true);
           }}
-          className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-98"
+          className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-2xl text-sm transition flex items-center gap-2 cursor-pointer shadow-lg shadow-purple-600/20 hover:scale-[1.02] active:scale-98"
         >
           <span>➕</span> إضافة مجموعة جديدة
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 overflow-x-auto no-scrollbar scrollbar-none">
-        {[
-          { id: 'overview', label: 'نظرة عامة (Overview)' },
-          { id: 'students', label: 'الطلاب (Students)' },
-          { id: 'attendance', label: 'الحضور (Attendance)' },
-          { id: 'homework', label: 'الواجبات (Homework)' },
-          { id: 'exams', label: 'الامتحانات (Exams)' },
-          { id: 'payments', label: 'المدفوعات (Payments)' },
-          { id: 'files', label: 'الملفات (Files)' },
-          { id: 'activity', label: 'سجل النشاط (Activity)' },
-        ].map((tab) => (
+      {/* 📊 Live KPIs Summary Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Total Students */}
+        <div className="bg-gradient-to-br from-purple-500/15 via-purple-500/5 to-transparent dark:from-purple-500/20 dark:via-purple-900/10 dark:to-transparent p-4 rounded-3xl border border-purple-500/25 shadow-xs backdrop-blur-md flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-purple-500/20 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xl font-bold border border-purple-500/30">
+            🎓
+          </div>
+          <div>
+            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">إجمالي الطلاب</p>
+            <p className="text-xl font-black text-purple-700 dark:text-white font-mono tabular-nums">{stats.totalStudents}</p>
+          </div>
+        </div>
+
+        {/* Total Groups */}
+        <div className="bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent dark:from-blue-500/20 dark:via-blue-900/10 dark:to-transparent p-4 rounded-3xl border border-blue-500/25 shadow-xs backdrop-blur-md flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xl font-bold border border-blue-500/30">
+            👥
+          </div>
+          <div>
+            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">عدد المجموعات</p>
+            <p className="text-xl font-black text-blue-700 dark:text-white font-mono tabular-nums">{stats.totalGroups}</p>
+          </div>
+        </div>
+
+        {/* Today's Active Groups */}
+        <div className="bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-transparent dark:from-emerald-500/20 dark:via-emerald-900/10 dark:to-transparent p-4 rounded-3xl border border-emerald-500/25 shadow-xs backdrop-blur-md flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xl font-bold border border-emerald-500/30 relative">
+            ⚡
+            {stats.todayGroups > 0 && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-ping" />
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">حصص اليوم ({todayArabicDay})</p>
+            <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">
+              {stats.todayGroups} <span className="text-xs font-semibold text-zinc-400">مجموعة</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Average Price */}
+        <div className="bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-transparent dark:from-amber-500/20 dark:via-amber-900/10 dark:to-transparent p-4 rounded-3xl border border-amber-500/25 shadow-xs backdrop-blur-md flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center text-xl font-bold border border-amber-500/30">
+            💰
+          </div>
+          <div>
+            <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">متوسط الاشتراك</p>
+            <p className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono tabular-nums">
+              {stats.avgPrice} <span className="text-xs font-semibold text-zinc-400">ج.م</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 🔍 Smart Search & Stage Filter Control Toolbar */}
+      <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-3xl border border-zinc-200/90 dark:border-white/10 shadow-sm backdrop-blur-xl space-y-3.5">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Fast Search Input */}
+          <div className="relative flex-1">
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-base">🔍</span>
+            <input
+              type="text"
+              placeholder="ابحث باسم المجموعة، المرحلة، أيام الحضور (مثلاً: السبت)، أو المساعد..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-slate-950/80 border border-zinc-200 dark:border-white/10 rounded-2xl pr-10 pl-10 py-2.5 text-xs sm:text-sm text-zinc-950 dark:text-white placeholder:text-zinc-400 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs bg-zinc-200 dark:bg-zinc-800 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
+                title="مسح البحث"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Specific Stage Dropdown Selector */}
+          <div className="flex items-center gap-2 min-w-[220px]">
+            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 whitespace-nowrap">الصف الدراسي:</span>
+            <select
+              value={stageFilter.length > 10 ? stageFilter : 'ALL'}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="w-full bg-zinc-50 dark:bg-slate-950/80 border border-zinc-200 dark:border-white/10 rounded-2xl px-3 py-2.5 text-xs text-zinc-950 dark:text-white font-bold focus:border-primary outline-none cursor-pointer"
+            >
+              <option value="ALL">جميع الصفوف والمراحل</option>
+              {stagesList.map((stg) => (
+                <option key={stg.id} value={stg.id}>
+                  {stg.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Quick Filter Pills */}
+        <div className="flex items-center gap-2 pt-1 overflow-x-auto no-scrollbar scrollbar-none flex-wrap">
+          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 ml-1">تصفية سريعة:</span>
+          
+          {/* All */}
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground font-bold shadow-md'
-                : 'bg-zinc-100 dark:bg-zinc-900/80 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800'
+            onClick={() => setStageFilter('ALL')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              stageFilter === 'ALL'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                : 'bg-zinc-100 dark:bg-slate-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/5'
             }`}
           >
-            {tab.label}
+            <span>🌟</span>
+            <span>الكل</span>
+            <span className="text-[10px] opacity-75 font-mono">({groupsList.length})</span>
           </button>
-        ))}
+
+          {/* Today */}
+          <button
+            onClick={() => setStageFilter('TODAY')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              stageFilter === 'TODAY'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                : 'bg-zinc-100 dark:bg-slate-950 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-500/20'
+            }`}
+          >
+            <span>⚡</span>
+            <span>تعمل اليوم ({todayArabicDay})</span>
+            <span className="text-[10px] opacity-75 font-mono">({stats.todayGroups})</span>
+          </button>
+
+          {/* Primary Stage */}
+          <button
+            onClick={() => setStageFilter('PRIMARY')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              stageFilter === 'PRIMARY'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                : 'bg-zinc-100 dark:bg-slate-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/5'
+            }`}
+          >
+            <span>🎒</span>
+            <span>المرحلة الابتدائية</span>
+          </button>
+
+          {/* Middle Stage */}
+          <button
+            onClick={() => setStageFilter('MIDDLE')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              stageFilter === 'MIDDLE'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'bg-zinc-100 dark:bg-slate-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/5'
+            }`}
+          >
+            <span>📚</span>
+            <span>المرحلة الإعدادية</span>
+          </button>
+
+          {/* High Stage */}
+          <button
+            onClick={() => setStageFilter('HIGH')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              stageFilter === 'HIGH'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'bg-zinc-100 dark:bg-slate-950 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-white/5'
+            }`}
+          >
+            <span>🎓</span>
+            <span>المرحلة الثانوية</span>
+          </button>
+
+          {/* Reset Filters button if any active */}
+          {(stageFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStageFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer flex items-center gap-1 mr-auto"
+            >
+              <span>✕</span>
+              <span>إلغاء التصفية</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Groups List Grid */}
       {loading ? (
-        <div className="text-center py-12 text-zinc-500 dark:text-zinc-400 font-medium">جارٍ تحميل المجموعات الحقيقية من قاعدة البيانات...</div>
+        <div className="text-center py-16 text-zinc-500 dark:text-zinc-400 font-medium space-y-2">
+          <div className="text-3xl animate-bounce">⏳</div>
+          <p>جارٍ تحميل المجموعات التعليمية من السيرفر...</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {groups.map((grp) => (
+          {filteredGroups.map((grp) => (
             <div
               key={grp.id}
               className="glass-card bg-gradient-to-br from-white/95 via-white/85 to-purple-50/40 dark:from-slate-900/90 dark:via-slate-900/70 dark:to-indigo-950/30 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-md dark:shadow-2xl space-y-4 transition-all duration-300 hover:border-primary/60 hover:shadow-xl hover:shadow-primary/15 relative overflow-hidden backdrop-blur-xl"
@@ -589,9 +808,27 @@ function GroupsContent() {
               </div>
             </div>
           ))}
-          {groups.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-zinc-200 dark:border-zinc-800">
-              لا توجد مجموعات مسجلة لهذا الصف الدراسي حالياً
+          {filteredGroups.length === 0 && (
+            <div className="col-span-1 md:col-span-2 text-center py-16 px-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+              <div className="text-4xl">🔍</div>
+              <h4 className="text-base font-bold text-zinc-900 dark:text-white">لم يتم العثور على أي مجموعات مطابقة</h4>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+                {searchQuery
+                  ? `لا توجد مجموعة تطابق البحث: "${searchQuery}"`
+                  : 'لا توجد مجموعات مسجلة مطابقة للفلتر المحدد حالياً.'}
+              </p>
+              {(stageFilter !== 'ALL' || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setStageFilter('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs shadow-md transition cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <span>🔄</span>
+                  <span>عرض جميع المجموعات</span>
+                </button>
+              )}
             </div>
           )}
         </div>
