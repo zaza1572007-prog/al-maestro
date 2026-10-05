@@ -14,6 +14,23 @@ export async function GET(req: Request) {
     const groupId = searchParams.get('groupId') || undefined;
     const grade = searchParams.get('grade') || undefined;
     const level = searchParams.get('level') || undefined;
+    const monthStr = searchParams.get('month') || undefined;
+    const yearStr = searchParams.get('year') || undefined;
+
+    // Build date filter if month is specified
+    let monthFilter: { gte: Date; lte: Date } | undefined = undefined;
+    if (monthStr && monthStr !== 'all' && monthStr !== '') {
+      const monthNum = parseInt(monthStr, 10);
+      const yearNum = yearStr ? parseInt(yearStr, 10) : new Date().getFullYear();
+      if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) {
+        const startDate = new Date(yearNum, monthNum - 1, 1, 0, 0, 0, 0);
+        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
+        monthFilter = {
+          gte: startDate,
+          lte: endDate,
+        };
+      }
+    }
 
     // Build the query filter for students
     const where: any = {};
@@ -35,10 +52,29 @@ export async function GET(req: Request) {
         academicStage: true,
         group: true,
         attendances: {
+          where: monthFilter ? {
+            OR: [
+              { createdAt: monthFilter },
+              { session: { date: monthFilter } },
+            ],
+          } : undefined,
           select: { status: true },
         },
         examResults: {
-          select: { percentage: true },
+          where: monthFilter ? {
+            OR: [
+              { gradedAt: monthFilter },
+              { createdAt: monthFilter },
+              { exam: { examDate: monthFilter } },
+            ],
+          } : undefined,
+          select: {
+            score: true,
+            percentage: true,
+            exam: {
+              select: { maxScore: true },
+            },
+          },
         },
       },
     });
@@ -53,10 +89,21 @@ export async function GET(req: Request) {
       ).length;
       const attendanceRate = totalAtt > 0 ? Math.round((presentCount / totalAtt) * 100) : 0;
 
-      // Exam average calculation
+      // Exam average calculation with normalized clamping
       const examResults = student.examResults;
       const totalExams = examResults.length;
-      const totalPercentage = examResults.reduce((sum, r) => sum + r.percentage, 0);
+      const totalPercentage = examResults.reduce((sum, r) => {
+        let cleanPct = 0;
+        if (r.exam?.maxScore && r.exam.maxScore > 0 && typeof r.score === 'number') {
+          cleanPct = (r.score / r.exam.maxScore) * 100;
+        } else if (typeof r.percentage === 'number') {
+          cleanPct = r.percentage;
+        }
+        // Clamp strictly between 0 and 100
+        cleanPct = Math.min(100, Math.max(0, cleanPct));
+        return sum + cleanPct;
+      }, 0);
+
       const avgExamPercentage = totalExams > 0 ? Math.round(totalPercentage / totalExams) : 0;
 
       return {
@@ -65,11 +112,11 @@ export async function GET(req: Request) {
         name: student.name,
         stageName: student.academicStage?.name || '—',
         groupName: student.group?.name || '—',
-        attendanceRate,
-        avgExamPercentage,
+        attendanceRate: Math.min(100, Math.max(0, attendanceRate)),
+        avgExamPercentage: Math.min(100, Math.max(0, avgExamPercentage)),
         totalSessions: totalAtt,
         presentSessions: presentCount,
-        absentSessions: totalAtt - presentCount,
+        absentSessions: Math.max(0, totalAtt - presentCount),
         totalExams,
       };
     });
@@ -110,3 +157,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

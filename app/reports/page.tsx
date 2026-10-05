@@ -81,6 +81,8 @@ export default function ReportsPage() {
   const [topGroupId, setTopGroupId] = useState('');
   const [topLevel, setTopLevel] = useState('');
   const [topGrade, setTopGrade] = useState('');
+  const [topMonth, setTopMonth] = useState<string>(''); // '' = all time, '1'..'12' = specific month
+  const [topYear, setTopYear] = useState<number>(new Date().getFullYear());
 
   // Tab 3: Monthly WhatsApp Reports states & filters
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -150,6 +152,10 @@ export default function ReportsPage() {
       if (topGroupId) params.append('groupId', topGroupId);
       if (topLevel) params.append('level', topLevel);
       if (topGrade) params.append('grade', topGrade);
+      if (topMonth) {
+        params.append('month', topMonth);
+        params.append('year', topYear.toString());
+      }
 
       const res = await fetch(`/api/reports/top-students?${params.toString()}`);
       const data = await res.json();
@@ -170,7 +176,7 @@ export default function ReportsPage() {
     if (activeTab === 'topStudents') {
       fetchTopStudents();
     }
-  }, [activeTab, topStageId, topGroupId, topLevel, topGrade]);
+  }, [activeTab, topStageId, topGroupId, topLevel, topGrade, topMonth, topYear]);
 
   // Load monthly report previews
   const loadMonthlyPreviews = async () => {
@@ -553,8 +559,15 @@ export default function ReportsPage() {
             >
               {/* Filters Board */}
               <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-slate-900/30">
-                <h3 className="text-white font-bold text-sm mb-4 flex items-center gap-2">⚙️ فلاتر لوحات المتابعة</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white font-bold text-sm flex items-center gap-2">⚙️ فلاتر لوحات المتابعة</h3>
+                  {topMonth && (
+                    <span className="text-[11px] bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full border border-blue-500/30 font-semibold">
+                      مفعل: تقرير شهر {arabicMonths[parseInt(topMonth) - 1]} {topYear}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 mb-1.5">المرحلة الدراسية</label>
                     <select
@@ -594,6 +607,33 @@ export default function ReportsPage() {
                       <option value="Primary">الابتدائي</option>
                       <option value="Middle">الإعدادي</option>
                       <option value="High">الثانوي</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1.5">الشهر (الفترة الزمنية)</label>
+                    <select
+                      value={topMonth}
+                      onChange={(e) => setTopMonth(e.target.value)}
+                      className="w-full glass-input p-2.5 text-xs text-white bg-slate-950 border-blue-500/30 font-medium"
+                    >
+                      <option value="">طوال العام (تراكمي)</option>
+                      {arabicMonths.map((m, idx) => (
+                        <option key={idx + 1} value={(idx + 1).toString()}>
+                          شهر {idx + 1} ({m})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1.5">السنة</label>
+                    <select
+                      value={topYear}
+                      onChange={(e) => setTopYear(parseInt(e.target.value, 10))}
+                      className="w-full glass-input p-2.5 text-xs text-white bg-slate-950 font-medium"
+                    >
+                      {[2024, 2025, 2026, 2027].map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
