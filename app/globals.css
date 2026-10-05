@@ -3,6 +3,8 @@
 
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 /* ── Dynamic Theme & Accent Variables ───────────────────────────────────────── */
 :root {
   /* Default: Obsidian Dark Mode (Anti-OLED Smearing #09090b) */
