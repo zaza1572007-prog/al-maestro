@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+let cachedSecret: Uint8Array | null = null;
 function getJwtSecret() {
+  if (cachedSecret) return cachedSecret;
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET is required');
-  return new TextEncoder().encode(secret);
+  cachedSecret = new TextEncoder().encode(secret);
+  return cachedSecret;
 }
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
@@ -32,6 +35,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/forgot-password' ||
     pathname === '/qr-login' ||                       // QR auto-login page
     pathname === '/api/auth/qr-login' ||              // QR auto-login API
+    pathname === '/api/health' ||                     // Health check heartbeat
     pathname === '/api/registration' || // submit registration (POST)
     pathname.startsWith('/api/registration/options') || // get options
     pathname.startsWith('/api/registration/check-phone') || // check phone
@@ -103,7 +107,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|mp3|wav|ogg)).*)',
   ],
 };
 

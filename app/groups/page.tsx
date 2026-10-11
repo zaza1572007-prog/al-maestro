@@ -399,7 +399,7 @@ function GroupsContent() {
           endTime: finalEndTime,
           schedule: payloadSchedule,
           time: `${to12h(finalStartTime)} - ${to12h(finalEndTime)}`,
-          monthlyPrice: editingGroup.monthlyPrice !== '' && editingGroup.monthlyPrice !== null && editingGroup.monthlyPrice !== undefined
+          monthlyPrice: editingGroup.monthlyPrice !== null && editingGroup.monthlyPrice !== undefined && (editingGroup.monthlyPrice as any) !== ''
             ? parseFloat(editingGroup.monthlyPrice.toString())
             : null,
         }),

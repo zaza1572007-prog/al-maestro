@@ -153,8 +153,16 @@ export async function GET(req: Request) {
       ];
     }
 
+    const limitParam = searchParams.get('limit');
+    const pageParam = searchParams.get('page');
+    const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10), 1), 200) : 100;
+    const page = pageParam ? Math.max(parseInt(pageParam, 10), 1) : 1;
+    const skip = (page - 1) * limit;
+
     const students = await prisma.student.findMany({
       where,
+      take: limit,
+      skip: skip,
       include: {
         academicStage: true,
         group: true,

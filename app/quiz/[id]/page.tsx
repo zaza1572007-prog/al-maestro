@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, use } from 'react';
+import React, { useState, useEffect, useMemo, useRef, use } from 'react';
 import {
   Sparkles,
   Clock,
@@ -133,14 +133,16 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
   }, [examId]);
 
   // Countdown Timer
+  const handleSubmitRef = useRef<() => void>(() => {});
+
   useEffect(() => {
-    if (!quizStarted || quizResult || secondsRemaining <= 0) return;
+    if (!quizStarted || quizResult) return;
 
     const timer = setInterval(() => {
       setSecondsRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmitQuiz();
+          handleSubmitRef.current();
           return 0;
         }
         return prev - 1;
@@ -149,7 +151,7 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [quizStarted, quizResult, secondsRemaining]);
+  }, [quizStarted, quizResult]);
 
   // Filtered Students List
   const filteredStudents = useMemo(() => {
@@ -264,6 +266,10 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmitQuiz;
+  }, [handleSubmitQuiz]);
 
   // Format Time
   const formatTime = (secs: number) => {

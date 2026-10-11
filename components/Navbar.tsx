@@ -121,10 +121,32 @@ export default function Navbar() {
 
   useEffect(() => {
     // Hide navbar on public pages
-    if (pathname === '/login' || pathname === '/select-role' || pathname === '/register') return;
+    if (
+      pathname === '/login' ||
+      pathname === '/select-role' ||
+      pathname === '/register' ||
+      pathname.startsWith('/parent-report') ||
+      pathname.startsWith('/quiz')
+    ) return;
+
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 20000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchNotifications();
+      }
+    }, 60000);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchNotifications();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [pathname]);
 
   useEffect(() => {

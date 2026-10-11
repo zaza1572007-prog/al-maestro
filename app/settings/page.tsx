@@ -399,13 +399,21 @@ export default function SettingsPage() {
     if (activeTab !== 'whatsapp') return;
 
     let isMounted = true;
+    let interval: NodeJS.Timeout | null = null;
+
     const fetchStatus = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch('/api/settings/whatsapp/status');
         if (res.ok && isMounted) {
           const data = await res.json();
           if (data.success) {
             setWaLiveStatus(data);
+            // If successfully connected, stop frequent polling to save CPU and gateway connections
+            if (data.isConnected && interval) {
+              clearInterval(interval);
+              interval = null;
+            }
           }
         }
       } catch (e) {
@@ -414,11 +422,20 @@ export default function SettingsPage() {
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 2500);
+    interval = setInterval(fetchStatus, 12000);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [activeTab]);
 

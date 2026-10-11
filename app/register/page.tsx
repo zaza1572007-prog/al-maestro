@@ -71,6 +71,7 @@ export default function RegisterPage() {
     fetchRealOptions();
   }, []);
 
+  const selectedStageObj = stages.find((s) => s.id === selectedStage);
   const currentGroups = groups.filter((g) => g.academicStageId === selectedStage);
 
   // Perform Live Phone Check when proceeding from Parent Step
@@ -348,7 +349,7 @@ export default function RegisterPage() {
 
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
-                            💰 {grp.monthlyPrice ?? selectedStage?.monthlyPrice ?? 350} ج.م
+                            💰 {grp.monthlyPrice ?? selectedStageObj?.monthlyPrice ?? 350} ج.م
                           </span>
                           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/10 border border-white/10">
                             المقاعد: {remaining} من {grp.maxCapacity}

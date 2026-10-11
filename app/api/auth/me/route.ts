@@ -22,7 +22,7 @@ export async function GET(req: Request) {
           name: true,
           phone: true,
           code: true,
-          status: true,
+          isDeleted: true,
           profileImage: true,
           academicStage: { select: { name: true } },
           group: { select: { name: true } },
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       if (!student) {
         return NextResponse.json({ success: false, error: 'Student not found' }, { status: 404 });
       }
-      if (student.status !== 'ACTIVE') {
+      if (student.isDeleted) {
         return NextResponse.json({ success: false, error: 'الحساب معطل، يرجى التواصل مع الإدارة' }, { status: 403 });
       }
       return NextResponse.json({
@@ -56,14 +56,10 @@ export async function GET(req: Request) {
           id: true,
           name: true,
           phone: true,
-          isActive: true,
         }
       });
       if (!parent) {
         return NextResponse.json({ success: false, error: 'Parent not found' }, { status: 404 });
-      }
-      if (!parent.isActive) {
-        return NextResponse.json({ success: false, error: 'الحساب معطل، يرجى التواصل مع الإدارة' }, { status: 403 });
       }
       return NextResponse.json({
         success: true,

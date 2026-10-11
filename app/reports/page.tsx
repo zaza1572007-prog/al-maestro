@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useDeferredValue } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart3, Download, RefreshCw, FileText, Users, GraduationCap,
@@ -104,6 +104,7 @@ export default function ReportsPage() {
   const [historyStudents, setHistoryStudents] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const deferredHistorySearch = useDeferredValue(historySearch);
   const [historyStageId, setHistoryStageId] = useState('');
   const [historyGroupId, setHistoryGroupId] = useState('');
   
@@ -224,7 +225,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams();
       if (historyStageId) params.append('stageId', historyStageId);
       if (historyGroupId) params.append('groupId', historyGroupId);
-      if (historySearch) params.append('search', historySearch);
+      if (deferredHistorySearch) params.append('search', deferredHistorySearch);
 
       const res = await fetch(`/api/reports/student-history?${params.toString()}`);
       const data = await res.json();
@@ -242,7 +243,7 @@ export default function ReportsPage() {
     if (activeTab === 'history') {
       fetchHistoryStudents();
     }
-  }, [activeTab, historyStageId, historyGroupId, historySearch]);
+  }, [activeTab, historyStageId, historyGroupId, deferredHistorySearch]);
 
   // Fetch detailed history for a single student
   const fetchStudentDetailedHistory = async (studentId: string) => {

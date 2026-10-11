@@ -29,9 +29,36 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // Process attendance records
+    // Process attendance records in batch
+    const studentIds = Array.from(
+      new Set(attendanceRecords.map((r: any) => r.studentId).filter(Boolean))
+    );
+
+    // 1. Bulk fetch students with active subscriptions
+    const students = await prisma.student.findMany({
+      where: { id: { in: studentIds } },
+      include: {
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { endDate: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    const studentMap = new Map(students.map((s) => [s.id, s]));
+
+    // 2. Bulk fetch existing attendances for this session
+    const existingAttendances = await prisma.attendance.findMany({
+      where: {
+        sessionId: sessionId,
+        studentId: { in: studentIds },
+      },
+    });
+    const existingMap = new Map(existingAttendances.map((a) => [a.studentId, a]));
+
     const results = [];
     const errors = [];
+    const txOps: any[] = [];
 
     for (const record of attendanceRecords) {
       const { studentId, status, notes } = record;
@@ -44,42 +71,21 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      try {
-        // Check if student exists
-        const student = await prisma.student.findUnique({
-          where: { id: studentId },
-          include: {
-            subscriptions: {
-              where: {
-                status: 'ACTIVE',
-              },
-              orderBy: {
-                endDate: 'desc',
-              },
-              take: 1,
-            },
-          },
+      const student = studentMap.get(studentId);
+      if (!student) {
+        errors.push({
+          studentId,
+          error: 'Student not found',
         });
+        continue;
+      }
 
-        if (!student) {
-          errors.push({
-            studentId,
-            error: 'Student not found',
-          });
-          continue;
-        }
+      const existingAttendance = existingMap.get(studentId);
+      const activeSubscription = student.subscriptions[0];
 
-        // Check if attendance already exists
-        const existingAttendance = await prisma.attendance.findFirst({
-          where: {
-            studentId: studentId,
-            sessionId: sessionId,
-          },
-        });
-
-        if (existingAttendance) {
-          // Update existing attendance
-          const updatedAttendance = await prisma.attendance.update({
+      if (existingAttendance) {
+        txOps.push(
+          prisma.attendance.update({
             where: { id: existingAttendance.id },
             data: {
               status,
@@ -87,30 +93,30 @@ export async function POST(request: NextRequest) {
               recordedById: recordedById,
               ...(status === 'PRESENT' && !existingAttendance.checkInTime ? { checkInTime: new Date() } : {}),
             },
-          });
+          })
+        );
 
-          // Update subscription if present and status changed to PRESENT
-          const activeSubscription = student.subscriptions[0];
-          if (activeSubscription && status === 'PRESENT' && existingAttendance.status !== 'PRESENT') {
-            await prisma.subscription.update({
+        if (activeSubscription && status === 'PRESENT' && existingAttendance.status !== 'PRESENT') {
+          txOps.push(
+            prisma.subscription.update({
               where: { id: activeSubscription.id },
               data: {
                 usedSessions: {
                   increment: 1,
                 },
               },
-            });
-          }
+            })
+          );
+        }
 
-          results.push({
-            studentId,
-            studentName: student.name,
-            action: 'updated',
-            attendance: updatedAttendance,
-          });
-        } else {
-          // Create new attendance
-          const attendance = await prisma.attendance.create({
+        results.push({
+          studentId,
+          studentName: student.name,
+          action: 'updated',
+        });
+      } else {
+        txOps.push(
+          prisma.attendance.create({
             data: {
               studentId,
               sessionId,
@@ -119,34 +125,32 @@ export async function POST(request: NextRequest) {
               recordedById: recordedById,
               checkInTime: new Date(),
             },
-          });
+          })
+        );
 
-          // Update subscription if present and status is PRESENT
-          const activeSubscription = student.subscriptions[0];
-          if (activeSubscription && status === 'PRESENT') {
-            await prisma.subscription.update({
+        if (activeSubscription && status === 'PRESENT') {
+          txOps.push(
+            prisma.subscription.update({
               where: { id: activeSubscription.id },
               data: {
                 usedSessions: {
                   increment: 1,
                 },
               },
-            });
-          }
-
-          results.push({
-            studentId,
-            studentName: student.name,
-            action: 'created',
-            attendance,
-          });
+            })
+          );
         }
-      } catch (error) {
-        errors.push({
+
+        results.push({
           studentId,
-          error: 'Failed to process attendance',
+          studentName: student.name,
+          action: 'created',
         });
       }
+    }
+
+    if (txOps.length > 0) {
+      await prisma.$transaction(txOps);
     }
 
     return NextResponse.json({

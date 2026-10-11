@@ -11,7 +11,7 @@ interface RateLimitStore {
 const ratesStore = new Map<string, RateLimitStore>();
 
 // Cleanup stale entries every 5 minutes
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, record] of ratesStore.entries()) {
     if (now > record.resetTime) {
@@ -19,6 +19,10 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+if (cleanupTimer.unref) {
+  cleanupTimer.unref();
+}
 
 export type RateLimitTier = 'STRICT' | 'STANDARD' | 'TURBO';
 

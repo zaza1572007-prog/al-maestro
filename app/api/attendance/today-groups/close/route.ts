@@ -95,7 +95,8 @@ export async function POST(req: Request) {
       },
     });
 
-    // Mark remaining students as ABSENT or VACATION
+    // Mark remaining students as ABSENT or VACATION in batch
+    const recordsToCreate = [];
     for (const student of students) {
       if (!attendedStudentIds.includes(student.id)) {
         const isVac = vacationsToday.some((v) =>
@@ -105,15 +106,19 @@ export async function POST(req: Request) {
           (v.scope === 'student' && student.id === v.studentId)
         );
 
-        await prisma.attendance.create({
-          data: {
-            studentId: student.id,
-            sessionId: session.id,
-            status: isVac ? 'VACATION' : 'ABSENT',
-            notes: isVac ? 'إجازة تلقائية' : 'غياب يدوي لإنهاء الحصة يدوياً'
-          }
+        recordsToCreate.push({
+          studentId: student.id,
+          sessionId: session.id,
+          status: (isVac ? 'VACATION' : 'ABSENT') as any,
+          notes: isVac ? 'إجازة تلقائية' : 'غياب يدوي لإنهاء الحصة يدوياً',
         });
       }
+    }
+
+    if (recordsToCreate.length > 0) {
+      await prisma.attendance.createMany({
+        data: recordsToCreate,
+      });
     }
 
     return NextResponse.json({ success: true, session });
