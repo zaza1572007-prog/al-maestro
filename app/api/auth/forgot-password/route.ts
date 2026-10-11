@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(req: NextRequest) {
   try {
+    const clientIp = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(clientIp, 'auth_forgot_password', 'STRICT');
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { success: false, error: `تجاوزت عدد محاولات استعادة كلمة المرور المسموحة. يرجى الانتظار ${rateLimit.resetSeconds} ثانية.` },
+        { status: 429 }
+      );
+    }
+
     const { phone, role } = await req.json();
 
     if (!phone) {

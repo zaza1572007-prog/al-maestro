@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(request: Request) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(clientIp, 'reg_check_phone', 'STANDARD');
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { exists: false, error: 'تم تجاوز الحد المسموح من المحاولات، يرجى الانتظار قليلاً.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { parentPhone, studentPhone } = body;
 
