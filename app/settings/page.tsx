@@ -109,6 +109,7 @@ export default function SettingsPage() {
     mode?: string;
   } | null>(null);
   const [waQrLoading, setWaQrLoading] = useState(false);
+  const [waCheckingStatus, setWaCheckingStatus] = useState(false);
   const [waQrActionMsg, setWaQrActionMsg] = useState('');
 
   // WhatsApp Monthly Reports / Cron Job settings
@@ -394,50 +395,42 @@ export default function SettingsPage() {
     load();
   }, []);
 
-  // WhatsApp Live Status Polling
-  useEffect(() => {
-    if (activeTab !== 'whatsapp') return;
-
-    let isMounted = true;
-    let interval: NodeJS.Timeout | null = null;
-
-    const fetchStatus = async () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      try {
-        const res = await fetch('/api/settings/whatsapp/status');
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data.success) {
-            setWaLiveStatus(data);
-            // If successfully connected, stop frequent polling to save CPU and gateway connections
-            if (data.isConnected && interval) {
-              clearInterval(interval);
-              interval = null;
+  // WhatsApp Live Status: Fetch on demand (no continuous polling)
+  const fetchWaStatus = useCallback(async (showNotification = false) => {
+    setWaCheckingStatus(true);
+    try {
+      const res = await fetch('/api/settings/whatsapp/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setWaLiveStatus(data);
+          if (showNotification) {
+            if (data.isConnected) {
+              toast.success(`حساب الواتساب متصل بنجاح: ${data.user || waSenderNumber || ''}`);
+            } else if (data.hasQr) {
+              toast.info('تم تحديث الحالة: بانتظار مسح رمز الـ QR 📲');
+            } else {
+              toast.info(`حالة الواتساب: ${data.status || 'غير متصل'}`);
             }
           }
         }
-      } catch (e) {
-        console.error('Failed to fetch WA live status:', e);
       }
-    };
-
-    fetchStatus();
-    interval = setInterval(fetchStatus, 12000);
-
-    const handleVisibilityChange = () => {
-      if (typeof document !== 'undefined' && !document.hidden) {
-        fetchStatus();
+    } catch (e) {
+      console.error('Failed to fetch WA live status:', e);
+      if (showNotification) {
+        toast.error('تعذر جلب حالة الواتساب من السيرفر');
       }
-    };
+    } finally {
+      setWaCheckingStatus(false);
+    }
+  }, [toast, waSenderNumber]);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      isMounted = false;
-      if (interval) clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [activeTab]);
+  // Fetch status once only when the WhatsApp tab is opened
+  useEffect(() => {
+    if (activeTab === 'whatsapp') {
+      fetchWaStatus();
+    }
+  }, [activeTab, fetchWaStatus]);
 
   const handleRefreshWaQr = async () => {
     setWaQrLoading(true);
@@ -1976,8 +1969,19 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Status Badge */}
-              <div className="flex items-center gap-2">
+              {/* Status Badge & Manual Refresh Button */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => fetchWaStatus(true)}
+                  disabled={waCheckingStatus}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 hover:border-slate-600 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-sm active:scale-95"
+                  title="تحديث حالة الاتصال يدوياً"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${waCheckingStatus ? 'animate-spin text-emerald-400' : 'text-slate-400'}`} />
+                  <span>{waCheckingStatus ? 'جارٍ التحقق...' : 'تحديث الحالة'}</span>
+                </button>
+
                 {waLiveStatus?.isConnected ? (
                   <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-[0_0_15px_rgba(16,185,129,0.2)]">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
