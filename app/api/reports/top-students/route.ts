@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
 
+const topStudentsCache = new Map<string, { data: any; expiresAt: number }>();
+const CACHE_TTL_MS = 30_000; // 30 seconds
+
 export async function GET(req: Request) {
   try {
     const staff = await verifyStaff(req);
@@ -16,6 +19,15 @@ export async function GET(req: Request) {
     const level = searchParams.get('level') || undefined;
     const monthStr = searchParams.get('month') || undefined;
     const yearStr = searchParams.get('year') || undefined;
+
+    const cacheKey = `${stageId || ''}_${groupId || ''}_${grade || ''}_${level || ''}_${monthStr || ''}_${yearStr || ''}`;
+    const now = Date.now();
+    const cached = topStudentsCache.get(cacheKey);
+    if (cached && now < cached.expiresAt) {
+      return NextResponse.json(cached.data, {
+        headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' }
+      });
+    }
 
     // Build date filter if month is specified
     let monthFilter: { gte: Date; lte: Date } | undefined = undefined;
@@ -145,12 +157,19 @@ export async function GET(req: Request) {
       .sort((a, b) => b.absentSessions - a.absentSessions)
       .slice(0, 10);
 
-    return NextResponse.json({
+    const result = {
       success: true,
       topCommitted,
       topPerforming,
       bottomPerforming,
       mostAbsent,
+    };
+
+    if (topStudentsCache.size > 100) topStudentsCache.clear();
+    topStudentsCache.set(cacheKey, { data: result, expiresAt: now + CACHE_TTL_MS });
+
+    return NextResponse.json(result, {
+      headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' }
     });
   } catch (error: any) {
     console.error('Error fetching top students:', error);

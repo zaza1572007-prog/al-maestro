@@ -1,8 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
-export async function GET() {
+let cachedStats: { data: any; expiresAt: number } | null = null;
+const STATS_TTL_MS = 15_000; // 15 seconds cache to avoid heavy DB aggregations
+
+export async function GET(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
+    const now = Date.now();
+    if (cachedStats && now < cachedStats.expiresAt) {
+      return NextResponse.json(cachedStats.data, {
+        headers: { 'Cache-Control': 'private, max-age=15, stale-while-revalidate=30' },
+      });
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -43,7 +59,7 @@ export async function GET() {
       todayAttendanceRate = `${rate}%`;
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       stats: {
         totalStudents,
@@ -62,6 +78,15 @@ export async function GET() {
         details: l.details,
         createdAt: l.createdAt,
       })),
+    };
+
+    cachedStats = {
+      data: responsePayload,
+      expiresAt: now + STATS_TTL_MS,
+    };
+
+    return NextResponse.json(responsePayload, {
+      headers: { 'Cache-Control': 'private, max-age=15, stale-while-revalidate=30' },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
