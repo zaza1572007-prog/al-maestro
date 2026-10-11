@@ -3,6 +3,76 @@ import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json(
+        { success: false, error: 'غير مصرح بالدخول (Staff Only)' },
+        { status: 401 }
+      );
+    }
+
+    const { id: studentId } = await context.params;
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        phone: true,
+        qrCode: true,
+        passwordPlain: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            whatsapp: true,
+            passwordPlain: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      return NextResponse.json(
+        { success: false, error: 'الطالب غير موجود' },
+        { status: 404 }
+      );
+    }
+
+    const isOwner = staff.role === 'OWNER';
+
+    // Strictly restrict plain password exposure strictly to payload.role === 'OWNER'
+    return NextResponse.json({
+      success: true,
+      isOwner,
+      credentials: {
+        studentId: student.id,
+        studentName: student.name,
+        studentCode: student.code,
+        studentPhone: student.phone,
+        studentQrCode: student.qrCode,
+        studentPasswordPlain: isOwner ? student.passwordPlain : null,
+        parentName: student.parent?.name || 'ولي أمر',
+        parentPhone: student.parent?.phone || '',
+        parentPasswordPlain: isOwner ? (student.parent?.passwordPlain || null) : null,
+      },
+    });
+  } catch (error: any) {
+    console.error('Credentials Fetch Error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'حدث خطأ أثناء جلب الاعتماديات' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -78,6 +148,8 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: 'تم تحديث بيانات الدخول والاعتماديات بنجاح!',
+      studentPasswordPlain: studentPassword || undefined,
+      parentPasswordPlain: parentPassword || undefined,
     });
   } catch (error: any) {
     console.error('Credentials Update Error:', error);

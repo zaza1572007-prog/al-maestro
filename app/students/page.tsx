@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from '@/components/ToastProvider';
-import { ShieldCheck, Eye, Phone, UserCheck, Calendar, BookOpen, QrCode, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Phone, UserCheck, Calendar, BookOpen, QrCode, ChevronLeft, ChevronRight } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import Avatar from '@/components/Avatar';
 import StatusIndicator from '@/components/StatusIndicator';
@@ -63,6 +63,12 @@ function StudentsContent() {
   const [studentToDelete, setStudentToDelete] = useState<{id: string, name: string} | null>(null);
   const [credentialsStudent, setCredentialsStudent] = useState<Student | null>(null);
   const [credentialsForm, setCredentialsForm] = useState({ studentPassword: '', parentPassword: '' });
+  const [credDetails, setCredDetails] = useState<{
+    studentPasswordPlain?: string | null;
+    parentPasswordPlain?: string | null;
+    isOwner?: boolean;
+  } | null>(null);
+  const [isLoadingCreds, setIsLoadingCreds] = useState(false);
   const [showStudentPass, setShowStudentPass] = useState(true);
   const [showParentPass, setShowParentPass] = useState(true);
   const [isSavingCreds, setIsSavingCreds] = useState(false);
@@ -116,6 +122,53 @@ function StudentsContent() {
   useEffect(() => {
     fetchStudentsAndOptions();
   }, []);
+
+  useEffect(() => {
+    if (!credentialsStudent) {
+      setCredDetails(null);
+      setIsLoadingCreds(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingCreds(true);
+    fetch(`/api/students/${credentialsStudent.id}/credentials`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isCancelled) return;
+        if (data.success && data.credentials) {
+          setCredDetails({
+            studentPasswordPlain: data.credentials.studentPasswordPlain,
+            parentPasswordPlain: data.credentials.parentPasswordPlain,
+            isOwner: data.isOwner ?? false,
+          });
+        } else {
+          setCredDetails({
+            studentPasswordPlain: null,
+            parentPasswordPlain: null,
+            isOwner: false,
+          });
+        }
+      })
+      .catch((err) => {
+        if (isCancelled) return;
+        console.error('Failed to fetch credentials:', err);
+        setCredDetails({
+          studentPasswordPlain: null,
+          parentPasswordPlain: null,
+          isOwner: false,
+        });
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingCreds(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [credentialsStudent?.id]);
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -556,6 +609,16 @@ function StudentsContent() {
                     </button>
                   </Link>
                   <button
+                    onClick={() => {
+                      setCredentialsStudent(selectedDetailStudent);
+                      setCredentialsForm({ studentPassword: '', parentPassword: '' });
+                    }}
+                    className="w-full py-2.5 bg-purple-500/15 dark:bg-purple-500/25 hover:bg-purple-500 hover:text-white text-purple-700 dark:text-purple-300 font-bold rounded-xl text-xs transition cursor-pointer border border-purple-500/30 flex items-center justify-center gap-1.5"
+                  >
+                    <span>🔑</span>
+                    <span>إدارة الاعتماديات وكلمات المرور</span>
+                  </button>
+                  <button
                     onClick={() => handleEditClick(selectedDetailStudent)}
                     className="w-full py-2.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold rounded-xl text-xs transition cursor-pointer border border-zinc-200 dark:border-white/5"
                   >
@@ -854,35 +917,61 @@ function StudentsContent() {
 
               <div className="pt-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
-                  {credentialsStudent.passwordPlain && (
+                  <p className="text-zinc-500 dark:text-zinc-400 font-medium">كلمة المرور</p>
+                  {isLoadingCreds ? (
+                    <span className="text-[10px] text-zinc-400 animate-pulse">جاري التحقق...</span>
+                  ) : credDetails?.isOwner && credDetails.studentPasswordPlain ? (
                     <button
                       type="button"
                       onClick={() => setShowStudentPass(v => !v)}
-                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline transition cursor-pointer"
+                      className="text-[11px] text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1 font-semibold transition cursor-pointer"
                     >
-                      {showStudentPass ? 'إخفاء' : 'إظهار'}
+                      {showStudentPass ? (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>إخفاء</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>إظهار</span>
+                        </>
+                      )}
                     </button>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 flex-1">
-                    {credentialsStudent.passwordPlain
-                      ? (showStudentPass ? credentialsStudent.passwordPlain : '••••••••')
-                      : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
-                  </p>
-                  {credentialsStudent.passwordPlain && (
-                    <button
-                      type="button"
-                      title="نسخ كلمة مرور الطالب"
-                      onClick={() => {
-                        navigator.clipboard.writeText(credentialsStudent.passwordPlain!);
-                        toast.success('تم نسخ كلمة مرور الطالب 📋');
-                      }}
-                      className="text-xs p-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-emerald-500 rounded-lg transition cursor-pointer"
-                    >
-                      📋
-                    </button>
+                  {isLoadingCreds ? (
+                    <div className="font-mono text-zinc-400 text-xs bg-zinc-100 dark:bg-zinc-800/60 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700/60 flex-1 animate-pulse flex items-center gap-2">
+                      <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span>جاري فحص الاعتماديات الموثقة...</span>
+                    </div>
+                  ) : credDetails?.isOwner && credDetails.studentPasswordPlain ? (
+                    <>
+                      <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 flex-1">
+                        {showStudentPass ? credDetails.studentPasswordPlain : '••••••••'}
+                      </p>
+                      <button
+                        type="button"
+                        title="نسخ كلمة مرور الطالب"
+                        onClick={() => {
+                          navigator.clipboard.writeText(credDetails.studentPasswordPlain!);
+                          toast.success('تم نسخ كلمة مرور الطالب 📋');
+                        }}
+                        className="text-xs p-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-emerald-500 rounded-xl transition cursor-pointer"
+                      >
+                        📋
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-amber-700 dark:text-amber-400 text-xs bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 flex-1 flex items-center gap-1.5">
+                      <span className="text-sm">🔒</span>
+                      <span>
+                        {!credDetails?.isOwner
+                          ? 'محمية ومحجوبة (للمالك فقط)'
+                          : 'تم تشفيرها بأمان (أعد تعيينها بالأسفل)'}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -902,35 +991,61 @@ function StudentsContent() {
                 </div>
                 <div className="col-span-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-zinc-500 dark:text-zinc-400">كلمة المرور</p>
-                    {credentialsStudent.parentPasswordPlain && (
+                    <p className="text-zinc-500 dark:text-zinc-400 font-medium">كلمة المرور</p>
+                    {isLoadingCreds ? (
+                      <span className="text-[10px] text-zinc-400 animate-pulse">جاري التحقق...</span>
+                    ) : credDetails?.isOwner && credDetails.parentPasswordPlain ? (
                       <button
                         type="button"
                         onClick={() => setShowParentPass(v => !v)}
-                        className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline transition"
+                        className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 font-semibold transition cursor-pointer"
                       >
-                        {showParentPass ? 'إخفاء' : 'إظهار'}
+                        {showParentPass ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>إخفاء</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>إظهار</span>
+                          </>
+                        )}
                       </button>
-                    )}
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      {credentialsStudent.parentPasswordPlain
-                        ? (showParentPass ? credentialsStudent.parentPasswordPlain : '••••••••')
-                        : 'لم تُحفظ (أعد تعيينها بالأسفل)'}
-                    </p>
-                    {credentialsStudent.parentPasswordPlain && (
-                      <button
-                        type="button"
-                        title="نسخ كلمة مرور ولي الأمر"
-                        onClick={() => {
-                          navigator.clipboard.writeText(credentialsStudent.parentPasswordPlain!);
-                          toast.success('تم نسخ كلمة مرور ولي الأمر 📋');
-                        }}
-                        className="text-xs p-1 text-zinc-400 hover:text-emerald-500 transition"
-                      >
-                        📋
-                      </button>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {isLoadingCreds ? (
+                      <div className="font-mono text-zinc-400 text-xs bg-zinc-100 dark:bg-zinc-800/60 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700/60 flex-1 animate-pulse flex items-center gap-2">
+                        <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span>جاري فحص الاعتماديات الموثقة...</span>
+                      </div>
+                    ) : credDetails?.isOwner && credDetails.parentPasswordPlain ? (
+                      <>
+                        <p className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-xs select-all bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 flex-1">
+                          {showParentPass ? credDetails.parentPasswordPlain : '••••••••'}
+                        </p>
+                        <button
+                          type="button"
+                          title="نسخ كلمة مرور ولي الأمر"
+                          onClick={() => {
+                            navigator.clipboard.writeText(credDetails.parentPasswordPlain!);
+                            toast.success('تم نسخ كلمة مرور ولي الأمر 📋');
+                          }}
+                          className="text-xs p-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-emerald-500 rounded-xl transition cursor-pointer"
+                        >
+                          📋
+                        </button>
+                      </>
+                    ) : (
+                      <div className="text-amber-700 dark:text-amber-400 text-xs bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 flex-1 flex items-center gap-1.5">
+                        <span className="text-sm">🔒</span>
+                        <span>
+                          {!credDetails?.isOwner
+                            ? 'محمية ومحجوبة (للمالك فقط)'
+                            : 'تم تشفيرها بأمان (أعد تعيينها بالأسفل)'}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -987,9 +1102,15 @@ function StudentsContent() {
                     });
                     const data = await res.json();
                     if (data.success) {
-                      toast.success('تم تحديث بيانات الدخول بنجاح!');
+                      toast.success('تم تحديث بيانات الدخول والاعتماديات بنجاح!');
+                      setCredDetails((prev) => ({
+                        ...prev,
+                        isOwner: true,
+                        studentPasswordPlain: data.studentPasswordPlain || credentialsForm.studentPassword || prev?.studentPasswordPlain,
+                        parentPasswordPlain: data.parentPasswordPlain || credentialsForm.parentPassword || prev?.parentPasswordPlain,
+                      }));
+                      setCredentialsForm({ studentPassword: '', parentPassword: '' });
                       fetchStudentsAndOptions();
-                      setCredentialsStudent(null);
                     } else {
                       toast.error(data.error || 'حدث خطأ أثناء الحفظ');
                     }
