@@ -15,12 +15,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ studentI
     const { studentId } = await params;
 
     // Verify student belongs to this parent
-    const student = await prisma.student.findFirst({
-      where: { id: studentId, parent: { phone: { contains: '' } } } // Simplification for now, we should ideally check parentId
-    });
-
-    // Actually, we need to find the parent by payload.userId if we used parentId in token.
-    // In auth, parent ID is payload.userId
     const actualStudent = await prisma.student.findFirst({
       where: { id: studentId, parentId: payload.userId as string }
     });

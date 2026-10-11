@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const { id } = await params;
     const exam = await prisma.exam.findUnique({
       where: { id },
@@ -42,6 +48,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const {
@@ -89,6 +100,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const { id } = await params;
     await prisma.examResult.deleteMany({ where: { examId: id } });
     await prisma.exam.delete({ where: { id } });

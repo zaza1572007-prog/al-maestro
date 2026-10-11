@@ -59,7 +59,6 @@ export async function PUT(
         id: true,
         name: true,
         phone: true,
-        passwordPlain: true,
         role: true,
         isActive: true,
         permissions: true,

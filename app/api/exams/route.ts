@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const exams = await prisma.exam.findMany({
       include: {
         group: {
@@ -25,6 +31,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const {
       title,
       description,

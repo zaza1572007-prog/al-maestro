@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { signToken } from '@/lib/auth';
 
 function cleanPhone(phone: string | null | undefined): string {
   if (!phone) return '';
@@ -241,8 +242,16 @@ export async function POST(
       questionsForStudent = [...questionsForStudent].sort(() => Math.random() - 0.5);
     }
 
-    return NextResponse.json({
+    const studentToken = await signToken({
+      userId: student.id,
+      name: student.name,
+      role: 'STUDENT',
+      phone: student.phone || '',
+    });
+
+    const res = NextResponse.json({
       success: true,
+      token: studentToken,
       alreadySubmitted: false,
       student: {
         id: student.id,
@@ -260,6 +269,15 @@ export async function POST(
         showAnswersAfterSubmit: exam.showAnswersAfterSubmit,
       },
     });
+
+    res.cookies.set('auth-token', studentToken, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    return res;
   } catch (error: any) {
     console.error('Error in quiz activation:', error);
     return NextResponse.json(

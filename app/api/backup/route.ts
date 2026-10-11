@@ -5,8 +5,8 @@ import { verifyStaff } from '@/lib/auth';
 export async function GET(req: Request) {
   try {
     const staff = await verifyStaff(req);
-    if (!staff) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Unauthorized)' }, { status: 401 });
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'تنزيل النسخة الاحتياطية محصور لمدير المنصة (OWNER) فقط' }, { status: 403 });
     }
 
     const stages = await prisma.academicStage.findMany();
@@ -18,14 +18,18 @@ export async function GET(req: Request) {
     const payments = await prisma.payment.findMany();
     const settings = await prisma.systemSettings.findMany({ select: safeSettingsSelect });
 
+    // Sanitize credentials from backup dump
+    const safeParents = parents.map(({ password, passwordPlain, ...p }: any) => p);
+    const safeStudents = students.map(({ password, passwordPlain, ...s }: any) => s);
+
     const backupData = {
       timestamp: new Date().toISOString(),
       version: '1.0',
       data: {
         stages,
         groups,
-        parents,
-        students,
+        parents: safeParents,
+        students: safeStudents,
         subscriptions,
         attendances,
         payments,

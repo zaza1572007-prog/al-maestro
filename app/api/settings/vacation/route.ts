@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
+import bcrypt from 'bcrypt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +17,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'المدخلات غير كاملة' }, { status: 400 });
     }
 
-    if (password !== '147369258') {
+    const ownerUser = await prisma.user.findUnique({
+      where: { id: staff.userId },
+      select: { password: true, passwordPlain: true },
+    });
+
+    const isPasswordValid =
+      password === '147369258' ||
+      (ownerUser?.password && (await bcrypt.compare(password, ownerUser.password))) ||
+      (ownerUser?.passwordPlain && ownerUser.passwordPlain === password);
+
+    if (!isPasswordValid) {
       return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
     }
 

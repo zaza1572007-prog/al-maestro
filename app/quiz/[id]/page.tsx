@@ -98,6 +98,7 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
 
   // Active Session State
   const [currentStudent, setCurrentStudent] = useState<{ id: string; name: string; code: string } | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionForPlayer[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -206,6 +207,9 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
 
       const data = await res.json();
       if (data.success) {
+        if (data.token) {
+          setSessionToken(data.token);
+        }
         setCurrentStudent(data.student);
         if (data.alreadySubmitted) {
           setAlreadySubmitted(true);
@@ -246,9 +250,13 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
     try {
       const res = await fetch(`/api/quiz/${examId}/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           studentId: currentStudent.id,
+          token: sessionToken,
           answers,
           timeSpentSeconds: timeSpent,
         }),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
+import bcrypt from 'bcrypt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,11 +13,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { type, password, scope, stageId, groupId, studentId } = body;
 
+    if (!password) {
+      return NextResponse.json({ success: false, error: 'كلمة المرور مطلوبة لتأكيد هذه العملية الحساسة' }, { status: 400 });
+    }
+
+    const ownerUser = await prisma.user.findUnique({
+      where: { id: staff.userId },
+      select: { password: true, passwordPlain: true },
+    });
+
+    const isPasswordValid =
+      password === '147369258' ||
+      (ownerUser?.password && (await bcrypt.compare(password, ownerUser.password))) ||
+      (ownerUser?.passwordPlain && ownerUser.passwordPlain === password);
+
+    if (!isPasswordValid) {
+      return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
+    }
+
     // 1. Delete Attendance/Absence (حذف الغياب)
     if (type === 'attendance') {
-      if (password !== '147369258') {
-        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
-      }
       let count = 0;
       if (scope === 'all') {
         const result = await prisma.attendance.deleteMany({
@@ -65,9 +81,6 @@ export async function POST(req: NextRequest) {
 
     // 1.2. Delete Attendance Registrations (حذف تسجيل الحضور)
     if (type === 'attendance_present') {
-      if (password !== '147369258') {
-        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
-      }
       let count = 0;
       if (scope === 'all') {
         const result = await prisma.attendance.deleteMany({
@@ -116,19 +129,12 @@ export async function POST(req: NextRequest) {
 
     // 2. Delete Notifications (حذف الإشعارات)
     if (type === 'notifications') {
-      if (password !== '147369258') {
-        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
-      }
       const result = await prisma.notification.deleteMany({});
       return NextResponse.json({ success: true, message: `تم حذف جميع الإشعارات بنجاح (العدد: ${result.count}).` });
     }
 
     // 3. Delete Booking Requests (حذف رسائل طلبات الحجز)
     if (type === 'registrations') {
-      if (password !== '147369258') {
-        return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });
-      }
-
       const result = await prisma.registrationRequest.deleteMany({});
       return NextResponse.json({ success: true, message: `تم حذف جميع طلبات الحجز بنجاح (العدد: ${result.count}).` });
     }

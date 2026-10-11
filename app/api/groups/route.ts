@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -49,6 +50,11 @@ function parseScheduleDays(daysInput: any): string[] {
 
 export async function POST(req: Request) {
   try {
+    const staff = await verifyStaff(req);
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (Staff Only)' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, academicStageId, year, scheduleDays, startTime, endTime, schedule, location, monthlyPrice } = body;
 

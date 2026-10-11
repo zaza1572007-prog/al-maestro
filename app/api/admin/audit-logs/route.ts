@@ -5,8 +5,8 @@ import { verifyStaff } from '@/lib/auth';
 export async function GET(req: Request) {
   try {
     const staff = await verifyStaff(req);
-    if (!staff) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    if (!staff || staff.role !== 'OWNER') {
+      return NextResponse.json({ success: false, error: 'سجلات التدقيق محصورة لمدير المنصة (OWNER) فقط' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

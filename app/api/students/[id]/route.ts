@@ -22,6 +22,17 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // IDOR Prevention: If requester is a PARENT, ensure they only access their own registered child
+    if (payload.role === 'PARENT') {
+      const isParentOfStudent = await prisma.student.findFirst({
+        where: { id, parentId: payload.userId },
+        select: { id: true },
+      });
+      if (!isParentOfStudent) {
+        return NextResponse.json({ error: 'Forbidden: غير مصرح لك بالوصول لبيانات هذا الطالب' }, { status: 403 });
+      }
+    }
+
     const student = await prisma.student.findUnique({
       where: { id },
       include: {
@@ -71,7 +82,10 @@ export async function GET(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ student });
+    // Never expose password hashes or plain passwords
+    const { password, passwordPlain, ...safeStudent } = student as any;
+
+    return NextResponse.json({ student: safeStudent });
   } catch (error) {
     console.error('Error fetching student:', error);
     return NextResponse.json(
@@ -129,7 +143,8 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ student });
+    const { password, passwordPlain, ...safeStudent } = student as any;
+    return NextResponse.json({ student: safeStudent });
   } catch (error) {
     console.error('Error updating student:', error);
     return NextResponse.json(
@@ -183,7 +198,8 @@ export async function PATCH(
       }
     }
 
-    return NextResponse.json({ success: true, student: updatedStudent });
+    const { password, passwordPlain, ...safeStudent } = updatedStudent as any;
+    return NextResponse.json({ success: true, student: safeStudent });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

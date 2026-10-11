@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth';
+import { verifyToken, verifyStaff } from '@/lib/auth';
 
 // GET - Fetch a single group by ID
 export async function GET(
@@ -17,6 +17,30 @@ export async function GET(
 
     if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Role check: staff can view all; students/parents can only view their own group
+    const isStaff = payload.role === 'OWNER' || payload.role === 'ASSISTANT';
+    if (!isStaff) {
+      if (payload.role === 'STUDENT') {
+        const student = await prisma.student.findUnique({
+          where: { id: payload.userId },
+          select: { groupId: true },
+        });
+        if (student?.groupId !== id) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      } else if (payload.role === 'PARENT') {
+        const hasChildInGroup = await prisma.student.findFirst({
+          where: { parentId: payload.userId, groupId: id },
+          select: { id: true },
+        });
+        if (!hasChildInGroup) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     const group = await prisma.group.findUnique({
@@ -119,16 +143,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح بالدخول (Staff Only)' }, { status: 403 });
+    }
     const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-
-    if (!payload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const body = await request.json();
     const {
@@ -220,6 +239,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح بالدخول (Staff Only)' }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json();
     const { name, days, scheduleDays, time, startTime, endTime, schedule, room, location, price, monthlyPrice, maxStudents } = body;
@@ -297,6 +320,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const staff = await verifyStaff(request);
+    if (!staff) {
+      return NextResponse.json({ error: 'غير مصرح بالدخول (Staff Only)' }, { status: 403 });
+    }
     const { id } = await params;
 
     // Check if group has students

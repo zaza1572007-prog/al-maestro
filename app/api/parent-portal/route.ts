@@ -22,9 +22,10 @@ export async function GET(req: Request) {
         select: { parentId: true },
       });
       parentId = stu?.parentId ?? null;
-    } else {
-      // Assume userId IS the parent
+    } else if (payload.role === 'PARENT') {
       parentId = payload.userId as string;
+    } else {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (!parentId) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { whatsappQueue } from '@/lib/message-queue';
+import { verifyToken } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
@@ -11,10 +12,43 @@ export async function POST(
     const body = await request.json();
     const { studentId, answers = {}, timeSpentSeconds = 0 } = body;
 
-    if (!studentId) {
+    // Verify authentication from cookie, header, or body
+    const cookieHeader = request.headers.get('cookie') || '';
+    const authHeader = request.headers.get('authorization') || '';
+    let token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      token = cookieHeader.split('auth-token=')[1]?.split(';')[0];
+    }
+    if (!token && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    }
+    if (!token && body.token) {
+      token = String(body.token).trim();
+    }
+
+    if (!token) {
       return NextResponse.json(
-        { success: false, error: 'معرف الطالب مطلوب لتسجيل النتيجة' },
-        { status: 400 }
+        { success: false, error: 'غير مصرح بالدخول، يرجى تفعيل أو بدء الاختبار أولاً' },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { success: false, error: 'جلسة الاختبار غير صالحة أو منتهية الصلاحية' },
+        { status: 401 }
+      );
+    }
+
+    const isStaff = payload.role === 'OWNER' || payload.role === 'ASSISTANT';
+    const effectiveStudentId = isStaff ? (studentId || payload.userId) : payload.userId;
+
+    // Strict IDOR prevention: a student can NEVER submit on behalf of another student
+    if (!isStaff && studentId && studentId !== payload.userId) {
+      return NextResponse.json(
+        { success: false, error: 'غير مصرح لك بتسليم الاختبار نيابة عن طالب آخر' },
+        { status: 403 }
       );
     }
 
@@ -29,8 +63,22 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'الامتحان غير موجود' }, { status: 404 });
     }
 
+    if (!exam.isOpen) {
+      return NextResponse.json(
+        { success: false, error: 'هذا الكويز مغلق حالياً من قِبل المعلم' },
+        { status: 403 }
+      );
+    }
+
+    if (exam.closesAt && new Date() > new Date(exam.closesAt)) {
+      return NextResponse.json(
+        { success: false, error: 'انتهت المهلة المحددة لتسليم هذا الكويز' },
+        { status: 400 }
+      );
+    }
+
     const student = await prisma.student.findUnique({
-      where: { id: studentId },
+      where: { id: effectiveStudentId },
       include: { parent: true },
     });
 
@@ -40,7 +88,7 @@ export async function POST(
 
     // Check if already submitted
     const existing = await prisma.examResult.findFirst({
-      where: { examId, studentId },
+      where: { examId, studentId: effectiveStudentId },
     });
 
     const rawQuestions = (Array.isArray(exam.questions) ? exam.questions : []) as any[];
@@ -93,7 +141,7 @@ export async function POST(
       resultRecord = await prisma.examResult.create({
         data: {
           examId,
-          studentId,
+          studentId: effectiveStudentId,
           score: totalScore,
           percentage,
           answers,

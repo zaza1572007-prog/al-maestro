@@ -91,7 +91,6 @@ export async function GET(req: Request) {
             relation: true,
             whatsapp: true,
             extraPhone: true,
-            passwordPlain: true,
             createdAt: true,
           }
         },
@@ -103,7 +102,12 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ success: true, students });
+    const safeStudents = students.map((s) => {
+      const { password, passwordPlain, ...safeStudent } = s as any;
+      return safeStudent;
+    });
+
+    return NextResponse.json({ success: true, students: safeStudents });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
@@ -305,9 +309,11 @@ export async function POST(req: Request) {
       }
     }
 
+    const { password: _p, passwordPlain: _pp, ...safeCreatedStudent } = student as any;
+
     return NextResponse.json({
       success: true,
-      student,
+      student: safeCreatedStudent,
       credentials: {
         studentCode: code,
         studentPassword: studentPasswordPlain,
