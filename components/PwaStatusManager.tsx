@@ -1,25 +1,66 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Wifi, WifiOff, Laptop } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 
-/**
- * Real live network & backend server connectivity status hook.
- * Performs real live heartbeat HTTP pings to /api/health with timeout.
- */
-export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+// =========================================================================
+// Single Root Singleton Network & Server Heartbeat Store (Deduplicated)
+// =========================================================================
+let currentOnlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
+const listeners = new Set<() => void>();
 
-  const checkRealConnection = useCallback(async () => {
-    // 1. Check browser network interface first
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setIsOnline(false);
-      return;
+function notifyListeners() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function subscribe(callback: () => void) {
+  listeners.add(callback);
+  return () => {
+    listeners.delete(callback);
+  };
+}
+
+function getSnapshot() {
+  return currentOnlineStatus;
+}
+
+function getServerSnapshot() {
+  return true;
+}
+
+let inFlightHealthCheck: Promise<boolean> | null = null;
+let lastHealthCheckTime = 0;
+const HEALTH_CHECK_INTERVAL_MS = 60_000; // Strictly 60 seconds interval as required
+
+async function executeHeartbeat(force = false): Promise<boolean> {
+  if (typeof window === 'undefined') return true;
+
+  // 1. If browser network interface is already offline, update immediately without fetching
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (currentOnlineStatus !== false) {
+      currentOnlineStatus = false;
+      notifyListeners();
     }
+    return false;
+  }
 
-    // 2. Perform live HTTP heartbeat check against /api/health with a 4s timeout
+  // 2. Throttle checks: don't re-check if done within the last interval unless forced (e.g. online event)
+  const now = Date.now();
+  if (!force && now - lastHealthCheckTime < HEALTH_CHECK_INTERVAL_MS) {
+    return currentOnlineStatus;
+  }
+
+  // 3. Prevent parallel in-flight duplicate requests
+  if (inFlightHealthCheck) {
+    return inFlightHealthCheck;
+  }
+
+  inFlightHealthCheck = (async () => {
+    lastHealthCheckTime = Date.now();
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -32,41 +73,66 @@ export function useNetworkStatus() {
 
       clearTimeout(timeoutId);
 
-      if (res.ok) {
-        setIsOnline(true);
-      } else {
-        setIsOnline(false);
+      const isHealthy = res.ok;
+      if (currentOnlineStatus !== isHealthy) {
+        currentOnlineStatus = isHealthy;
+        notifyListeners();
       }
+      return isHealthy;
     } catch {
-      // Network error, timeout, or server unreachable
-      setIsOnline(false);
+      if (currentOnlineStatus !== false) {
+        currentOnlineStatus = false;
+        notifyListeners();
+      }
+      return false;
+    } finally {
+      inFlightHealthCheck = null;
     }
+  })();
+
+  return inFlightHealthCheck;
+}
+
+let isGlobalHeartbeatInitialized = false;
+
+function initGlobalHeartbeat() {
+  if (isGlobalHeartbeatInitialized || typeof window === 'undefined') return;
+  isGlobalHeartbeatInitialized = true;
+
+  // Initial single check on startup
+  executeHeartbeat(true);
+
+  // Exactly ONE interval running across the entire application every 60 seconds
+  setInterval(() => {
+    // Skip heartbeat if tab is in the background
+    if (document.hidden) return;
+    executeHeartbeat();
+  }, HEALTH_CHECK_INTERVAL_MS);
+
+  // Event-driven triggers
+  window.addEventListener('online', () => executeHeartbeat(true));
+  window.addEventListener('offline', () => {
+    currentOnlineStatus = false;
+    notifyListeners();
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - lastHealthCheckTime >= HEALTH_CHECK_INTERVAL_MS) {
+      executeHeartbeat();
+    }
+  });
+}
+
+/**
+ * Real live network & backend server connectivity status hook.
+ * Uses a single deduplicated root store with a 60-second heartbeat interval.
+ */
+export function useNetworkStatus(): boolean {
+  useEffect(() => {
+    initGlobalHeartbeat();
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Check connection immediately on mount
-    checkRealConnection();
-
-    // Listen to browser network change events
-    const handleOnline = () => checkRealConnection();
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Live heartbeat ping every 10 seconds to verify real backend status
-    const interval = setInterval(checkRealConnection, 10000);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(interval);
-    };
-  }, [checkRealConnection]);
-
-  return isOnline;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export function usePwaInstallPrompt() {
