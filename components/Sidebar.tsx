@@ -434,9 +434,9 @@ export default function Sidebar() {
                   layoutId="sidebar-active-indicator"
                   className="absolute inset-0 rounded-xl"
                   style={{
-                    background: `linear-gradient(to left, rgb(var(--p) / 0.24) 0%, rgb(var(--s) / 0.08) 100%)`,
-                    border: `1px solid rgb(var(--p) / 0.35)`,
-                    boxShadow: `0 0 20px rgb(var(--p) / 0.15)`,
+                    background: `linear-gradient(to left, rgb(var(--p) / 0.22) 0%, rgb(var(--s) / 0.06) 100%)`,
+                    border: `1px solid rgb(var(--p) / 0.38)`,
+                    boxShadow: `0 0 20px rgb(var(--p) / 0.16)`,
                   }}
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
@@ -445,7 +445,7 @@ export default function Sidebar() {
                   className="absolute right-0 top-1.5 bottom-1.5 w-[3.5px] rounded-l-full shadow-sm"
                   style={{
                     background: `linear-gradient(to bottom, rgb(var(--p)), rgb(var(--s)))`,
-                    boxShadow: `0 0 10px rgb(var(--p))`,
+                    boxShadow: `0 0 12px rgb(var(--p)), 0 0 4px rgb(var(--s))`,
                   }}
                 />
               </>
@@ -564,11 +564,12 @@ export default function Sidebar() {
             : { x: 0, width: isCollapsed ? 72 : 256 }
         }
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col h-screen fixed lg:sticky top-0 right-0 lg:right-auto no-print select-none z-50 lg:z-30 shadow-2xl"
+        className="flex flex-col h-screen fixed lg:sticky top-0 right-0 lg:right-auto no-print select-none z-50 lg:z-30 shadow-2xl backdrop-blur-xl"
         style={{
-          background: 'linear-gradient(180deg, rgba(9,11,26,0.97) 0%, rgba(6,9,19,0.98) 100%)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(24px)',
+          background: 'linear-gradient(180deg, rgba(11, 15, 25, 0.82) 0%, rgba(7, 10, 20, 0.88) 100%)',
+          borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
         }}
       >
         {/* Top glow accent line */}
@@ -705,25 +706,40 @@ export default function Sidebar() {
           )}
         </nav>
 
-        {/* Modern Floating Profile Card Footer */}
+        {/* Modern Floating Profile Glass Card Footer */}
         <div
           className="p-2.5 shrink-0"
           style={{
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            background: 'linear-gradient(180deg, rgba(6,9,19,0.3) 0%, rgba(6,9,19,0.9) 100%)',
+            borderTop: '1px solid rgba(255,255,255,0.07)',
+            background: 'linear-gradient(180deg, rgba(6,9,19,0.15) 0%, rgba(6,9,19,0.6) 100%)',
           }}
         >
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="p-2 rounded-2xl flex items-center justify-between gap-1.5 transition-all duration-300 group/card relative overflow-hidden"
+            style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.07)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            {/* Ambient card hover glow */}
+            <div
+              className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+              style={{
+                background: 'radial-gradient(circle at center, rgb(var(--p) / 0.12), transparent 70%)',
+              }}
+            />
+            <div className="flex items-center gap-2 min-w-0 relative z-10">
               <div className="relative">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-md border border-white/15 flex-shrink-0 overflow-hidden"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-md border border-white/20 flex-shrink-0 overflow-hidden"
                   style={{
                     background: avatarUrl
                       ? 'transparent'
                       : `linear-gradient(135deg, rgb(var(--p)) 0%, rgb(var(--s)) 100%)`,
-                    boxShadow: '0 2px 10px rgb(var(--p) / 0.3)',
+                    boxShadow: '0 2px 10px rgb(var(--p) / 0.35)',
                   }}
                 >
                   {avatarUrl ? (
@@ -733,8 +749,8 @@ export default function Sidebar() {
                     currentUser?.name?.charAt(0) || 'أ'
                   )}
                 </motion.div>
-                {/* Live Online Badge */}
-                <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                {/* Live Online Badge with pulse */}
+                <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
               </div>
 
               <AnimatePresence>
@@ -746,14 +762,14 @@ export default function Sidebar() {
                     transition={{ duration: 0.2 }}
                     className="min-w-0"
                   >
-                    <p className="font-semibold text-slate-200 text-xs truncate">
+                    <p className="font-bold text-slate-200 text-xs truncate leading-snug">
                       {currentUser?.name || 'جاري التحميل...'}
                     </p>
                     <span
                       className="inline-block text-[10px] px-2 py-0.5 rounded-full border font-semibold mt-0.5"
                       style={{
-                        backgroundColor: 'rgb(var(--p) / 0.12)',
-                        borderColor: 'rgb(var(--p) / 0.25)',
+                        backgroundColor: 'rgb(var(--p) / 0.14)',
+                        borderColor: 'rgb(var(--p) / 0.3)',
                         color: 'rgb(var(--p))',
                       }}
                     >
@@ -777,7 +793,7 @@ export default function Sidebar() {
                   window.location.href = '/select-role';
                 }
               }}
-              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
+              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/25 transition-all cursor-pointer relative z-10"
               title="تسجيل الخروج"
             >
               <LogOut className="w-4 h-4" />

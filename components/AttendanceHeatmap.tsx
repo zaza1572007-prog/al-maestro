@@ -43,34 +43,34 @@ const MONTH_NAMES = [
 // Color mapping for levels
 const LEVEL_CLASSES: Record<number, { bg: string; border: string; text: string; glow: string }> = {
   0: {
-    bg: 'bg-zinc-200/70 hover:bg-zinc-300 dark:bg-slate-900/60 dark:hover:bg-slate-800',
-    border: 'border-zinc-300/80 dark:border-slate-800/80',
+    bg: 'bg-zinc-200/60 hover:bg-zinc-300 dark:bg-slate-900/60 dark:hover:bg-slate-800',
+    border: 'border-zinc-300/70 dark:border-slate-800/80',
     text: 'text-zinc-500 dark:text-slate-600',
     glow: 'none',
   },
   1: {
-    bg: 'bg-rose-500/20 hover:bg-rose-500/30',
+    bg: 'bg-rose-500/25 hover:bg-rose-500/40',
     border: 'border-rose-500/40',
     text: 'text-rose-600 dark:text-rose-400',
-    glow: '0 0 10px rgba(244, 63, 94, 0.2)',
+    glow: '0 0 10px rgba(244, 63, 94, 0.25)',
   },
   2: {
-    bg: 'bg-amber-500/25 hover:bg-amber-500/40',
-    border: 'border-amber-500/45',
+    bg: 'bg-amber-500/30 hover:bg-amber-500/45',
+    border: 'border-amber-500/50',
     text: 'text-amber-600 dark:text-amber-400',
-    glow: '0 0 10px rgba(245, 158, 11, 0.2)',
+    glow: '0 0 12px rgba(245, 158, 11, 0.25)',
   },
   3: {
-    bg: 'bg-blue-500/30 hover:bg-blue-500/45',
-    border: 'border-blue-500/50',
+    bg: 'bg-blue-500/35 hover:bg-blue-500/50',
+    border: 'border-blue-500/55',
     text: 'text-blue-600 dark:text-blue-400',
-    glow: '0 0 12px rgba(59, 130, 246, 0.25)',
+    glow: '0 0 14px rgba(59, 130, 246, 0.3)',
   },
   4: {
-    bg: 'bg-emerald-500/40 hover:bg-emerald-500/60',
-    border: 'border-emerald-500/60 dark:border-emerald-400/60',
+    bg: 'bg-emerald-500/45 hover:bg-emerald-500/65',
+    border: 'border-emerald-500/65 dark:border-emerald-400/70',
     text: 'text-emerald-600 dark:text-emerald-400',
-    glow: '0 0 15px rgba(16, 185, 129, 0.35)',
+    glow: '0 0 16px rgba(16, 185, 129, 0.4)',
   },
 };
 
@@ -187,8 +187,11 @@ export default function AttendanceHeatmap({ className = '' }: AttendanceHeatmapP
 
   return (
     <div
-      className={`bg-white dark:bg-zinc-900/70 border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-sm dark:shadow-2xl relative overflow-hidden ${className}`}
+      className={`bg-white/90 dark:bg-zinc-900/70 backdrop-blur-xl border border-zinc-200/90 dark:border-white/10 rounded-3xl p-5 sm:p-6 shadow-sm dark:shadow-2xl relative overflow-hidden ${className}`}
     >
+      {/* Ambient background glow accents */}
+      <div className="absolute -top-24 -left-24 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-lg font-bold text-zinc-950 dark:text-white flex items-center gap-2">
