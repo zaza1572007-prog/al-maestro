@@ -108,12 +108,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'الرجاء تمرير كود الطالب أو الباركود' }, { status: 400 });
     }
 
-    // Dynamic HMAC-SHA256 QR Verification
-    const qrVerification = verifyStudentQR(studentCode);
-    if (!qrVerification.valid) {
-      return NextResponse.json({ success: false, error: qrVerification.reason || 'كود الـ QR غير صالح' }, { status: 400 });
+    // Dynamic HMAC-SHA256 QR Verification if input is a signed QR JSON payload
+    let resolvedCode = studentCode.trim();
+    if (resolvedCode.startsWith('{') || resolvedCode.includes('"sig"') || resolvedCode.startsWith('%7B')) {
+      const qrVerification = verifyStudentQR(resolvedCode);
+      if (qrVerification.valid && qrVerification.studentId) {
+        resolvedCode = qrVerification.studentId;
+      }
     }
-    const resolvedCode = qrVerification.studentId;
 
     // Maintain session states matching Cairo timezone
     await syncTodaySessionsState();

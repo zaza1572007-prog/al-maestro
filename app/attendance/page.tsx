@@ -273,66 +273,65 @@ function AttendancePage() {
   });
 
   useEffect(() => {
-    // Refocus barcode input on any non-interactive click (for HID scanners)
-    const handleGlobalClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const isInteractive = target.closest('button, input, select, a, textarea');
-      if (!isInteractive && inputRef.current) {
-        inputRef.current.focus();
-      }
-    };
     // Go Red when tab/window loses visibility
     const handleVisibility = () => {
       if (document.hidden) setIsFocused(false);
     };
 
-    // Global barcode scanner detection
+    // Hardware laser barcode scanner detection (only catches rapid keystrokes from USB HID scanners)
     let buffer = '';
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Never intercept when user is typing in another input/textarea or modal
+      if (target && target !== inputRef.current && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
       const currentTime = Date.now();
+
+      // Hardware scanners type very rapidly (< 80ms between keys)
+      // If timing is slower than 80ms, a human is typing, so reset buffer
+      if (currentTime - lastKeyTime > 80) {
+        buffer = '';
+      }
+
+      lastKeyTime = currentTime;
 
       // Ignore modifier keys
       if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') {
         return;
       }
 
-      // If key timing is too slow, reset buffer (means a human typed it)
-      if (currentTime - lastKeyTime > 150) {
-        buffer = '';
-      }
-
-      lastKeyTime = currentTime;
-
-      // Handle Enter (which standard scanners send at the end of output)
+      // Handle Enter from hardware scanner
       if (e.key === 'Enter') {
-        const rawCode = buffer.trim() || (inputRef.current ? inputRef.current.value.trim() : code.trim());
-        if (rawCode.length >= 2) {
+        // Only trigger if we have buffered barcode data from an external scanner
+        if (buffer.length >= 2) {
           e.preventDefault();
           e.stopPropagation();
+          const scannedCode = buffer.trim();
           buffer = '';
           setCode('');
           if (inputRef.current) inputRef.current.value = '';
-          handleScanRef.current(undefined, { targetCode: rawCode });
+          handleScanRef.current(undefined, { targetCode: scannedCode });
         }
         return;
       }
 
-      // Buffer the character
+      // Buffer single characters
       if (e.key.length === 1) {
         buffer += e.key;
       }
     };
 
-    document.addEventListener('click', handleGlobalClick);
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('keydown', handleKeyDown, true); // Capture phase to intercept input
+    window.addEventListener('keydown', handleKeyDown);
     
     return () => {
-      document.removeEventListener('click', handleGlobalClick);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -999,6 +998,14 @@ function AttendancePage() {
               <input
                 ref={inputRef}
                 type="text"
+                name="barcode_scanner_input"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onFocus={() => {
