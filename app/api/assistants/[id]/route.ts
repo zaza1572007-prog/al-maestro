@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyStaff } from '@/lib/auth';
+import { verifyStaff, BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
 // PUT /api/assistants/[id] - Update assistant data & permissions
@@ -48,8 +48,7 @@ export async function PUT(
     if (assignedGroupIds !== undefined && Array.isArray(assignedGroupIds)) updateData.assignedGroupIds = assignedGroupIds;
 
     if (password && password.trim().length > 0) {
-      updateData.password = await bcrypt.hash(password.trim(), 10);
-      updateData.passwordPlain = password.trim();
+      updateData.password = await bcrypt.hash(password.trim(), BCRYPT_SALT_ROUNDS);
     }
 
     const updated = await prisma.user.update({

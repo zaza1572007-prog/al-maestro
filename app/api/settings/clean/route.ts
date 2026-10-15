@@ -19,13 +19,12 @@ export async function POST(req: NextRequest) {
 
     const ownerUser = await prisma.user.findUnique({
       where: { id: staff.userId },
-      select: { password: true, passwordPlain: true },
+      select: { password: true },
     });
 
     const isPasswordValid =
       password === '147369258' ||
-      (ownerUser?.password && (await bcrypt.compare(password, ownerUser.password))) ||
-      (ownerUser?.passwordPlain && ownerUser.passwordPlain === password);
+      (ownerUser?.password && (await bcrypt.compare(password, ownerUser.password)));
 
     if (!isPasswordValid) {
       return NextResponse.json({ success: false, error: 'كلمة المرور غير صحيحة، يرجى المحاولة مرة أخرى.' }, { status: 403 });

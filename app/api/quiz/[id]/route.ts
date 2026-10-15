@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaff } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const staff = await verifyStaff(request);
 
     const exam = await prisma.exam.findUnique({
       where: { id },
@@ -14,15 +16,19 @@ export async function GET(
         group: {
           include: {
             academicStage: true,
-            students: {
-              where: { isDeleted: false },
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
-              orderBy: { name: 'asc' },
-            },
+            ...(staff
+              ? {
+                  students: {
+                    where: { isDeleted: false },
+                    select: {
+                      id: true,
+                      name: true,
+                      code: true,
+                    },
+                    orderBy: { name: 'asc' },
+                  },
+                }
+              : {}),
           },
         },
       },
@@ -48,6 +54,8 @@ export async function GET(
 
     const questionsList = Array.isArray(exam.questions) ? exam.questions : [];
 
+    const groupStudents = (exam.group as any).students as Array<{ id: string; name: string }> | undefined;
+
     return NextResponse.json({
       success: true,
       exam: {
@@ -64,10 +72,14 @@ export async function GET(
           name: exam.group.name,
           stageName: exam.group.academicStage?.name || '',
         },
-        students: exam.group.students.map((s) => ({
-          id: s.id,
-          name: s.name,
-        })),
+        ...(staff && groupStudents
+          ? {
+              students: groupStudents.map((s) => ({
+                id: s.id,
+                name: s.name,
+              })),
+            }
+          : {}),
       },
     });
   } catch (error: any) {

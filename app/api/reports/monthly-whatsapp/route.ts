@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { verifyStaff } from '@/lib/auth';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import crypto from 'crypto';
+import { ENV, timingSafeCompare } from '@/lib/env';
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'fallback-maestro-secret-key-12345';
+const SECRET = ENV.NEXTAUTH_SECRET;
 
 // Helper to generate a stateless cryptographically signed token
 export function generateMagicToken(studentId: string, month: number, year: number): string {
@@ -30,7 +31,7 @@ export function verifyMagicToken(token: string): { studentId: string; month: num
     const expectedHash = crypto.createHmac('sha256', SECRET).update(payload).digest('hex');
     const expectedSignature = expectedHash.slice(0, 16);
 
-    if (signature === expectedSignature) {
+    if (timingSafeCompare(signature, expectedSignature)) {
       return { studentId, month, year };
     }
   } catch (e) {

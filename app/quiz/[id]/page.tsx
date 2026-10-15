@@ -42,7 +42,7 @@ interface PublicExamData {
     name: string;
     stageName?: string;
   };
-  students: StudentOption[];
+  students?: StudentOption[];
 }
 
 interface QuestionForPlayer {
@@ -121,6 +121,9 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
         if (data.success && data.exam) {
           setExamData(data.exam);
           setSecondsRemaining((data.exam.duration || 15) * 60);
+          if (!data.exam.students || data.exam.students.length === 0) {
+            setLoginMode('CREDENTIALS');
+          }
         } else {
           setFetchError(data.error || 'تعذر تحميل بيانات الكويز');
         }
@@ -695,39 +698,46 @@ export default function PublicQuizPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-950 border border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMode('ACTIVATION');
-                setVerifyError(null);
-              }}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                loginMode === 'ACTIVATION'
-                  ? 'bg-amber-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Phone className="w-3.5 h-3.5" />
-              <span>تفعيل لأول مرة (بالأرقام)</span>
-            </button>
+          {examData.students && examData.students.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-slate-950 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMode('ACTIVATION');
+                  setVerifyError(null);
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  loginMode === 'ACTIVATION'
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>تفعيل لأول مرة (بالأرقام)</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setLoginMode('CREDENTIALS');
-                setVerifyError(null);
-              }}
-              className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                loginMode === 'CREDENTIALS'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>دخول سريع (كود وباسورد)</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMode('CREDENTIALS');
+                  setVerifyError(null);
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  loginMode === 'CREDENTIALS'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>دخول سريع (كود وباسورد)</span>
+              </button>
+            </div>
+          ) : (
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-300 text-xs flex items-center gap-2">
+              <Lock className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>تسجيل الدخول المباشر بكود الطالب وكلمة المرور المسجلة</span>
+            </div>
+          )}
 
           {verifyError && (
             <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">

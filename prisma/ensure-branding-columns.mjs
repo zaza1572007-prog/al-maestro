@@ -80,9 +80,9 @@ async function main() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "Student" ALTER COLUMN "phone" DROP NOT NULL;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "Group" ADD COLUMN IF NOT EXISTS "schedule" JSONB;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "Group" ADD COLUMN IF NOT EXISTS "monthlyPrice" DOUBLE PRECISION;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
-  await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordPlain" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Student" DROP COLUMN IF EXISTS "passwordPlain";`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "Parent" DROP COLUMN IF EXISTS "passwordPlain";`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "User" DROP COLUMN IF EXISTS "passwordPlain";`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "assignedGroupIds" TEXT[] DEFAULT ARRAY[]::TEXT[];`);
@@ -151,44 +151,7 @@ async function main() {
     END $$;
   `);
 
-  // Generate plain passwords for legacy students who don't have passwordPlain
-  const studentsWithoutPlain = await prisma.student.findMany({
-    where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },
-    select: { id: true },
-  });
-
-  const bcrypt = require('bcrypt');
-  for (const stu of studentsWithoutPlain) {
-    const plainPass = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashed = await bcrypt.hash(plainPass, 10);
-    await prisma.student.update({
-      where: { id: stu.id },
-      data: {
-        password: hashed,
-        passwordPlain: plainPass,
-      },
-    });
-  }
-
-  // Generate plain passwords for legacy parents who don't have passwordPlain
-  const parentsWithoutPlain = await prisma.parent.findMany({
-    where: { OR: [{ passwordPlain: null }, { passwordPlain: '' }] },
-    select: { id: true },
-  });
-
-  for (const pr of parentsWithoutPlain) {
-    const plainPass = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashed = await bcrypt.hash(plainPass, 10);
-    await prisma.parent.update({
-      where: { id: pr.id },
-      data: {
-        password: hashed,
-        passwordPlain: plainPass,
-      },
-    });
-  }
-
-  console.log('✅ Branding and dynamic columns are ready.');
+  console.log('✅ Branding and dynamic columns are ready (passwordPlain safely dropped).');
 }
 
 main()

@@ -1,6 +1,7 @@
 import crypto from 'crypto';
+import { ENV } from '@/lib/env';
 
-const QR_SECRET = process.env.QR_SECRET || process.env.JWT_SECRET || 'al-maestro-super-secure-qr-secret-key-2026';
+const QR_SECRET = ENV.QR_SECRET;
 
 export interface QRPayload {
   studentId: string;
@@ -24,16 +25,38 @@ export function generateSignedStudentQR(studentId: string): string {
 }
 
 /**
- * Verifies a QR payload string (Supports both Signed HMAC QR and legacy raw student code/ID).
+ * Verifies a QR payload string with strict HMAC-SHA256 signature verification.
+ * Raw unsigned strings are rejected (isLegacy: false, valid: false).
  */
 export function verifyStudentQR(qrData: string): { valid: boolean; studentId: string; isLegacy: boolean; reason?: string } {
   if (!qrData) {
     return { valid: false, studentId: '', isLegacy: false, reason: 'كود الباركود فارغ' };
   }
 
-  const trimmed = qrData.trim();
+  let trimmed = qrData.trim();
 
-  // Try parsing as JSON (Signed Dynamic QR)
+  // Extract token parameter if a full URL was scanned
+  if (trimmed.includes('token=')) {
+    const tokenMatch = trimmed.match(/[?&]token=([^&#\s]+)/i);
+    if (tokenMatch && tokenMatch[1]) {
+      try {
+        trimmed = decodeURIComponent(tokenMatch[1]);
+      } catch {
+        trimmed = tokenMatch[1];
+      }
+    }
+  }
+
+  // Handle URL-encoded JSON
+  if (trimmed.startsWith('%7B') || trimmed.startsWith('%7b')) {
+    try {
+      trimmed = decodeURIComponent(trimmed);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Validate Signed Dynamic QR payload (JSON format)
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       const parsed: QRPayload = JSON.parse(trimmed);
@@ -50,15 +73,15 @@ export function verifyStudentQR(qrData: string): { valid: boolean; studentId: st
       if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
         return { valid: true, studentId: parsed.studentId, isLegacy: false };
       } else {
-        return { valid: false, studentId: parsed.studentId, isLegacy: false, reason: 'توقيع الكود غير مطابق أو تم التلاعب به' };
+        return { valid: false, studentId: '', isLegacy: false, reason: 'توقيع الكود غير مطابق أو تم التلاعب به' };
       }
     } catch {
-      // Fallback if JSON parse failed
+      return { valid: false, studentId: '', isLegacy: false, reason: 'فشل في قراءة بيانات كود QR الموقّع' };
     }
   }
 
-  // Legacy fallback: treat raw string as plain student code / UUID
-  return { valid: true, studentId: trimmed, isLegacy: true };
+  // Reject raw strings that lack valid cryptographic HMAC signature
+  return { valid: false, studentId: '', isLegacy: false, reason: 'رمز QR غير صالح أو غير موثق بتوقيع رقمي' };
 }
 
 export function extractNumericDigits(rawInput: string): string[] {

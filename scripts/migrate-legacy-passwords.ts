@@ -17,15 +17,13 @@ async function main() {
   const studentsWithoutPass = await prisma.student.findMany({
     where: {
       OR: [
-        { passwordPlain: null },
-        { passwordPlain: '' },
         { password: null },
         { password: '' }
       ]
     }
   });
 
-  console.log(`🔍 Found ${studentsWithoutPass.length} students missing plain or hashed passwords.`);
+  console.log(`🔍 Found ${studentsWithoutPass.length} students missing hashed passwords.`);
 
   for (const student of studentsWithoutPass) {
     try {
@@ -35,7 +33,6 @@ async function main() {
         where: { id: student.id },
         data: {
           password: hashed,
-          passwordPlain: studentPass
         }
       });
       console.log(`✅ Updated password for student: ${student.name} (Code: ${student.code})`);
@@ -48,15 +45,13 @@ async function main() {
   const parentsWithoutPass = await prisma.parent.findMany({
     where: {
       OR: [
-        { passwordPlain: null },
-        { passwordPlain: '' },
         { password: null },
         { password: '' }
       ]
     }
   });
 
-  console.log(`\n🔍 Found ${parentsWithoutPass.length} parents missing plain or hashed passwords.`);
+  console.log(`\n🔍 Found ${parentsWithoutPass.length} parents missing hashed passwords.`);
 
   for (const parent of parentsWithoutPass) {
     try {
@@ -66,7 +61,6 @@ async function main() {
         where: { id: parent.id },
         data: {
           password: hashed,
-          passwordPlain: parentPass
         }
       });
       console.log(`✅ Updated password for parent: ${parent.name} (Phone: ${parent.phone})`);

@@ -82,8 +82,8 @@ export async function GET(
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
-    // Never expose password hashes or plain passwords
-    const { password, passwordPlain, ...safeStudent } = student as any;
+    // Never expose password hashes
+    const { password, ...safeStudent } = student as any;
 
     return NextResponse.json({ student: safeStudent });
   } catch (error) {
@@ -143,7 +143,7 @@ export async function PUT(
       },
     });
 
-    const { password, passwordPlain, ...safeStudent } = student as any;
+    const { password, ...safeStudent } = student as any;
     return NextResponse.json({ student: safeStudent });
   } catch (error) {
     console.error('Error updating student:', error);
@@ -198,7 +198,7 @@ export async function PATCH(
       }
     }
 
-    const { password, passwordPlain, ...safeStudent } = updatedStudent as any;
+    const { password, ...safeStudent } = updatedStudent as any;
     return NextResponse.json({ success: true, student: safeStudent });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

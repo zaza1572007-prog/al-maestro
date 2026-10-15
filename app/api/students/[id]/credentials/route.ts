@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyStaff } from '@/lib/auth';
+import { verifyStaff, BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
 export async function GET(
@@ -26,14 +26,14 @@ export async function GET(
         name: true,
         phone: true,
         qrCode: true,
-        passwordPlain: true,
+        password: true,
         parent: {
           select: {
             id: true,
             name: true,
             phone: true,
             whatsapp: true,
-            passwordPlain: true,
+            password: true,
           },
         },
       },
@@ -48,7 +48,6 @@ export async function GET(
 
     const isOwner = staff.role === 'OWNER';
 
-    // Strictly restrict plain password exposure strictly to payload.role === 'OWNER'
     return NextResponse.json({
       success: true,
       isOwner,
@@ -58,10 +57,10 @@ export async function GET(
         studentCode: student.code,
         studentPhone: student.phone,
         studentQrCode: student.qrCode,
-        studentPasswordPlain: isOwner ? student.passwordPlain : null,
+        hasStudentPassword: !!student.password,
         parentName: student.parent?.name || 'ولي أمر',
         parentPhone: student.parent?.phone || '',
-        parentPasswordPlain: isOwner ? (student.parent?.passwordPlain || null) : null,
+        hasParentPassword: !!student.parent?.password,
       },
     });
   } catch (error: any) {
@@ -114,8 +113,7 @@ export async function PUT(
       if (studentPassword.length < 4) {
         return NextResponse.json({ error: 'كلمة مرور الطالب يجب ألا تقل عن 4 خانات' }, { status: 400 });
       }
-      studentData.password = await bcrypt.hash(studentPassword, 10);
-      studentData.passwordPlain = studentPassword;
+      studentData.password = await bcrypt.hash(studentPassword, BCRYPT_SALT_ROUNDS);
     }
 
     // 3. Prepare parent data updates
@@ -125,8 +123,7 @@ export async function PUT(
       if (parentPassword.length < 4) {
         return NextResponse.json({ error: 'كلمة مرور ولي الأمر يجب ألا تقل عن 4 خانات' }, { status: 400 });
       }
-      parentData.password = await bcrypt.hash(parentPassword, 10);
-      parentData.passwordPlain = parentPassword;
+      parentData.password = await bcrypt.hash(parentPassword, BCRYPT_SALT_ROUNDS);
     }
 
     // 4. Perform updates in transaction
@@ -148,8 +145,6 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       message: 'تم تحديث بيانات الدخول والاعتماديات بنجاح!',
-      studentPasswordPlain: studentPassword || undefined,
-      parentPasswordPlain: parentPassword || undefined,
     });
   } catch (error: any) {
     console.error('Credentials Update Error:', error);

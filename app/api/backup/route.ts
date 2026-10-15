@@ -19,8 +19,8 @@ export async function GET(req: Request) {
     const settings = await prisma.systemSettings.findMany({ select: safeSettingsSelect });
 
     // Sanitize credentials from backup dump
-    const safeParents = parents.map(({ password, passwordPlain, ...p }: any) => p);
-    const safeStudents = students.map(({ password, passwordPlain, ...s }: any) => s);
+    const safeParents = parents.map(({ password, ...p }: any) => p);
+    const safeStudents = students.map(({ password, ...s }: any) => s);
 
     const backupData = {
       timestamp: new Date().toISOString(),

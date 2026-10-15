@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { verifyStaff } from '@/lib/auth';
 import crypto from 'crypto';
+import { ENV } from '@/lib/env';
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'fallback-maestro-secret-key-12345';
+const SECRET = ENV.NEXTAUTH_SECRET;
 
 const arabicMonths = [
   'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',

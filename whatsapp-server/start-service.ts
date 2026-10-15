@@ -13,9 +13,10 @@ import pino from 'pino';
 import path from 'path';
 import fs from 'fs';
 import { Boom } from '@hapi/boom';
+import { ENV, timingSafeCompare } from '../lib/env';
 
 const PORT = parseInt(process.env.WA_PORT || '5005', 10);
-const API_TOKEN = process.env.WA_API_TOKEN || 'almaestro_wa_secret_token_2026';
+const API_TOKEN = ENV.WA_API_TOKEN;
 const AUTH_DIR = path.join(process.cwd(), 'whatsapp_auth_info');
 
 let sock: WASocket | null = null;
@@ -244,7 +245,7 @@ const server = http.createServer(async (req, res) => {
           body.token || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader);
 
         const normalizeToken = (t: string) => (t || '').trim().replace(/[\s_-]+/g, '').toLowerCase();
-        if (normalizeToken(token) !== normalizeToken(API_TOKEN)) {
+        if (!timingSafeCompare(normalizeToken(token), normalizeToken(API_TOKEN))) {
           res.writeHead(401, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'Unauthorized: Invalid API Token' }));
           return;

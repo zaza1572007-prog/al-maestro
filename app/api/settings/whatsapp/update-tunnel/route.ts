@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { ENV, timingSafeCompare } from '@/lib/env';
 
-const API_TOKEN = process.env.WA_API_TOKEN || process.env.TUNNEL_SECRET || 'almaestro_wa_secret_token_2026';
+const API_TOKEN = ENV.WA_API_TOKEN;
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const normalizeToken = (t: string) => (t || '').trim().replace(/[\s_-]+/g, '').toLowerCase();
-    if (normalizeToken(providedToken) !== normalizeToken(API_TOKEN)) {
+    if (!timingSafeCompare(normalizeToken(providedToken), normalizeToken(API_TOKEN))) {
       return NextResponse.json({ success: false, error: 'Unauthorized: Invalid API Token' }, { status: 401 });
     }
 

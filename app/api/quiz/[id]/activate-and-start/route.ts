@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { signToken } from '@/lib/auth';
+import bcrypt from 'bcrypt';
 
 function cleanPhone(phone: string | null | undefined): string {
   if (!phone) return '';
@@ -88,8 +89,7 @@ export async function POST(
       }
 
       const inputPass = String(password).trim();
-      const validPass = (student.passwordPlain && student.passwordPlain === inputPass) ||
-        (student.password && student.password === inputPass);
+      const validPass = student.password ? await bcrypt.compare(inputPass, student.password) : false;
 
       if (!validPass) {
         return NextResponse.json(
@@ -189,18 +189,17 @@ export async function POST(
     const protocol = host.includes('localhost') ? 'http' : 'https';
     const loginUrl = `${protocol}://${host}/login`;
 
-    const passwordToSend = student.passwordPlain || '123456';
     const waMessage = `🎓 *أهلاً بك يا ${student.name} في منصة المايسترو التعليمية*
-
+ 
 ✅ تم التحقق من هويتك بنجاح وبدء اختبار *(${exam.title})* 🚀
-
+ 
 📌 *بيانات تسجيل دخولك الرسمية للمنصة (احتفظ بها دائماً):*
 👤 *كود الطالب (اسم المستخدم):* \`${student.code}\`
-🔑 *كلمة المرور:* \`${passwordToSend}\`
+🔑 *كلمة المرور:* مسجلة ومحفوظة بحسابكم 🔒
 👥 *المجموعة:* ${student.group.name}
-
+ 
 🌐 *رابط المنصة:* ${loginUrl}
-
+ 
 ⭐ *نتمنى لك التوفيق والدرجة النهائية في اختبار اليوم!*`;
 
     try {
@@ -251,7 +250,6 @@ export async function POST(
 
     const res = NextResponse.json({
       success: true,
-      token: studentToken,
       alreadySubmitted: false,
       student: {
         id: student.id,

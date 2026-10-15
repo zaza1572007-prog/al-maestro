@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyStaff } from '@/lib/auth';
+import { verifyStaff, BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import bcrypt from 'bcrypt';
 
 async function tryDispatchWhatsApp(to: string, body: string) {
   try {
@@ -77,12 +78,20 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const studentNames = parent.students.map(s => s.name).join(', ');
     const studentCodes = parent.students.map(s => s.code).join(', ');
 
+    // Generate fresh temporary password, hash it with bcrypt, and update database
+    const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedPassword = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+    await prisma.parent.update({
+      where: { id: parent.id },
+      data: { password: hashedPassword },
+    });
+
     const msg = fillTemplate(parentTpl, {
       parent_name: parent.name,
       student_name: studentNames,
       student_code: studentCodes,
       username: parent.phone,
-      password: parent.passwordPlain || '123456',
+      password: tempPassword,
     });
 
     const dispatch = await tryDispatchWhatsApp(targetPhone, msg);

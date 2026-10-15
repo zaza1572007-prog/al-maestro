@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyStaff } from '@/lib/auth';
+import { verifyStaffWithPermission, BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
@@ -58,9 +58,9 @@ async function tryDispatchWhatsApp(to: string, body: string) {
 
 export async function GET(req: Request) {
   try {
-    const staff = await verifyStaff(req);
+    const staff = await verifyStaffWithPermission(req, 'students.view');
     if (!staff) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول (يتطلب صلاحية استعراض الطلاب)' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
     });
 
     const safeStudents = students.map((s) => {
-      const { password, passwordPlain, ...safeStudent } = s as any;
+      const { password, ...safeStudent } = s as any;
       return safeStudent;
     });
 
@@ -115,9 +115,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const staff = await verifyStaff(req);
+    const staff = await verifyStaffWithPermission(req, 'students.create');
     if (!staff) {
-      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بإضافة طلاب جدد (يتطلب صلاحية إضافة طالب)' }, { status: 403 });
     }
 
     const { name, phone, academicStageId, groupId, parentName, parentPhone, parentRelation, parentWhatsapp, parentExtraPhone } = await req.json();
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
 
     // Track the temporary parent password for initial setup/WhatsApp notification
     const parentPasswordPlain = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedParentPassword = await bcrypt.hash(parentPasswordPlain, 10);
+    const hashedParentPassword = await bcrypt.hash(parentPasswordPlain, BCRYPT_SALT_ROUNDS);
 
     if (!parent) {
       parent = await prisma.parent.create({
@@ -173,7 +173,6 @@ export async function POST(req: Request) {
           whatsapp: parentWhatsapp || null,
           extraPhone: parentExtraPhone || null,
           password: hashedParentPassword,
-          passwordPlain: parentPasswordPlain,
           qrCode: `PARENT-${crypto.randomUUID()}`,
         },
       });
@@ -186,7 +185,6 @@ export async function POST(req: Request) {
       if (parentRelation) updateData.relation = parentRelation;
       if (!parent.password) {
         updateData.password = hashedParentPassword;
-        updateData.passwordPlain = parentPasswordPlain;
       }
       // Ensure every parent has a qrCode
       if (!(parent as any).qrCode) {
@@ -220,7 +218,7 @@ export async function POST(req: Request) {
     }
 
     const studentPasswordPlain = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedStudentPassword = await bcrypt.hash(studentPasswordPlain, 10);
+    const hashedStudentPassword = await bcrypt.hash(studentPasswordPlain, BCRYPT_SALT_ROUNDS);
 
     const student = await prisma.student.create({
       data: {
@@ -228,7 +226,6 @@ export async function POST(req: Request) {
         name,
         phone: phone || null,
         password: hashedStudentPassword,
-        passwordPlain: studentPasswordPlain,
         academicStageId,
         groupId,
         parentId: parent.id,
@@ -245,7 +242,6 @@ export async function POST(req: Request) {
             relation: true,
             whatsapp: true,
             extraPhone: true,
-            passwordPlain: true,
           }
         },
       },
@@ -309,15 +305,13 @@ export async function POST(req: Request) {
       }
     }
 
-    const { password: _p, passwordPlain: _pp, ...safeCreatedStudent } = student as any;
+    const { password: _p, ...safeCreatedStudent } = student as any;
 
     return NextResponse.json({
       success: true,
       student: safeCreatedStudent,
       credentials: {
         studentCode: code,
-        studentPassword: studentPasswordPlain,
-        parentPassword: parentPasswordPlain,
       },
     });
   } catch (e: any) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaffWithPermission } from '@/lib/auth';
 
 async function syncSubscriptionStatuses() {
   const now = new Date();
@@ -104,6 +105,11 @@ async function syncSubscriptionStatuses() {
 
 export async function GET(req: Request) {
   try {
+    const staff = await verifyStaffWithPermission(req, 'subscriptions.view');
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بالوصول (يتطلب صلاحية الاطلاع على الاشتراكات)' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const monthStr = searchParams.get('month');
     const yearStr = searchParams.get('year');
@@ -141,6 +147,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const staff = await verifyStaffWithPermission(req, 'subscriptions.manage');
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بإدارة الاشتراكات (يتطلب صلاحية إدارة الاشتراكات)' }, { status: 403 });
+    }
+
     const { studentId, groupId, price, totalSessions, startDate, endDate, month, year } = await req.json();
 
     const start = startDate ? new Date(startDate) : new Date();

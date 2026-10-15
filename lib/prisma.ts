@@ -36,7 +36,6 @@ export const safeSettingsSelect: Prisma.SystemSettingsSelect = {
   lateThreshold: true,
   enableDarkMode: true,
   waGatewayUrl: true,
-  waApiToken: true,
   waSenderNumber: true,
   waTplStudent: true,
   waTplParent: true,

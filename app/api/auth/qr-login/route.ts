@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { signToken } from '@/lib/auth';
-import { verifyStudentQR, extractCodeCandidates } from '@/lib/qr-signer';
+import { verifyStudentQR } from '@/lib/qr-signer';
 import { checkRateLimit } from '@/lib/rate-limiter';
 
 export async function POST(req: Request) {
@@ -21,24 +21,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'رمز QR غير صالح' }, { status: 400 });
     }
 
+    // 1. In-memory HMAC cryptographic verification (O(1) - Zero database overhead)
     const qrVerification = verifyStudentQR(token);
-    const resolvedToken = qrVerification.valid ? qrVerification.studentId : token;
-    const candidates = extractCodeCandidates(resolvedToken || token);
+    if (!qrVerification.valid || qrVerification.isLegacy || !qrVerification.studentId) {
+      return NextResponse.json(
+        { success: false, error: qrVerification.reason || 'رمز QR غير صالح أو غير موثق بتوقيع رقمي' },
+        { status: 401 }
+      );
+    }
 
-    // 1. Search in Student by qrCode, code, id, or phone
-    const student = await prisma.student.findFirst({
-      where: {
-        OR: [
-          { qrCode: { in: candidates } },
-          { code: { in: candidates } },
-          { id: { in: candidates } },
-          { phone: { in: candidates } },
-        ],
-      },
+    const targetId = qrVerification.studentId;
+
+    // 2. Direct indexed lookup for Student by primary key (id)
+    const student = await prisma.student.findUnique({
+      where: { id: targetId },
       include: { academicStage: true, group: true },
     });
 
     if (student) {
+      if (student.isDeleted) {
+        return NextResponse.json(
+          { success: false, error: 'هذا الحساب معطل، يرجى مراجعة إدارة السنتر.' },
+          { status: 403 }
+        );
+      }
+
       const jwtToken = await signToken({
         userId: student.id,
         name: student.name,
@@ -53,27 +60,20 @@ export async function POST(req: Request) {
         user: { id: student.id, name: student.name, role: 'STUDENT' },
       });
 
-      // Session Cookie — no maxAge so it expires when browser closes
+      // Session Cookie — expires when browser closes
       res.cookies.set('auth-token', jwtToken, {
         httpOnly: true,
         path: '/',
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        // No maxAge → session cookie (deleted when browser closes)
       });
 
       return res;
     }
 
-    // 2. Search in Parent by qrCode, phone, or id
-    const parent = await prisma.parent.findFirst({
-      where: {
-        OR: [
-          { qrCode: { in: candidates } },
-          { phone: { in: candidates } },
-          { id: { in: candidates } },
-        ],
-      },
+    // 3. Direct indexed lookup for Parent by primary key (id)
+    const parent = await prisma.parent.findUnique({
+      where: { id: targetId },
     });
 
     if (parent) {
@@ -91,22 +91,21 @@ export async function POST(req: Request) {
         user: { id: parent.id, name: parent.name, role: 'PARENT' },
       });
 
-      // Session Cookie — no maxAge so it expires when browser closes
+      // Session Cookie — expires when browser closes
       res.cookies.set('auth-token', jwtToken, {
         httpOnly: true,
         path: '/',
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        // No maxAge → session cookie (deleted when browser closes)
       });
 
       return res;
     }
 
-    // 3. Not found
+    // 4. User ID signed in QR token does not exist in the database
     return NextResponse.json(
-      { success: false, error: 'رمز QR غير معروف أو منتهي الصلاحية' },
-      { status: 401 }
+      { success: false, error: 'الحساب المرتبط برمز QR غير موجود أو تم حذفه' },
+      { status: 404 }
     );
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

@@ -11,30 +11,36 @@ const MAX_SIZE_MB = 5;
 export async function HEAD(request: NextRequest) {
   try {
     const type = request.nextUrl.searchParams.get('type') ?? 'portrait';
-    
-    // Choose the database field based on type
-    let selectField = 'portraitBase64';
+
+    const settings = await prisma.systemSettings.findFirst({
+      select: {
+        portraitBase64: true,
+        portraitTabletBase64: true,
+        portraitMobileBase64: true,
+        logoBase64: true,
+      },
+    });
+
+    if (!settings) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    let hasImage = false;
     if (type === 'logo') {
-      selectField = 'logoBase64';
+      hasImage = Boolean(settings.logoBase64 && settings.logoBase64.trim().length > 0);
     } else if (type === 'portrait-tablet') {
-      selectField = 'portraitTabletBase64';
+      hasImage = Boolean(
+        (settings.portraitTabletBase64 && settings.portraitTabletBase64.trim().length > 0) ||
+        (settings.portraitBase64 && settings.portraitBase64.trim().length > 0)
+      );
     } else if (type === 'portrait-mobile') {
-      selectField = 'portraitMobileBase64';
+      hasImage = Boolean(
+        (settings.portraitMobileBase64 && settings.portraitMobileBase64.trim().length > 0) ||
+        (settings.portraitBase64 && settings.portraitBase64.trim().length > 0)
+      );
+    } else {
+      hasImage = Boolean(settings.portraitBase64 && settings.portraitBase64.trim().length > 0);
     }
-
-    let condition = `("${selectField}" IS NOT NULL AND "${selectField}" <> '')`;
-    if (type === 'portrait-mobile') {
-      condition = `(("${selectField}" IS NOT NULL AND "${selectField}" <> '') OR ("portraitBase64" IS NOT NULL AND "portraitBase64" <> ''))`;
-    } else if (type === 'portrait-tablet') {
-      condition = `(("${selectField}" IS NOT NULL AND "${selectField}" <> '') OR ("portraitBase64" IS NOT NULL AND "portraitBase64" <> ''))`;
-    }
-
-    // Check if the field is not null/empty via a database-side null check query
-    const brandingCheck = await prisma.$queryRawUnsafe<Array<Record<string, boolean>>>(
-      `SELECT (${condition}) AS "hasImage" FROM "SystemSettings" LIMIT 1`
-    );
-
-    const hasImage = brandingCheck?.[0]?.hasImage ?? false;
 
     if (!hasImage) {
       return new NextResponse(null, { status: 404 });

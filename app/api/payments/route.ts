@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyStaffWithPermission } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {
+    const staff = await verifyStaffWithPermission(req, 'subscriptions.view');
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح بالدخول (يتطلب صلاحية الاطلاع على المدفوعات)' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const monthStr = searchParams.get('month');
     const yearStr = searchParams.get('year');
@@ -36,18 +42,19 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { studentId, subscriptionId, totalAmount, paidAmount, recordedById, paidAt, month, year, notes } = await req.json();
+    const staff = await verifyStaffWithPermission(req, 'payments.collect');
+    if (!staff) {
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بتحصيل المدفوعات (يتطلب صلاحية تسجيل وتحصيل المدفوعات)' }, { status: 403 });
+    }
+
+    const { studentId, subscriptionId, totalAmount, paidAmount, paidAt, month, year, notes } = await req.json();
 
     const total = parseFloat(totalAmount);
     const paid = parseFloat(paidAmount);
     const remaining = total - paid;
 
-    // Find owner or user fallback
-    let recorderId = recordedById;
-    if (!recorderId) {
-      const owner = await prisma.user.findFirst();
-      if (owner) recorderId = owner.id;
-    }
+    // Security: Always use verified staff identity from session token (prevents IDOR / impersonation)
+    const recorderId = staff.userId;
 
     // Get the target subscription to retrieve target month/year
     const sub = await prisma.subscription.findUnique({

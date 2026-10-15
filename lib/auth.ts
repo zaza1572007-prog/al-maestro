@@ -1,12 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose';
+import { ENV } from '@/lib/env';
 
 function getJwtSecret(): Uint8Array {
-  const secret = process.env.JWT_SECRET;
-  if (!secret || secret.trim().length < 32) {
-    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing or too weak (min 32 chars required).');
-  }
-  return new TextEncoder().encode(secret);
+  return ENV.JWT_SECRET_BYTES;
 }
+
+/**
+ * Standard bcrypt salt rounds: fixed at 10 to balance maximum security with CPU efficiency.
+ */
+export const BCRYPT_SALT_ROUNDS = 10;
 
 export interface JWTPayload {
   userId: string;
@@ -70,11 +72,48 @@ export async function verifyStaff(req: Request): Promise<JWTPayload | null> {
   }
 }
 
+import { hasPermission } from '@/lib/permissions';
+
 export async function verifyOwner(req: Request): Promise<JWTPayload | null> {
   const staff = await verifyStaff(req);
   if (staff && staff.role === 'OWNER') {
     return staff;
   }
+  return null;
+}
+
+/**
+ * Verifies that the incoming request is authenticated as staff (OWNER or ASSISTANT)
+ * and holds the required permission. OWNER bypasses all permission checks.
+ */
+export async function verifyStaffWithPermission(
+  req: Request,
+  requiredPermission?: string
+): Promise<JWTPayload | null> {
+  const staff = await verifyStaff(req);
+  if (!staff) return null;
+
+  // OWNER always has full access
+  if (staff.role === 'OWNER') {
+    return staff;
+  }
+
+  // If no specific permission is required, any active staff is allowed
+  if (!requiredPermission) {
+    return staff;
+  }
+
+  // Verify Assistant's permissions against the database
+  if (staff.role === 'ASSISTANT') {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: staff.userId },
+      select: { isActive: true, permissions: true, role: true },
+    });
+    if (dbUser && dbUser.isActive && hasPermission(dbUser, requiredPermission)) {
+      return staff;
+    }
+  }
+
   return null;
 }
 

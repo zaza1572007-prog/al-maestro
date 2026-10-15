@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyStaff } from '@/lib/auth';
+import { verifyStaff, BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 
 // GET /api/assistants - List all assistants
@@ -70,14 +70,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'اسم المستخدم أو رقم الهاتف مستخدم بالفعل لمستخدم آخر' }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+    const hashedPassword = await bcrypt.hash(password.trim(), BCRYPT_SALT_ROUNDS);
 
     const newAssistant = await prisma.user.create({
       data: {
         name: name.trim(),
         phone: phone.trim(),
         password: hashedPassword,
-        passwordPlain: password.trim(),
         role: 'ASSISTANT',
         isActive: true,
         permissions: Array.isArray(permissions) ? permissions : [],

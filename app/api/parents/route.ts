@@ -35,7 +35,9 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ success: true, parents });
+    const safeParents = parents.map(({ password, ...p }: any) => p);
+
+    return NextResponse.json({ success: true, parents: safeParents });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

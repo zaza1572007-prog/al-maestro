@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { BCRYPT_SALT_ROUNDS } from '@/lib/auth';
 import bcrypt from 'bcrypt';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
@@ -120,7 +121,7 @@ export async function POST(
       });
 
       const parentPassword = Math.floor(100000 + Math.random() * 900000).toString();
-      const hashedParentPassword = await bcrypt.hash(parentPassword, 10);
+      const hashedParentPassword = await bcrypt.hash(parentPassword, BCRYPT_SALT_ROUNDS);
 
       if (!parent) {
         parent = await prisma.parent.create({
@@ -131,7 +132,6 @@ export async function POST(
             whatsapp: reqData.parentWhatsapp || null,
             extraPhone: reqData.parentExtraPhone || null,
             password: hashedParentPassword,
-            passwordPlain: parentPassword,
           },
         });
       } else {
@@ -141,7 +141,6 @@ export async function POST(
         if (reqData.parentExtraPhone) updateData.extraPhone = reqData.parentExtraPhone;
         if (!parent.password) {
           updateData.password = hashedParentPassword;
-          updateData.passwordPlain = parentPassword;
         }
         if (Object.keys(updateData).length > 0) {
           parent = await prisma.parent.update({
@@ -171,7 +170,7 @@ export async function POST(
 
       // 3. Create Student
       const studentPassword = Math.floor(100000 + Math.random() * 900000).toString();
-      const hashedStudentPassword = await bcrypt.hash(studentPassword, 10);
+      const hashedStudentPassword = await bcrypt.hash(studentPassword, BCRYPT_SALT_ROUNDS);
 
       const student = await prisma.student.create({
         data: {
@@ -183,7 +182,6 @@ export async function POST(
           parentId: parent.id,
           qrCode: qrCode,
           password: hashedStudentPassword,
-          passwordPlain: studentPassword,
         },
       });
 
@@ -243,14 +241,14 @@ export async function POST(
         }
       }
 
+      const { password: _p, ...safeStudent } = student as any;
+
       return NextResponse.json({
         success: true,
         message: 'تم قبول الطالب بنجاح وإنشاء الحساب والـ QR Code والاشتراك!',
-        student,
+        student: safeStudent,
         credentials: {
           studentCode,
-          studentPassword,
-          parentPassword,
         },
       });
     }

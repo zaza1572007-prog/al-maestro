@@ -129,7 +129,6 @@ model User {
   name             String
   phone            String            @unique
   password         String
-  passwordPlain    String?
   role             Role              @default(ASSISTANT)
   profileImage     String?
   isActive         Boolean           @default(true)
@@ -153,7 +152,6 @@ model Student {
   name            String
   phone           String?              @unique
   password        String?
-  passwordPlain   String?
   profileImage    String?
   academicStageId String
   academicStage   AcademicStage        @relation(fields: [academicStageId], references: [id])
@@ -187,7 +185,6 @@ model Parent {
   name          String
   phone         String    @unique
   password      String?
-  passwordPlain String?
   relation      String    @default("Father")
   whatsapp      String?
   extraPhone    String?

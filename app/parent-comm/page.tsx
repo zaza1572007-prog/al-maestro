@@ -225,7 +225,7 @@ export default function ParentCommPage() {
                       <th className="p-4 font-bold">ولي الأمر</th>
                       <th className="p-4 font-bold">رقم الهاتف والواتساب</th>
                       <th className="p-4 font-bold">الطلاب التابعين</th>
-                      <th className="p-4 font-bold">كلمة المرور</th>
+                      <th className="p-4 font-bold">حالة الحساب</th>
                       <th className="p-4 font-bold text-left">التحكم</th>
                     </tr>
                   </thead>
@@ -259,8 +259,11 @@ export default function ParentCommPage() {
                             )}
                           </div>
                         </td>
-                        <td className="p-4 font-mono font-bold text-slate-300">
-                          {parent.passwordPlain || '—'}
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium text-[11px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            مشفرة بأمان 🔒
+                          </span>
                         </td>
                         <td className="p-4 text-left">
                           <div className="flex gap-2">
@@ -292,7 +295,7 @@ export default function ParentCommPage() {
                                   .replace(/\[student_name\]/g, studentNames)
                                   .replace(/\[student_code\]/g, studentCodes)
                                   .replace(/\[username\]/g, parent.phone)
-                                  .replace(/\[password\]/g, parent.passwordPlain || '123456');
+                                  .replace(/\[password\]/g, 'مسجلة بحسابكم (أو اضغط إرسال تلقائي لإعادة تعيينها)');
 
                                 const phone = parent.whatsapp || parent.phone || '';
                                 let cleanPhone = phone.replace(/[^\d]/g, '').trim();

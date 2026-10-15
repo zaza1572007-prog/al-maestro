@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import crypto from 'crypto';
 import { Calendar, CheckCircle2, XCircle, Award, CreditCard, User, GraduationCap, Users, BookOpen } from 'lucide-react';
 
-const SECRET = process.env.NEXTAUTH_SECRET || 'fallback-maestro-secret-key-12345';
+import { ENV, timingSafeCompare } from '@/lib/env';
+
+const SECRET = ENV.NEXTAUTH_SECRET;
 
 // Verify token on the server
 function verifyMagicToken(token: string): { studentId: string; month: number; year: number } | null {
@@ -21,7 +23,7 @@ function verifyMagicToken(token: string): { studentId: string; month: number; ye
     const expectedHash = crypto.createHmac('sha256', SECRET).update(payload).digest('hex');
     const expectedSignature = expectedHash.slice(0, 16);
 
-    if (signature === expectedSignature) {
+    if (timingSafeCompare(signature, expectedSignature)) {
       return { studentId, month, year };
     }
   } catch (e) {

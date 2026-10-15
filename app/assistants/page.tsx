@@ -53,7 +53,6 @@ interface Assistant {
   id: string;
   name: string;
   phone: string;
-  passwordPlain?: string | null;
   role: string;
   profileImage?: string | null;
   isActive: boolean;
@@ -114,7 +113,6 @@ export default function AssistantsPage() {
   });
 
   // UI helpers
-  const [showPasswordMap, setShowPasswordMap] = useState<{ [id: string]: boolean }>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -531,7 +529,6 @@ export default function AssistantsPage() {
               .map(g => g.name);
 
             const isCopied = copiedId === ast.id;
-            const isPwVisible = showPasswordMap[ast.id] || false;
 
             return (
               <motion.div
@@ -598,36 +595,20 @@ export default function AssistantsPage() {
                   {/* Credentials Bar */}
                   <div className="mt-4 p-3 rounded-xl bg-zinc-100/80 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/50 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-xs">
-                      <KeyRound className="w-4 h-4 text-amber-500" />
+                      <KeyRound className="w-4 h-4 text-emerald-500" />
                       <span className="text-zinc-500 dark:text-zinc-400">كلمة المرور:</span>
-                      <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                        {ast.passwordPlain ? (isPwVisible ? ast.passwordPlain : '••••••••') : 'مشفرة'}
+                      <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                        مشفرة بأمان 🔒
                       </span>
                     </div>
 
-                    {ast.passwordPlain && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() =>
-                            setShowPasswordMap(prev => ({
-                              ...prev,
-                              [ast.id]: !prev[ast.id]
-                            }))
-                          }
-                          className="p-1 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
-                          title={isPwVisible ? 'إخفاء' : 'إظهار'}
-                        >
-                          {isPwVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(ast.passwordPlain || '', ast.id)}
-                          className="p-1 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all"
-                          title="نسخ"
-                        >
-                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => openEditModal(ast)}
+                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg text-xs font-semibold transition cursor-pointer"
+                      title="إعادة تعيين كلمة المرور"
+                    >
+                      إعادة تعيين
+                    </button>
                   </div>
 
                   {/* Assigned Permissions Summary */}
