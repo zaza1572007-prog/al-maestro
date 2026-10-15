@@ -1,14 +1,22 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { RefreshCw, QrCode, UserCheck, UserX, Clock, MessageSquare, Camera } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { get, set } from 'idb-keyval';
 import { generateDirectWhatsAppLink } from '@/lib/whatsapp-direct';
-import CameraQrScanner from '@/components/CameraQrScanner';
-import { extractCodeCandidates, extractNumericDigits } from '@/lib/qr-signer';
 import soundFX from '@/lib/sound-fx';
 import haptics from '@/lib/haptics';
+import { extractCodeCandidates, extractNumericDigits } from '@/lib/qr-code-utils';
+
+// Load the camera scanner ONLY on the client (no SSR) to prevent crashes from
+// window/navigator access during server-side rendering.
+const CameraQrScanner = dynamic(() => import('@/components/CameraQrScanner'), {
+  ssr: false,
+  loading: () => null,
+});
 
 function playBeepSuccess() {
   soundFX.playSuccessChime();
@@ -82,7 +90,48 @@ const statusLabels: Record<string, string> = {
   VACATION: 'إجازة',
 };
 
-export default function AttendancePage() {
+// ─── Error Boundary ─────────────────────────────────────────────────────────
+// Catches any runtime error inside the attendance page and shows a graceful
+// fallback instead of a blank/crashed screen.
+interface EBState { hasError: boolean; errorMsg: string }
+class AttendanceErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, errorMsg: error?.message || 'خطأ غير متوقع' };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[AttendancePage] Uncaught error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+          <div className="w-16 h-16 rounded-3xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center mb-4">
+            <Camera className="w-8 h-8 text-rose-400" />
+          </div>
+          <h2 className="text-xl font-black text-white mb-2">تعذر تحميل صفحة الحضور</h2>
+          <p className="text-sm text-slate-400 mb-1 max-w-sm">
+            حدث خطأ أثناء تهيئة الكاميرا أو تحميل البيانات. يرجى التحقق من صلاحيات الكاميرا أو تحديث الصفحة.
+          </p>
+          <p className="text-xs text-slate-600 font-mono mb-6">{this.state.errorMsg}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, errorMsg: '' }); window.location.reload(); }}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition flex items-center gap-2 mx-auto cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" /> إعادة تحميل الصفحة
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+function AttendancePage() {
   const [code, setCode] = useState('');
   const [lastScan, setLastScan] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -1937,5 +1986,13 @@ export default function AttendancePage() {
         }
       `}} />
     </div>
+  );
+}
+
+export default function AttendancePageWithBoundary() {
+  return (
+    <AttendanceErrorBoundary>
+      <AttendancePage />
+    </AttendanceErrorBoundary>
   );
 }
