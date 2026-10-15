@@ -1,4 +1,4 @@
-const CACHE_NAME = 'almaestro-offline-v10';
+const CACHE_NAME = 'almaestro-offline-v11';
 
 // Core routes and assets to pre-cache for offline usage
 const PRECACHE_URLS = [
